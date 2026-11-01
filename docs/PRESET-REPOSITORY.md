@@ -1,0 +1,21 @@
+# Local preset repository
+
+`PresetRepository` keeps the original bundled Orca archive read-only and writes user profiles in one atomic, app-private JSON transaction. Run repository operations on a worker thread. Close the repository only after its outstanding operations have finished; its source ZIP remains open for efficient inheritance resolution.
+
+The generated `orca_preset_index.json` identifies original JSON by kind, vendor, name and exact archive path. User identities are UUIDs. System identities are SHA-256 of vendor/name within a kind. List results are lightweight descriptors; call `load(id)` for detached source/effective JSON, `resolve(id)` for inherited options, and `systemAncestor(id)` for the closest original system leaf/path. The resolution applies whole child option values over parents, including arrays. It does not merge nested objects or manufacture defaults from `PrintConfig`.
+
+The index contains 14,158 preset JSON documents from the fixed bundled upstream revision. Non-preset ID maps and machine-model descriptions are excluded explicitly. All indexed inheritance paths were checked with zero missing/ambiguous/cyclic parents. There are 3,239 instantiated process, 7,570 filament and 1,188 machine presets. The older machine picker index contains 1,100: the additional paths include nested vendor directories. Availability in this repository does not itself make a printer selectable by the old picker.
+
+`beginDraft` isolates edits. `save` refuses system presets and checks its baseline to reject a concurrent overwrite. `saveAs` creates a user child of the selected preset. `reset` discards draft edits and reloads the saved source. A user parent cannot be deleted while another user profile inherits it. System presets cannot be changed or deleted. Missing/ambiguous parents and inheritance cycles are errors, and a failed import does not write any subset of profiles.
+
+Single-preset export uses Orca's original JSON schema and supplies its semantic version and settings identity when absent. Unknown keys, arrays, nulls and JSON value types are retained. `exportBundle` is explicitly labeled `kepler-presets-v1`; it is a local exchange wrapper, **not** a desktop Orca JSON-bundle format. `exportOrcaZip` writes separate original-format preset JSON files in a plain ZIP, accepted by the upstream `PresetBundle::import_presets` ZIP route. User ancestors are included. Import supports these JSON-only ZIPs; bundles with companion bed models/textures or other non-JSON files are rejected rather than silently discarding them. Actual desktop import/export UI validation is still required.
+
+`ProjectConfigArchive` reads the exact `Metadata/project_settings.config` object and embedded preset JSON from an existing Orca 3MF. Replacement writes a **new** archive and preserves the uncompressed payload of every other entry, including geometry, thumbnails, plate data and unknown entries. ZIP compression bytes and unsupported ZIP file attributes may differ. Project JSON may legitimately lack a `type` field (the official OrcaBadge example has `{}`). This transport does not make embedded project configuration supported by the current native slicing path, and does not create new project geometry.
+
+Standalone JVM tests use real `org.json`, with small Android Context/AssetManager adapters only for the asset boundary:
+
+```powershell
+./tools/test_presets.ps1 -JsonJar /path/to/json.jar -Official3mf /path/to/OrcaBadge.3mf
+```
+
+The tests cover inheritance, unknown JSON fields and nulls, immutable system data, dirty/reset/save, concurrent draft conflicts, transactional cycle/missing-parent rejection, ancestor export, JSON/ZIP exchange, and byte equality of non-configuration 3MF entry payloads. The official OrcaBadge fixture was also verified. Native/JNI source and binaries are unchanged.
