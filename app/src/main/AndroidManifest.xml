@@ -21,6 +21,7 @@
         <activity android:name=".ProcessSettingsActivity" android:exported="false" />
         <activity android:name=".ImportActivity" android:exported="false" />
         <activity android:name=".PreferencesActivity" android:exported="false" />
+        <activity android:name=".glass.GlassGalleryActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
