@@ -1,0 +1,33 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <application
+        android:allowBackup="false"
+        android:usesCleartextTraffic="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="Kepler Slicer"
+        android:theme="@style/AppTheme"
+        android:supportsRtl="true">
+        <activity android:name=".NetworkActivity" android:exported="false" />
+        <activity android:name=".CloudSyncActivity" android:exported="false" />
+        <activity android:name=".CloudPrintLoginActivity" android:exported="false" />
+        <activity android:name=".ModelDetailsActivity" android:exported="false" />
+        <activity android:name=".PrinterPickerActivity" android:exported="false" />
+        <activity android:name=".ProfilePickerActivity" android:exported="false" />
+        <activity android:name=".SliceActivity" android:exported="false" />
+        <activity android:name=".GcodePreviewActivity" android:exported="false" />
+        <activity android:name=".GcodeExportActivity" android:exported="false" />
+        <activity android:name=".ProcessSettingsActivity" android:exported="false" />
+        <activity android:name=".ImportActivity" android:exported="false" />
+        <activity android:name=".PreferencesActivity" android:exported="false" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

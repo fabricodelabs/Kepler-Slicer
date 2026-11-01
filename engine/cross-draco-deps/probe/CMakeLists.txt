@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.22)
+project(kepler_draco_probe LANGUAGES CXX)
+find_package(Draco REQUIRED)
+add_library(draco_probe SHARED check.cpp)
+target_link_libraries(draco_probe PRIVATE draco::draco)

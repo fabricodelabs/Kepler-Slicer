@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.22)
+project(kepler_cgal_probe LANGUAGES C CXX)
+find_package(CGAL 6.2 REQUIRED)
+find_path(MPFR_INCLUDE_DIR mpfr.h REQUIRED)
+find_library(MPFR_LIB mpfr REQUIRED)
+add_library(cgal_probe SHARED check.cpp)
+target_include_directories(cgal_probe PRIVATE ${MPFR_INCLUDE_DIR})
+target_link_libraries(cgal_probe PRIVATE CGAL::CGAL ${MPFR_LIB})
