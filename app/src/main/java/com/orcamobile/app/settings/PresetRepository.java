@@ -93,7 +93,12 @@ public final class PresetRepository implements Closeable {
         synchronized(LOCK){Map<String,JSONObject> users=readUsers();Preset old=descriptor(draft.baseId,users);if(old.system)throw new IOException("System presets are read-only; use Save as");if(!draft.baseline.equals(PresetJson.fingerprint(source(old.id,users))))throw new IOException("Preset changed since this draft was opened");JSONObject record=PresetJson.copy(users.get(old.id));put(record,"source",normalize(draft.edited,old.kind,old.name,parentName(old.parentId,users)));users.put(old.id,record);validateAll(users);writeUsers(users);Preset saved=load(old.id);draft.replace(saved.source);return saved;}
     }
     public Preset saveAs(Draft draft,String name) throws IOException {
-        synchronized(LOCK){Map<String,JSONObject> users=readUsers();Preset old=descriptor(draft.baseId,users);return create(old.kind,old.vendor,name,old.id,draft.edited,users);}
+        synchronized(LOCK){Map<String,JSONObject> users=readUsers();Preset old=descriptor(draft.baseId,users);JSONObject fresh=PresetJson.copy(draft.edited);
+            // Like desktop Save As, a new profile must not reuse the source's own
+            // setting_id. Orca recognizes this metadata key without ASCII case.
+            // Keep unknown Unicode keys, imported metadata and existing saves intact.
+            for(Iterator<String> keys=fresh.keys();keys.hasNext();)if(keys.next().matches("[sS][eE][tT][tT][iI][nN][gG]_[iI][dD]"))keys.remove();
+            return create(old.kind,old.vendor,name,old.id,fresh,users);}
     }
     public Preset saveUser(String kind,String vendor,String name,String parentId,JSONObject original) throws IOException {
         synchronized(LOCK){Map<String,JSONObject> users=readUsers();if(parentId==null||parentId.isEmpty()){String inherited=original.optString("inherits","");if(!inherited.isEmpty())parentId=findParent(kind,vendor,inherited,users);}return create(kind,vendor,name,parentId,original,users);}
