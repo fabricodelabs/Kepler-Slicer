@@ -59,10 +59,15 @@ public final class OrcaProcessFilamentCatalog {
     public static void saveSelection(Context context, Profile profile, OrcaProfileCatalog.Profile printer) throws IOException {
         if (profile == null || printer == null || printer.imported || printer.path.isEmpty()) throw new IOException("Сначала выберите системный профиль принтера");
         requireKind(profile.kind);
-        SharedPreferences.Editor edit = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
-        edit.putString(profile.kind + "_vendor", profile.vendor).putString(profile.kind + "_name", profile.name)
-            .putString(profile.kind + "_path", profile.path).putString(profile.kind + "_printer", printer.path);
-        if (!edit.commit()) throw new IOException("Не удалось сохранить профиль");
+        SharedPreferences prefs=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE);
+        String[] keys={profile.kind+"_vendor",profile.kind+"_name",profile.kind+"_path",profile.kind+"_printer"};
+        java.util.Map<String,?> before=prefs.getAll();
+        SharedPreferences.Editor edit=prefs.edit();
+        edit.putString(keys[0],profile.vendor).putString(keys[1],profile.name).putString(keys[2],profile.path).putString(keys[3],printer.path);
+        if(!edit.commit()){
+            try{SettingsState.restoreKeys(prefs,before,keys);}catch(IOException restore){IOException failure=new IOException("Не удалось сохранить профиль; восстановление прежнего выбора не подтверждено");failure.addSuppressed(restore);throw failure;}
+            throw new IOException("Не удалось сохранить профиль");
+        }
     }
 
     public static Profile loadSelection(Context context, String kind) {

@@ -120,6 +120,10 @@ public final class SliceActivity extends Activity {
                 data = new File(root, "run-" + UUID.randomUUID()); ensureDirectory(data);
                 // Snapshot the bytes and transform together before the model can be changed.
                 CurrentModelStore.Snapshot model = CurrentModelStore.snapshotToDirectory(context, data);
+                ObjectSettingsStore.Snapshot objectSettings=selection.identity.objectSettings;
+                String sourceFile=model.selectionKey.substring(0,model.selectionKey.indexOf('\n'));
+                if(!objectSettings.modelFileName.equals(sourceFile)||objectSettings.plateIndex!=model.plateIndex)
+                    throw new IOException("Модель или пластина изменились при подготовке параметров. Повторите нарезку.");
                 File input = model.file;
                 File resources = new File(root, "resources-6d2869c4"); prepareResources(context, resources);
                 File system = new File(data, "system"); ensureDirectory(system);
@@ -137,17 +141,24 @@ public final class SliceActivity extends Activity {
                     copyTree(new File(from, vendor + ".json"), new File(system, vendor + ".json"));
                     copyTree(new File(from, vendor), new File(system, vendor));
                 }
+                objectSettings.applied(selection.identity.profileSettings).install(data);
+                // Object values have higher priority than legacy global process overrides.
+                org.json.JSONObject nativeOverrides=new org.json.JSONObject(selection.overrides);
+                java.util.Iterator<String> objectKeys=objectSettings.changes().keys();
+                while(objectKeys.hasNext())nativeOverrides.remove(objectKeys.next());
                 stage = "загрузка движка и нарезка";
                 update("Проверяем совместимость профилей и нарезаем модель…");
                 File job = new File(data, "job-" + UUID.randomUUID());
                 String result = ExperimentalSlicer.sliceModelWithSettings(printer.vendor, process.vendor, filament.vendor,
-                        printer.name, process.name, filament.name, input.getAbsolutePath(), resources.getAbsolutePath(), data.getAbsolutePath(), job.getAbsolutePath(), model.transform.toNativeArguments(), selection.overrides,model.plateIndex);
+                        printer.name, process.name, filament.name, input.getAbsolutePath(), resources.getAbsolutePath(), data.getAbsolutePath(), job.getAbsolutePath(), model.transform.toNativeArguments(), nativeOverrides.toString(),model.plateIndex);
                 File output = result == null ? null : new File(result);
                 if (output == null || !output.isFile() || output.length() == 0 || !output.getCanonicalFile().getParentFile().equals(job.getCanonicalFile())) throw new IOException("G-code не создан или пуст.");
                 success = true;
                 ModelTransform transform = model.transform;
-                int changedCount = new org.json.JSONObject(selection.overrides).length();
-                String details = model.name + "\n" + printer.name + "\n" + process.name + "\n" + filament.name + "\nИзменённых параметров процесса: " + changedCount +
+                String printerDisplay=selection.identity.profileSettings.overlays.get("printer").values().optString("name",printer.name);
+                String processDisplay=selection.identity.profileSettings.overlays.get("process").values().optString("name",process.name);
+                String filamentDisplay=selection.identity.profileSettings.overlays.get("filament").values().optString("name",filament.name);
+                String details = model.name + "\n" + printerDisplay + "\n" + processDisplay + "\n" + filamentDisplay +
                         String.format(java.util.Locale.getDefault(), "\nПоворот XYZ: %.2f°, %.2f°, %.2f°\nМасштаб XYZ: %.3f × %.3f × %.3f\nСмещение XY: %.2f, %.2f мм",
                                 transform.rx, transform.ry, transform.rz, transform.sx, transform.sy, transform.sz, transform.offsetX, transform.offsetY);
                 SharedPreferences prefs = context.getSharedPreferences(RESULTS, MODE_PRIVATE);

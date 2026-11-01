@@ -2,6 +2,7 @@ package com.orcamobile.app;
 
 import android.content.Context;
 import android.net.Uri;
+import com.orcamobile.app.settings.PresetRepository;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -24,6 +25,34 @@ public final class OrcaProfileCatalog {
     private static final String PREFERENCES = "orca_profile_selection";
 
     private OrcaProfileCatalog() { }
+
+    /** Only repository-verified bundled ancestors may extend the older flat machine index. */
+    static Profile systemProfile(PresetRepository.Preset ancestor) throws IOException {
+        if(ancestor==null||!ancestor.system||!PresetRepository.PRINTER.equals(ancestor.kind)
+                ||ancestor.source==null||ancestor.effective==null
+                ||!PresetRepository.systemId(ancestor.kind,ancestor.vendor,ancestor.name).equals(ancestor.id))
+            throw new IOException("Expected a trusted bundled printer ancestor");
+        SettingsState.requireOverlayPath("printer",ancestor.path);
+        if(!ancestor.path.startsWith(ancestor.vendor+"/")||!"machine".equals(ancestor.source.optString("type"))
+                ||!ancestor.name.equals(ancestor.source.optString("name"))
+                ||!"true".equalsIgnoreCase(String.valueOf(ancestor.source.opt("instantiation"))))
+            throw new IOException("This printer template is not an instantiated nozzle profile");
+        if(!"FFF".equalsIgnoreCase(ancestor.effective.optString("printer_technology","FFF")))
+            throw new IOException("This Android slicing path requires an FFF printer profile");
+        return new Profile(ancestor.name,ancestor.vendor,ancestor.path,ancestor.effective.optString("printer_model",""),ancestor.effective.optString("printer_variant",""),false);
+    }
+
+    static void saveSelectionChecked(Context context,Profile profile) throws IOException {
+        android.content.SharedPreferences prefs=context.getSharedPreferences(PREFERENCES,Context.MODE_PRIVATE);
+        java.util.Map<String,?> previous=prefs.getAll();
+        if(!prefs.edit().putString("name",profile.name).putString("vendor",profile.vendor).putString("path",profile.path)
+                .putString("model",profile.model).putString("variant",profile.variant).putBoolean("imported",profile.imported).commit()){
+            android.content.SharedPreferences.Editor rollback=prefs.edit();
+            for(String key:new String[]{"name","vendor","path","model","variant"}){Object value=previous.get(key);if(value instanceof String)rollback.putString(key,(String)value);else rollback.remove(key);}
+            Object imported=previous.get("imported");if(imported instanceof Boolean)rollback.putBoolean("imported",(Boolean)imported);else rollback.remove("imported");
+            rollback.apply();throw new IOException("Cannot save printer selection");
+        }
+    }
 
     public static final class Profile {
         public final String name, vendor, path, model, variant;
