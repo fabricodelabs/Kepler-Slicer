@@ -20,7 +20,10 @@
         <activity android:name=".GcodeExportActivity" android:exported="false" />
         <activity android:name=".ProcessSettingsActivity" android:exported="false" />
         <activity android:name=".ImportActivity" android:exported="false" />
-        <activity android:name=".PreferencesActivity" android:exported="false" />
+        <activity android:name=".SettingsActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
+        <activity android:name=".SettingsPresetPickerActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
+        <activity android:name=".SettingsTransferActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
+        <activity android:name=".PreferencesActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
         <activity android:name=".glass.GlassGalleryActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
         <activity
             android:name=".MainActivity"
