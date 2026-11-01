@@ -62,14 +62,13 @@ public class MainActivity extends Activity {
     private LinearLayout layerPanel; private SeekBar layerSlider;
     private FrameLayout viewportMove, viewportTransform; private StlView.MoveCallback viewportMoveCallback;
     private boolean layersMode, pendingLayerPreview; private int layerRequest; private Thread layerReader; private GcodeAnalysis layerAnalysis;
-    private ProcessSettingsPanel settingsPanel;private LinearLayout settingsSheet;private boolean settingsOpen;private Bundle pendingSettingsDraft;
     private Uri pendingUri;
     private boolean loadingMesh;
     private int loadSequence;
 
     @Override public void onCreate(Bundle state) {
         MdUi.prepare(this); super.onCreate(state);
-        if (state != null) {selected = state.getInt("tab", 0);settingsOpen=state.getBoolean("settings_open",false);pendingSettingsDraft=state.getBundle("settings_draft");pendingLayerPreview=state.getBoolean("pending_layer_preview",false);}
+        if (state != null) {selected = state.getInt("tab", 0);pendingLayerPreview=state.getBoolean("pending_layer_preview",false);}
         render();
         if (state != null && state.getString("pending_model_uri") != null) loadStl(Uri.parse(state.getString("pending_model_uri")));
         else restoreModel();
@@ -89,7 +88,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
-        out.putBoolean("pending_layer_preview",pendingLayerPreview);out.putInt("tab", selected);out.putBoolean("settings_open",settingsOpen);if(settingsPanel!=null)out.putBundle("settings_draft",settingsPanel.saveDraft());else if(pendingSettingsDraft!=null)out.putBundle("settings_draft",pendingSettingsDraft);
+        out.putBoolean("pending_layer_preview",pendingLayerPreview);out.putInt("tab", selected);
         if (pendingUri != null) out.putString("pending_model_uri", pendingUri.toString());
         super.onSaveInstanceState(out);
     }
@@ -98,13 +97,18 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         visibleWorkspace = true;
+        if (refreshAfterResume) { loadedBed = null; bedPending = false; ++bedGeneration; }
         if (refreshAfterResume && (activeTransformEditor == null || !activeTransformEditor.isShowing())) render();
-        else MdUi.prepare(this); refreshAfterResume = false;
+        else {
+            MdUi.prepare(this);
+            if (refreshAfterResume && stlView != null && bedHint != null)
+                loadSelectedBed(OrcaProfileCatalog.loadSelection(this), stlView, bedHint);
+        }
+        refreshAfterResume = false;
         if (stlView != null) stlView.onResume();
         maybeOpenRequestedLayers();
     }
-    @Override public void onBackPressed(){if(settingsOpen){closeSettingsPanel();return;}super.onBackPressed();}
-    @Override protected void onDestroy() { cancelLayerWork();if(settingsPanel!=null)settingsPanel.dispose(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
+    @Override protected void onDestroy() { cancelLayerWork(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
 
     private void chooseStl() {
         startActivityForResult(new Intent(this, ImportActivity.class), REQUEST_IMPORT);
@@ -113,7 +117,7 @@ public class MainActivity extends Activity {
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
         if(request==REQUEST_MODEL_DETAILS){restoreModel();return;}
-        if (request == PICK_PRINTER || request == PICK_PROCESS || request == PICK_FILAMENT) { if (result == RESULT_OK) {if(settingsPanel!=null)settingsPanel.reload();render();} return; }
+        if (request == PICK_PRINTER || request == PICK_PROCESS || request == PICK_FILAMENT) { if (result == RESULT_OK) render(); return; }
         if ((request != OPEN_STL && request != REQUEST_IMPORT) || result != RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
         selected = 0; loadStl(uri);
@@ -212,7 +216,7 @@ public class MainActivity extends Activity {
     private void render() {
         refreshAfterResume = false; cancelLayerWork(); layersMode=false; layerAnalysis=null;
         if (stlView != null) { stlView.onPause(); stlView = null; }
-        boolean oldTheme=darkMode;updatePalette();if(settingsPanel!=null&&oldTheme!=darkMode){pendingSettingsDraft=settingsPanel.saveDraft();settingsPanel.dispose();settingsPanel=null;} selected = 0;
+        updatePalette(); selected = 0;
         android.content.res.Configuration config = getResources().getConfiguration();
         compactLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && config.screenWidthDp >= 500;
         root = vertical(); root.setBackgroundColor(BG);
@@ -264,6 +268,7 @@ public class MainActivity extends Activity {
         processLabel.setMinHeight(dp(compactLandscape ? 36 : 40)); processLabel.setGravity(Gravity.CENTER_VERTICAL);
         processLabel.setMaxLines(1); processLabel.setEllipsize(android.text.TextUtils.TruncateAt.END);
         click(processLabel, () -> openPrintProfile(OrcaProcessFilamentCatalog.PROCESS, PICK_PROCESS)); profiles.addView(processLabel,new LinearLayout.LayoutParams(0,-2,1)); info.addView(profiles);
+        loadUserPresetNames(printerName, materialLabel, processLabel);
         head.addView(info, new LinearLayout.LayoutParams(0,-2,1));
         FrameLayout network=toolButton("wifi","Подключения принтеров",()->{Intent intent=new Intent();intent.setClassName(this,getPackageName()+".NetworkActivity");startActivity(intent);});head.addView(network,lp(44,44));
         LinearLayout wideBody = null, side = null;
@@ -300,11 +305,6 @@ public class MainActivity extends Activity {
         layerPanel=vertical();pad(layerPanel,12,8,12,8);layerPanel.setBackground(outline(SURFACE,16,LINE));layerPanel.setVisibility(View.GONE);
         layerCaption=text("",12,INK,true);layerPanel.addView(layerCaption);click(layerCaption,()->{if(layerAnalysis!=null)dialog("О просмотре слоёв","Приблизительный просмотр линий экструзии и поддерживаемых дуг на высоте слоя. Холостые перемещения, толщина линий и изменение Z внутри сегмента не воспроизводятся. Пропущенных движений с неизвестной позицией: "+layerAnalysis.skippedUnknown+"; неподдерживаемых движений: "+layerAnalysis.unsupportedMoves+"; неотображённых дуг: "+layerAnalysis.arcMoves+".");});layerSlider=new SeekBar(this);layerSlider.setContentDescription("Количество видимых слоёв");layerPanel.addView(layerSlider,lp(-1,40));
         FrameLayout.LayoutParams sliderPos=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);sliderPos.setMargins(dp(16),0,dp(88),dp(12));viewport.addView(layerPanel,sliderPos);
-        settingsSheet=vertical();settingsSheet.setBackground(outline(SURFACE,20,LINE));settingsSheet.setElevation(dp(10));settingsSheet.setVisibility(View.GONE);
-        LinearLayout sheetHead=horizontal();pad(sheetHead,16,4,8,4);TextView sheetTitle=text("Параметры процесса",16,INK,true);sheetHead.addView(sheetTitle,new LinearLayout.LayoutParams(0,-2,1));TextView close=text("×",25,INK,false);close.setGravity(Gravity.CENTER);close.setContentDescription("Свернуть параметры");click(close,this::closeSettingsPanel);sheetHead.addView(close,lp(48,48));settingsSheet.addView(sheetHead,lp(-1,56));
-        FrameLayout.LayoutParams sheetPos=new FrameLayout.LayoutParams(-1,dp(400),Gravity.BOTTOM);sheetPos.setMargins(dp(8),0,dp(8),dp(8));viewport.addView(settingsSheet,sheetPos);
-        viewport.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,orr,ob)->{if(settingsSheet==null)return;int h=Math.max(dp(140),Math.min(dp(400),b-t-dp(16)));if(settingsSheet.getLayoutParams().height!=h){settingsSheet.getLayoutParams().height=h;settingsSheet.requestLayout();}});
-        if(settingsOpen)attachSettingsPanel();
         if (compactLandscape) wideBody.addView(viewport,new LinearLayout.LayoutParams(0,-1,1));
         else root.addView(viewport,new LinearLayout.LayoutParams(-1,0,1));
         if (mesh != null && !loadingMesh) {
@@ -331,10 +331,7 @@ public class MainActivity extends Activity {
         loadSelectedBed(printer, view, hint);
     }
 
-    private void openSettingsPanel(){settingsOpen=true;attachSettingsPanel();}
-    private void closeSettingsPanel(){settingsOpen=false;if(settingsSheet!=null)settingsSheet.setVisibility(View.GONE);if(settingsPanel!=null){View v=settingsPanel.view();android.view.inputmethod.InputMethodManager imm=(android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);if(imm!=null)imm.hideSoftInputFromWindow(v.getWindowToken(),0);}}
-    private void attachSettingsPanel(){if(settingsSheet==null)return;if(settingsPanel==null){settingsPanel=new ProcessSettingsPanel(this,()->{if(layersMode)showPreparation();});if(pendingSettingsDraft!=null){settingsPanel.restoreDraft(pendingSettingsDraft);pendingSettingsDraft=null;}}
-        View content=settingsPanel.view();if(content.getParent() instanceof ViewGroup)((ViewGroup)content.getParent()).removeView(content);settingsSheet.addView(content,new LinearLayout.LayoutParams(-1,0,1));settingsSheet.setVisibility(View.VISIBLE);}
+    private void openSettingsPanel(){startActivity(new Intent(this, SettingsActivity.class));}
 
     private void dragReady(StlView view,FrameLayout transform,FrameLayout move,boolean ready) {
         previewReady=ready;transform.setEnabled(ready);move.setEnabled(ready);transform.setAlpha(ready?1:.38f);move.setAlpha(ready?1:.38f);
@@ -362,6 +359,25 @@ public class MainActivity extends Activity {
         b.setContentDescription(label); click(b,action); return b;
     }
 
+    private void loadUserPresetNames(TextView printer, TextView filament, TextView process) {
+        final android.content.Context app = getApplicationContext();
+        bedWorker.execute(() -> {
+            String[] kinds = {"printer", "filament", "process"};
+            String[] names = new String[kinds.length];
+            for (int i = 0; i < kinds.length; i++) try {
+                com.orcamobile.app.settings.PresetRepository.Preset preset =
+                        SettingsState.repository(app).load(SettingsState.activeId(app, kinds[i]));
+                if (!preset.system) names[i] = preset.name;
+            } catch (java.io.IOException ignored) { /* Keep the already displayed system label. */ }
+            runOnUiThread(() -> {
+                if (isDestroyed()) return;
+                if (names[0] != null && printer.isAttachedToWindow()) printer.setText(names[0]);
+                if (names[1] != null && filament.isAttachedToWindow()) filament.setText(names[1] + " ›");
+                if (names[2] != null && process.isAttachedToWindow()) process.setText(names[2] + " ›");
+            });
+        });
+    }
+
     private void loadSelectedBed(OrcaProfileCatalog.Profile printer, StlView view, TextView hint) {
         String key = printer == null || printer.imported ? "" : printer.vendor + "\\n" + printer.name + "\\n" + printer.path;
         if (!key.equals(bedKey)) { bedKey = key; loadedBed = null; bedPending = false; ++bedGeneration; }
@@ -379,7 +395,8 @@ public class MainActivity extends Activity {
         final android.content.Context app = getApplicationContext();
         bedWorker.execute(() -> {
             try {
-                CompatibilityResources paths = CompatibilityResources.prepare(app, printer.vendor, "");
+                SettingsState.Snapshot snapshot = SettingsState.capture(app);
+                CompatibilityResources paths = CompatibilityResources.prepareTriple(app, printer.vendor, "", null, snapshot);
                 if (Thread.currentThread().isInterrupted() || !visibleWorkspace || SliceActivity.isSlicing()) {
                     runOnUiThread(() -> {
                         if (isDestroyed() || generation != bedGeneration) return;
@@ -401,6 +418,14 @@ public class MainActivity extends Activity {
                     return;
                 }
                 BedGeometry result = new BedGeometry(raw);
+                if (!snapshot.fingerprint.equals(SettingsState.capture(app).fingerprint)) {
+                    runOnUiThread(() -> {
+                        if (isDestroyed() || generation != bedGeneration) return;
+                        bedPending = false;
+                        if (visibleWorkspace && stlView != null && bedHint != null) loadSelectedBed(printer, stlView, bedHint);
+                    });
+                    return;
+                }
                 runOnUiThread(() -> {
                     if (isDestroyed() || generation != bedGeneration) return;
                     loadedBed = result; bedPending = false;
