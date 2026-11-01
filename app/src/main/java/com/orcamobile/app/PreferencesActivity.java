@@ -37,6 +37,7 @@ public final class PreferencesActivity extends Activity {
             row("Orca Cloud","Вход, синхронизация и конфликты профилей","☁",()->startActivity(new android.content.Intent(this,CloudSyncActivity.class)));
             info("Локальная работа","Импорт STL, выбор встроенных профилей, нарезка и сохранение G-code работают локально.");
         }else if(section.equals("Разработчику")){
+            row(getString(R.string.glass_open_gallery),getString(R.string.glass_open_gallery_detail),"◈",()->startActivity(new android.content.Intent(this,com.orcamobile.app.glass.GlassGalleryActivity.class)));
             info("Исходный движок","OrcaSlicer\n"+OrcaProfileCatalog.UPSTREAM_REVISION);
             info("Платформа", "Android "+android.os.Build.VERSION.RELEASE+" · API "+android.os.Build.VERSION.SDK_INT+"\nABI движка: arm64-v8a");
             info("Состояние переноса","Экспериментальная Android-сборка. Полный перенос функций настольной Orca ещё не завершён.");
