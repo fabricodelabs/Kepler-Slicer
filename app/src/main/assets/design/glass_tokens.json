@@ -1,0 +1,79 @@
+{
+ "bg": {
+  "base": "#4A4F59",
+  "gradients": [
+   "15% 8% #565B65 0 transparent 45%",
+   "95% 55% #262A31 0 transparent 50%",
+   "30% 95% #52575F 0 transparent 40%"
+  ]
+ },
+ "glass": {
+  "fill": "rgba(255,255,255,0.14)",
+  "stroke": "rgba(255,255,255,0.24)",
+  "blur": 18,
+  "radius": {
+   "card": 24,
+   "viewport": 28,
+   "pill": [
+    22,
+    32
+   ]
+  }
+ },
+ "accent": "#1C1A18",
+ "text": {
+  "primary": "#FFFFFF",
+  "secondary": "rgba(255,255,255,0.95)"
+ },
+ "font": {
+  "family": "Manrope",
+  "weights": [
+   400,
+   500,
+   600,
+   700
+  ],
+  "title": 18,
+  "cardTitle": 16,
+  "body": 14,
+  "caption": 12,
+  "sectionLabel": "12 uppercase, tracking 0.04em"
+ },
+ "row": {
+  "minHeight": 44,
+  "padX": 16,
+  "divider": "rgba(255,255,255,0.12)"
+ },
+ "toggle": {
+  "w": 42,
+  "h": 24,
+  "knob": 18,
+  "on": "#1C1A18",
+  "off": "rgba(255,255,255,0.25)"
+ },
+ "chip": {
+  "h": 28,
+  "radius": 14,
+  "fill": "rgba(255,255,255,0.16)",
+  "stroke": "rgba(255,255,255,0.2)",
+  "active": "#1C1A18"
+ },
+ "nav": {
+  "h": 64,
+  "inset": 20,
+  "bottom": 24,
+  "activeFlex": 2.2,
+  "activeCircle": 40
+ },
+ "spacing": {
+  "screen": 20,
+  "cardGap": 10
+ },
+ "icon": {
+  "size": 22,
+  "stroke": 1.8
+ },
+ "reduceTransparencyFill": "#5A5F69",
+ "minTouch": 44,
+ "contrastNote": "Проверено расчётом: белый текст на стекле над самым светлым пятном фона ≈4.8:1, вторичный ≈4.6:1+. Цвета обновлены v2 (ранее #7B818C/#6A707B давали ≈3.9:1)."
+}
