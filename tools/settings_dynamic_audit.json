@@ -1,0 +1,3907 @@
+{
+  "schema_version": 1,
+  "upstream_revision": "6d2869c430284714f0a22570c38d3b359965a802",
+  "sources": {
+    "src/slic3r/GUI/Tab.cpp": "e9bcdab08178e4748eb2ed6a6f913f0db365344f68c1a26abf20babfa3a54346",
+    "src/libslic3r/PrintConfig.cpp": "054de62f532cb7a0a59212dd2bc880440e136f45f4bd247b254b82253525028c",
+    "src/libslic3r/PublishSettings.cpp": "92af5bb046b095b18b10e9c3fa13c44ccbf62c84feb2f6cfdffeebdfe5797ff3",
+    "src/libslic3r/PresetBundle.cpp": "c878da63e4d73f5a615e7140d9340d27d80d52a28ecd3a5471240f564a78ea31",
+    "src/libslic3r/Preset.cpp": "02509375a865cd0e09b716fa9ca5d7ed46a95574fe10d9ebb25cacb0c8a917f0",
+    "src/libslic3r/Format/bbs_3mf.cpp": "072af8d89961f2e981aff086a4a85ee7810268fc80355863ad8b9ef4a522162a",
+    "src/slic3r/GUI/PartPlate.cpp": "fe5a7250cef89b28c4418f73e2d8ba4aec87eb2211c20a81e6ad5cb8c361c2b1",
+    "src/libslic3r/GCode/ToolOrdering.cpp": "1c8b448010a1bf580844130d01b84fdc0556b603a56473d96e00f8093f2ae1c1",
+    "src/libslic3r/GCode.cpp": "11ced528ba49b29b164a0c3fccdf43300a76d39f1ff5404d53f64cde89ab453f",
+    "src/libslic3r/GCode/GCodeProcessor.cpp": "d2a6d74b629ab9118ba4369f13c61105b0cca8a80511ac4482d849d75f54498b",
+    "src/libslic3r/PrintApply.cpp": "3cb68c087a29f81b8939d3ac0d0b606612d5fe3202bc2cbbdc8656b456eb79c7",
+    "src/OrcaSlicer.cpp": "00c98e3fe0737976960c6dc5024af11209c6927af17be63d00bc03e0855d63bc",
+    "src/slic3r/Utils/CalibUtils.cpp": "4d07415256cf43228c0c69a06402f436ccf6114784c70aca9ffa5759b9b86164",
+    "src/slic3r/GUI/Plater.cpp": "690f3131cba4b2d6a2335fab5be874a11a62ce42c19e7391df047f7ae8945377",
+    "src/slic3r/GUI/PurgeModeDialog.cpp": "ef198209675ad0e26ad1e74b0ee12017cba64f02bda2fd05fa3815e491540433",
+    "src/libslic3r/GCode/WipeTowerEstimate.cpp": "3f7e5c448d6171a9d30357856d2ea45474a493dc0631c80a7bca31f182ebc6c6",
+    "src/libslic3r/Format/SL1.cpp": "4aa90d93d5a3e32f2783d5555753ca4043011d018103d90fa312c31b678b8e30",
+    "src/libslic3r/PrintConfig.hpp": "83d6f71d92a25151da52864f773af52ea5dea84280ddb5e6cb5ecd7c2124389b",
+    "src/slic3r/GUI/GLCanvas3D.cpp": "f41fead21185a0791d12c60b9a4298b64138b541d528c93dcb65d8d3386e82c2",
+    "src/slic3r/GUI/FilamentMapDialog.cpp": "468e19c01e95f0e73a3dffc2c7f20fbd051994a1f313ba89bc8bd280760bdc21",
+    "src/slic3r/GUI/FilamentMapPanel.cpp": "06fb46f86bda15cf64989484fcd20f44abe68012acb2deeb9f48e0cd289b4c18",
+    "src/libslic3r/Print.cpp": "e0b28be4d173586e04e257f2d0126e9e459598b77931d38e293bb6a01f52935c"
+  },
+  "dynamic_calls": [
+    {
+      "section": "process",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 3141,
+      "method": "append_single_option_line",
+      "builder": "TabPrint::build",
+      "expression": "option",
+      "keys": [
+        "small_area_infill_flow_compensation_model"
+      ],
+      "evidence": [
+        "Tab.cpp:3137",
+        "Tab.cpp:3141"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "process",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 3505,
+      "method": "append_single_option_line",
+      "builder": "TabPrint::build",
+      "expression": "option",
+      "keys": [
+        "filename_format"
+      ],
+      "evidence": [
+        "Tab.cpp:3500",
+        "Tab.cpp:3505"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "process",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 3516,
+      "method": "append_single_option_line",
+      "builder": "TabPrint::build",
+      "expression": "option",
+      "keys": [
+        "process_change_extrusion_role_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:3512",
+        "Tab.cpp:3516"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "process",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 3523,
+      "method": "append_single_option_line",
+      "builder": "TabPrint::build",
+      "expression": "option",
+      "keys": [
+        "post_process"
+      ],
+      "evidence": [
+        "Tab.cpp:3519",
+        "Tab.cpp:3523"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "process",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 3529,
+      "method": "append_single_option_line",
+      "builder": "TabPrint::build",
+      "expression": "option",
+      "keys": [
+        "slicing_pipeline_plugin"
+      ],
+      "evidence": [
+        "Tab.cpp:3527",
+        "Tab.cpp:3529"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "process",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 3540,
+      "method": "append_single_option_line",
+      "builder": "TabPrint::build",
+      "expression": "option",
+      "keys": [
+        "notes"
+      ],
+      "evidence": [
+        "Tab.cpp:3537",
+        "Tab.cpp:3540"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 4818,
+      "method": "append_single_option_line",
+      "builder": "TabFilament::build",
+      "expression": "option",
+      "keys": [
+        "adaptive_pressure_advance_model"
+      ],
+      "evidence": [
+        "Tab.cpp:4814",
+        "Tab.cpp:4818"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5019,
+      "method": "append_single_option_line",
+      "builder": "TabFilament::build",
+      "expression": "option",
+      "keys": [
+        "filament_start_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5015",
+        "Tab.cpp:5019"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5030,
+      "method": "append_single_option_line",
+      "builder": "TabFilament::build",
+      "expression": "option",
+      "keys": [
+        "filament_change_extrusion_role_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5026",
+        "Tab.cpp:5030"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5041,
+      "method": "append_single_option_line",
+      "builder": "TabFilament::build",
+      "expression": "option",
+      "keys": [
+        "filament_end_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5037",
+        "Tab.cpp:5041"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5104,
+      "method": "append_single_option_line",
+      "builder": "TabFilament::build",
+      "expression": "option",
+      "keys": [
+        "compatible_printers_condition"
+      ],
+      "evidence": [
+        "Tab.cpp:5102",
+        "Tab.cpp:5104"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5113,
+      "method": "append_single_option_line",
+      "builder": "TabFilament::build",
+      "expression": "option",
+      "keys": [
+        "compatible_prints_condition"
+      ],
+      "evidence": [
+        "Tab.cpp:5111",
+        "Tab.cpp:5113"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5121,
+      "method": "append_single_option_line",
+      "builder": "TabFilament::build",
+      "expression": "option",
+      "keys": [
+        "filament_notes"
+      ],
+      "evidence": [
+        "Tab.cpp:5118",
+        "Tab.cpp:5121"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 4472,
+      "method": "create_single_option_line",
+      "builder": "TabFilament::add_filament_overrides_page",
+      "expression": "optgroup->get_option(opt_key, opt_index)",
+      "keys": [
+        "filament_retraction_length",
+        "filament_z_hop",
+        "filament_z_hop_types",
+        "filament_retract_lift_above",
+        "filament_retract_lift_below",
+        "filament_retract_lift_enforce",
+        "filament_retraction_speed",
+        "filament_deretraction_speed",
+        "filament_retract_restart_extra",
+        "filament_retraction_minimum_travel",
+        "filament_retract_when_changing_layer",
+        "filament_wipe",
+        "filament_wipe_distance",
+        "filament_retract_before_wipe",
+        "filament_retract_after_wipe",
+        "filament_long_retractions_when_cut",
+        "filament_retraction_distances_when_cut",
+        "filament_retract_length_toolchange",
+        "filament_retract_restart_extra_toolchange"
+      ],
+      "evidence": [
+        "Tab.cpp:4505-4534",
+        "Tab.cpp:4472"
+      ],
+      "note": "Lambda creates and appends an indexed override row; index is extruder_idx=0. Actual N/A and visibility depend on profile and runtime.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 4472,
+      "method": "get_option",
+      "builder": "TabFilament::add_filament_overrides_page",
+      "expression": "opt_key",
+      "keys": [
+        "filament_retraction_length",
+        "filament_z_hop",
+        "filament_z_hop_types",
+        "filament_retract_lift_above",
+        "filament_retract_lift_below",
+        "filament_retract_lift_enforce",
+        "filament_retraction_speed",
+        "filament_deretraction_speed",
+        "filament_retract_restart_extra",
+        "filament_retraction_minimum_travel",
+        "filament_retract_when_changing_layer",
+        "filament_wipe",
+        "filament_wipe_distance",
+        "filament_retract_before_wipe",
+        "filament_retract_after_wipe",
+        "filament_long_retractions_when_cut",
+        "filament_retraction_distances_when_cut",
+        "filament_retract_length_toolchange",
+        "filament_retract_restart_extra_toolchange"
+      ],
+      "evidence": [
+        "Tab.cpp:4505-4534",
+        "Tab.cpp:4472"
+      ],
+      "note": "Lambda creates and appends an indexed override row; index is extruder_idx=0. Actual N/A and visibility depend on profile and runtime.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 4540,
+      "method": "create_single_option_line",
+      "builder": "TabFilament::add_filament_overrides_page",
+      "expression": "ironing_optgroup->get_option(opt_key, opt_index)",
+      "keys": [
+        "filament_ironing_flow",
+        "filament_ironing_spacing",
+        "filament_ironing_inset",
+        "filament_ironing_speed"
+      ],
+      "evidence": [
+        "Tab.cpp:4616-4621",
+        "Tab.cpp:4540"
+      ],
+      "note": "Lambda creates and appends an indexed override row; index is extruder_idx=0. Actual N/A and visibility depend on profile and runtime.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "filament",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 4540,
+      "method": "get_option",
+      "builder": "TabFilament::add_filament_overrides_page",
+      "expression": "opt_key",
+      "keys": [
+        "filament_ironing_flow",
+        "filament_ironing_spacing",
+        "filament_ironing_inset",
+        "filament_ironing_speed"
+      ],
+      "evidence": [
+        "Tab.cpp:4616-4621",
+        "Tab.cpp:4540"
+      ],
+      "note": "Lambda creates and appends an indexed override row; index is extruder_idx=0. Actual N/A and visibility depend on profile and runtime.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5503,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "bed_exclude_area"
+      ],
+      "evidence": [
+        "Tab.cpp:5501",
+        "Tab.cpp:5503"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5507,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "bed_exclude_volumes"
+      ],
+      "evidence": [
+        "Tab.cpp:5505",
+        "Tab.cpp:5507"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5537,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "printer_agent"
+      ],
+      "evidence": [
+        "Tab.cpp:5532",
+        "Tab.cpp:5537"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [
+        "if (wxGetApp().getAgent() != nullptr)",
+        "if (!registered_printer_agents.empty())"
+      ],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5579,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "thumbnails"
+      ],
+      "evidence": [
+        "Tab.cpp:5577",
+        "Tab.cpp:5579"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5671,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "file_start_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5667",
+        "Tab.cpp:5671"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5682,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "machine_start_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5678",
+        "Tab.cpp:5682"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5693,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "machine_end_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5689",
+        "Tab.cpp:5693"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5704,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "printing_by_object_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5700",
+        "Tab.cpp:5704"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5716,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "before_layer_change_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5712",
+        "Tab.cpp:5716"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5727,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "layer_change_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5723",
+        "Tab.cpp:5727"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5738,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "time_lapse_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5734",
+        "Tab.cpp:5738"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5749,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "wrapping_detection_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5745",
+        "Tab.cpp:5749"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5760,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "change_filament_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5756",
+        "Tab.cpp:5760"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5771,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "change_extrusion_role_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5767",
+        "Tab.cpp:5771"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5781,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "machine_pause_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5778",
+        "Tab.cpp:5781"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5791,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "template_custom_gcode"
+      ],
+      "evidence": [
+        "Tab.cpp:5788",
+        "Tab.cpp:5791"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5798,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_fff",
+      "expression": "option",
+      "keys": [
+        "printer_notes"
+      ],
+      "evidence": [
+        "Tab.cpp:5795",
+        "Tab.cpp:5798"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 6037,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_unregular_pages",
+      "expression": "option",
+      "keys": [
+        "extruders_count"
+      ],
+      "evidence": [
+        "Tab.cpp:6029-6037"
+      ],
+      "note": "Locally constructed Option, not a config preset key; controls runtime extruder count. It must not be counted as a schema preset option.",
+      "scope": "ui_pseudo",
+      "conditions": [
+        "if (from_initial_build)"
+      ],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 6295,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_unregular_pages",
+      "expression": "option",
+      "keys": [
+        "extruder_printable_area"
+      ],
+      "evidence": [
+        "Tab.cpp:6293",
+        "Tab.cpp:6295"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [
+        "if (extruder_page() == nullptr && m_extruders_count > 0)"
+      ],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 6299,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_unregular_pages",
+      "expression": "exclusion_option",
+      "keys": [
+        "extruder_bed_exclude_volumes"
+      ],
+      "evidence": [
+        "Tab.cpp:6297",
+        "Tab.cpp:6299"
+      ],
+      "note": "Resolved local Option from preceding get_option; desktop conditional visibility remains runtime-dependent.",
+      "scope": "configuration",
+      "conditions": [
+        "if (extruder_page() == nullptr && m_extruders_count > 0)"
+      ],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 6355,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_unregular_pages",
+      "expression": "opt.key",
+      "keys": [
+        "retraction_length",
+        "retract_restart_extra",
+        "retraction_speed",
+        "deretraction_speed",
+        "retraction_minimum_travel",
+        "retract_when_changing_layer",
+        "wipe",
+        "wipe_distance",
+        "retract_before_wipe",
+        "retract_after_wipe"
+      ],
+      "evidence": [
+        "Tab.cpp:6355",
+        "src/libslic3r/PublishSettings.cpp:131-145"
+      ],
+      "note": "One row per returned key and extruder_idx in a dynamically built extruder page; active index/count depend on printer.",
+      "scope": "configuration",
+      "conditions": [
+        "if (extruder_page() == nullptr && m_extruders_count > 0)",
+        "for (const PublishablePrinterOption& opt : publishable_printer_retraction_options())"
+      ],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 6359,
+      "method": "append_single_option_line",
+      "builder": "TabPrinter::build_unregular_pages",
+      "expression": "opt.key",
+      "keys": [
+        "retract_lift_enforce",
+        "z_hop_types",
+        "z_hop",
+        "travel_slope",
+        "retract_lift_above",
+        "retract_lift_below"
+      ],
+      "evidence": [
+        "Tab.cpp:6359",
+        "src/libslic3r/PublishSettings.cpp:150-161"
+      ],
+      "note": "One row per returned key and extruder_idx in a dynamically built extruder page; active index/count depend on printer.",
+      "scope": "configuration",
+      "conditions": [
+        "if (extruder_page() == nullptr && m_extruders_count > 0)",
+        "for (const PublishablePrinterOption& opt : publishable_printer_z_hop_options())"
+      ],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5948,
+      "method": "append_option_line",
+      "builder": "TabPrinter::build_kinematics_page",
+      "expression": "speed_axis",
+      "keys": [
+        "machine_max_speed_x",
+        "machine_max_speed_y",
+        "machine_max_speed_z",
+        "machine_max_speed_e"
+      ],
+      "evidence": [
+        "Tab.cpp:5940-5964"
+      ],
+      "note": "XYZ/E only; machine-limit visibility depends on firmware/config.",
+      "scope": "configuration",
+      "conditions": [
+        "for (const std::string &speed_axis : speed_axes)"
+      ],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5954,
+      "method": "append_option_line",
+      "builder": "TabPrinter::build_kinematics_page",
+      "expression": "\"machine_max_acceleration_\" + axis",
+      "keys": [
+        "machine_max_acceleration_x",
+        "machine_max_acceleration_y",
+        "machine_max_acceleration_z",
+        "machine_max_acceleration_e"
+      ],
+      "evidence": [
+        "Tab.cpp:5940-5964"
+      ],
+      "note": "XYZ/E only; machine-limit visibility depends on firmware/config.",
+      "scope": "configuration",
+      "conditions": [
+        "for (const std::string &axis : axes)"
+      ],
+      "preprocessor": []
+    },
+    {
+      "section": "printer",
+      "file": "src/slic3r/GUI/Tab.cpp",
+      "line": 5964,
+      "method": "append_option_line",
+      "builder": "TabPrinter::build_kinematics_page",
+      "expression": "\"machine_max_jerk_\" + axis",
+      "keys": [
+        "machine_max_jerk_x",
+        "machine_max_jerk_y",
+        "machine_max_jerk_z",
+        "machine_max_jerk_e"
+      ],
+      "evidence": [
+        "Tab.cpp:5940-5964"
+      ],
+      "note": "XYZ/E only; machine-limit visibility depends on firmware/config.",
+      "scope": "configuration",
+      "conditions": [
+        "for (const std::string &axis : axes)"
+      ],
+      "preprocessor": []
+    }
+  ],
+  "dynamic_definitions": [
+    {
+      "line": 1305,
+      "expression": "def = this->add(key, coString)",
+      "keys": [
+        "print_plugin_config_overrides",
+        "printer_plugin_config_overrides",
+        "filament_plugin_config_overrides"
+      ],
+      "scope": "preset",
+      "evidence": [
+        "PrintConfig.cpp:1299-1315"
+      ]
+    },
+    {
+      "line": 5388,
+      "expression": "def = this->add(\"machine_max_speed_\" + axis.name, coFloats)",
+      "keys": [
+        "machine_max_speed_x",
+        "machine_max_speed_y",
+        "machine_max_speed_z",
+        "machine_max_speed_e"
+      ],
+      "scope": "preset",
+      "evidence": [
+        "PrintConfig.cpp:5377-5439"
+      ]
+    },
+    {
+      "line": 5406,
+      "expression": "def = this->add(\"machine_max_acceleration_\" + axis.name, coFloats)",
+      "keys": [
+        "machine_max_acceleration_x",
+        "machine_max_acceleration_y",
+        "machine_max_acceleration_z",
+        "machine_max_acceleration_e"
+      ],
+      "scope": "preset",
+      "evidence": [
+        "PrintConfig.cpp:5377-5439"
+      ]
+    },
+    {
+      "line": 5424,
+      "expression": "def = this->add(\"machine_max_jerk_\" + axis.name, coFloats)",
+      "keys": [
+        "machine_max_jerk_x",
+        "machine_max_jerk_y",
+        "machine_max_jerk_z",
+        "machine_max_jerk_e"
+      ],
+      "scope": "preset",
+      "evidence": [
+        "PrintConfig.cpp:5377-5439"
+      ]
+    },
+    {
+      "line": 7772,
+      "expression": "def = this->add(key, coEnum)",
+      "keys": [
+        "gcode_remap_x",
+        "gcode_remap_y",
+        "gcode_remap_z"
+      ],
+      "scope": "preset",
+      "evidence": [
+        "PrintConfig.cpp:7770-7790"
+      ]
+    },
+    {
+      "line": 8785,
+      "expression": "def = this->add_nullable(opt_key, it_opt->second.type)",
+      "keys": [
+        "filament_retraction_length",
+        "filament_z_hop",
+        "filament_z_hop_types",
+        "filament_retract_lift_above",
+        "filament_retract_lift_below",
+        "filament_retract_lift_enforce",
+        "filament_retraction_speed",
+        "filament_deretraction_speed",
+        "filament_retract_restart_extra",
+        "filament_retraction_minimum_travel",
+        "filament_retract_length_toolchange",
+        "filament_retract_restart_extra_toolchange",
+        "filament_wipe_distance",
+        "filament_retract_when_changing_layer",
+        "filament_wipe",
+        "filament_retract_before_wipe",
+        "filament_retract_after_wipe",
+        "filament_long_retractions_when_cut",
+        "filament_retraction_distances_when_cut"
+      ],
+      "scope": "filament_nullable_override",
+      "evidence": [
+        "PrintConfig.cpp:97-130",
+        "PrintConfig.cpp:8779-8805"
+      ]
+    },
+    {
+      "line": 13307,
+      "expression": "def = this->add(OPT_KEY, TYPE)",
+      "keys": [
+        "initial_no_support_extruder",
+        "in_head_wrap_detect_zone",
+        "curr_bed_type",
+        "imex_mode",
+        "imex_mode_index",
+        "imex_mode_gcode",
+        "input_filename",
+        "plate_name",
+        "first_layer_center_no_wipe_tower",
+        "first_layer_height",
+        "bed_temperature",
+        "bed_temperature_initial_layer",
+        "bed_temperature_initial_layer_single",
+        "chamber_temperature",
+        "chamber_minimal_temperature",
+        "overall_chamber_temperature",
+        "first_layer_bed_temperature",
+        "first_layer_temperature",
+        "current_filament_id",
+        "current_extruder_id",
+        "current_nozzle_id",
+        "nozzle_diameter_at_nozzle_id",
+        "nozzle_volume_types",
+        "retraction_distance_when_cut",
+        "long_retraction_when_cut",
+        "most_used_physical_extruder_id",
+        "curr_y_acceleration_limit",
+        "curr_accumulated_mass",
+        "previous_layer_mass",
+        "curr_layer_mass",
+        "curr_physical_extruder_id",
+        "timelapse_pos_x",
+        "timelapse_pos_y",
+        "has_timelapse_safe_pos",
+        "timelapse_inline_photo",
+        "farthest_point_timelapse_enabled",
+        "clear_to_x0",
+        "previous_extruder",
+        "next_extruder",
+        "current_hotend",
+        "next_hotend",
+        "next_nozzle_id",
+        "next_filament_id",
+        "old_extruder_variant",
+        "new_extruder_variant",
+        "filament_retract_length_nc",
+        "new_extruder_retracted_length",
+        "outer_wall_volumetric_speed",
+        "relative_e_axis",
+        "toolchange_count",
+        "toolchange_z",
+        "fan_speed",
+        "old_retract_length",
+        "new_retract_length",
+        "old_retract_length_toolchange",
+        "new_retract_length_toolchange",
+        "old_filament_temp",
+        "new_filament_temp",
+        "x_after_toolchange",
+        "y_after_toolchange",
+        "z_after_toolchange",
+        "first_flush_volume",
+        "second_flush_volume",
+        "old_filament_e_feedrate",
+        "new_filament_e_feedrate",
+        "travel_point_1_x",
+        "travel_point_1_y",
+        "travel_point_2_x",
+        "travel_point_2_y",
+        "travel_point_3_x",
+        "travel_point_3_y",
+        "flush_length_1",
+        "flush_length_2",
+        "flush_length_3",
+        "flush_length_4",
+        "flush_length",
+        "flush_volumetric_speeds",
+        "flush_temperatures",
+        "filament_cooling_before_tower",
+        "wipe_avoid_perimeter",
+        "wipe_avoid_pos_x",
+        "is_prime_tower_interface",
+        "filament_tower_interface_purge_volume",
+        "filament_tower_interface_print_temp",
+        "wipe_tower_wait_pos_x",
+        "wipe_tower_wait_pos_y",
+        "wipe_tower_wait_pos_valid",
+        "wipe_tower_center_pos_x",
+        "wipe_tower_center_pos_y",
+        "wipe_tower_center_pos_valid",
+        "temperature",
+        "nozzle_temperature",
+        "first_layer_temperature",
+        "nozzle_temperature_initial_layer"
+      ],
+      "key_occurrences": [
+        {
+          "key": "initial_no_support_extruder",
+          "line": 13382
+        },
+        {
+          "key": "in_head_wrap_detect_zone",
+          "line": 13383
+        },
+        {
+          "key": "curr_bed_type",
+          "line": 13384
+        },
+        {
+          "key": "imex_mode",
+          "line": 13385
+        },
+        {
+          "key": "imex_mode_index",
+          "line": 13386
+        },
+        {
+          "key": "imex_mode_gcode",
+          "line": 13387
+        },
+        {
+          "key": "input_filename",
+          "line": 13505
+        },
+        {
+          "key": "plate_name",
+          "line": 13506
+        },
+        {
+          "key": "first_layer_center_no_wipe_tower",
+          "line": 13545
+        },
+        {
+          "key": "first_layer_height",
+          "line": 13546
+        },
+        {
+          "key": "bed_temperature",
+          "line": 13553
+        },
+        {
+          "key": "bed_temperature_initial_layer",
+          "line": 13554
+        },
+        {
+          "key": "bed_temperature_initial_layer_single",
+          "line": 13555
+        },
+        {
+          "key": "chamber_temperature",
+          "line": 13556
+        },
+        {
+          "key": "chamber_minimal_temperature",
+          "line": 13557
+        },
+        {
+          "key": "overall_chamber_temperature",
+          "line": 13558
+        },
+        {
+          "key": "first_layer_bed_temperature",
+          "line": 13559
+        },
+        {
+          "key": "first_layer_temperature",
+          "line": 13560
+        },
+        {
+          "key": "current_filament_id",
+          "line": 13700
+        },
+        {
+          "key": "current_extruder_id",
+          "line": 13701
+        },
+        {
+          "key": "current_nozzle_id",
+          "line": 13702
+        },
+        {
+          "key": "nozzle_diameter_at_nozzle_id",
+          "line": 13703
+        },
+        {
+          "key": "nozzle_volume_types",
+          "line": 13704
+        },
+        {
+          "key": "retraction_distance_when_cut",
+          "line": 13707
+        },
+        {
+          "key": "long_retraction_when_cut",
+          "line": 13708
+        },
+        {
+          "key": "most_used_physical_extruder_id",
+          "line": 13711
+        },
+        {
+          "key": "curr_y_acceleration_limit",
+          "line": 13712
+        },
+        {
+          "key": "curr_accumulated_mass",
+          "line": 13713
+        },
+        {
+          "key": "previous_layer_mass",
+          "line": 13714
+        },
+        {
+          "key": "curr_layer_mass",
+          "line": 13715
+        },
+        {
+          "key": "curr_physical_extruder_id",
+          "line": 13718
+        },
+        {
+          "key": "timelapse_pos_x",
+          "line": 13719
+        },
+        {
+          "key": "timelapse_pos_y",
+          "line": 13720
+        },
+        {
+          "key": "has_timelapse_safe_pos",
+          "line": 13721
+        },
+        {
+          "key": "timelapse_inline_photo",
+          "line": 13722
+        },
+        {
+          "key": "farthest_point_timelapse_enabled",
+          "line": 13723
+        },
+        {
+          "key": "clear_to_x0",
+          "line": 13724
+        },
+        {
+          "key": "previous_extruder",
+          "line": 13727
+        },
+        {
+          "key": "next_extruder",
+          "line": 13728
+        },
+        {
+          "key": "current_hotend",
+          "line": 13729
+        },
+        {
+          "key": "next_hotend",
+          "line": 13730
+        },
+        {
+          "key": "next_nozzle_id",
+          "line": 13731
+        },
+        {
+          "key": "next_filament_id",
+          "line": 13732
+        },
+        {
+          "key": "old_extruder_variant",
+          "line": 13733
+        },
+        {
+          "key": "new_extruder_variant",
+          "line": 13736
+        },
+        {
+          "key": "filament_retract_length_nc",
+          "line": 13739
+        },
+        {
+          "key": "new_extruder_retracted_length",
+          "line": 13740
+        },
+        {
+          "key": "outer_wall_volumetric_speed",
+          "line": 13741
+        },
+        {
+          "key": "relative_e_axis",
+          "line": 13742
+        },
+        {
+          "key": "toolchange_count",
+          "line": 13743
+        },
+        {
+          "key": "toolchange_z",
+          "line": 13744
+        },
+        {
+          "key": "fan_speed",
+          "line": 13745
+        },
+        {
+          "key": "old_retract_length",
+          "line": 13746
+        },
+        {
+          "key": "new_retract_length",
+          "line": 13747
+        },
+        {
+          "key": "old_retract_length_toolchange",
+          "line": 13748
+        },
+        {
+          "key": "new_retract_length_toolchange",
+          "line": 13749
+        },
+        {
+          "key": "old_filament_temp",
+          "line": 13750
+        },
+        {
+          "key": "new_filament_temp",
+          "line": 13751
+        },
+        {
+          "key": "x_after_toolchange",
+          "line": 13752
+        },
+        {
+          "key": "y_after_toolchange",
+          "line": 13753
+        },
+        {
+          "key": "z_after_toolchange",
+          "line": 13754
+        },
+        {
+          "key": "first_flush_volume",
+          "line": 13755
+        },
+        {
+          "key": "second_flush_volume",
+          "line": 13756
+        },
+        {
+          "key": "old_filament_e_feedrate",
+          "line": 13757
+        },
+        {
+          "key": "new_filament_e_feedrate",
+          "line": 13758
+        },
+        {
+          "key": "travel_point_1_x",
+          "line": 13759
+        },
+        {
+          "key": "travel_point_1_y",
+          "line": 13760
+        },
+        {
+          "key": "travel_point_2_x",
+          "line": 13761
+        },
+        {
+          "key": "travel_point_2_y",
+          "line": 13762
+        },
+        {
+          "key": "travel_point_3_x",
+          "line": 13763
+        },
+        {
+          "key": "travel_point_3_y",
+          "line": 13764
+        },
+        {
+          "key": "flush_length_1",
+          "line": 13765
+        },
+        {
+          "key": "flush_length_2",
+          "line": 13766
+        },
+        {
+          "key": "flush_length_3",
+          "line": 13767
+        },
+        {
+          "key": "flush_length_4",
+          "line": 13768
+        },
+        {
+          "key": "flush_length",
+          "line": 13769
+        },
+        {
+          "key": "flush_volumetric_speeds",
+          "line": 13770
+        },
+        {
+          "key": "flush_temperatures",
+          "line": 13771
+        },
+        {
+          "key": "filament_cooling_before_tower",
+          "line": 13772
+        },
+        {
+          "key": "wipe_avoid_perimeter",
+          "line": 13773
+        },
+        {
+          "key": "wipe_avoid_pos_x",
+          "line": 13774
+        },
+        {
+          "key": "is_prime_tower_interface",
+          "line": 13775
+        },
+        {
+          "key": "filament_tower_interface_purge_volume",
+          "line": 13776
+        },
+        {
+          "key": "filament_tower_interface_print_temp",
+          "line": 13777
+        },
+        {
+          "key": "wipe_tower_wait_pos_x",
+          "line": 13778
+        },
+        {
+          "key": "wipe_tower_wait_pos_y",
+          "line": 13779
+        },
+        {
+          "key": "wipe_tower_wait_pos_valid",
+          "line": 13780
+        },
+        {
+          "key": "wipe_tower_center_pos_x",
+          "line": 13781
+        },
+        {
+          "key": "wipe_tower_center_pos_y",
+          "line": 13782
+        },
+        {
+          "key": "wipe_tower_center_pos_valid",
+          "line": 13783
+        },
+        {
+          "key": "temperature",
+          "line": 13784
+        },
+        {
+          "key": "nozzle_temperature",
+          "line": 13785
+        },
+        {
+          "key": "first_layer_temperature",
+          "line": 13786
+        },
+        {
+          "key": "nozzle_temperature_initial_layer",
+          "line": 13787
+        }
+      ],
+      "scope": "slicing_state_placeholder_not_preset",
+      "evidence": [
+        "PrintConfig.cpp:13307-13787"
+      ],
+      "note": "Macro invocations define slicing-state placeholder variables, not preset configuration rows."
+    }
+  ],
+  "limitations": [
+    "Object and plate scope are not equivalent to process presets.",
+    "Static extracted keys are not evidence of Android UI attachment, editing, saving or applied slicing behavior.",
+    "The scanner covers declared methods and named helpers, not all dynamically linked desktop plugin UI."
+  ],
+  "unmapped_definitions_review": [
+    {
+      "key": "align_to_y_axis",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13236,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "allow_mix_temp",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13281,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "allow_multicolor_oneplate",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13226,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "allow_newer_file",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13276,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "allow_rotations",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13231,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "arrange",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12962,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "assemble",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12990,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "avoid_extrusion_cali_region",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13242,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "bbl_calib_mark_logo",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6498,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "conditional_ui_gate_consumer_unresolved",
+      "explanation": "The option is registered and Tab::update has a Bambu-only toggle_line gate; these references do not establish that the line is constructed or that the setting affects generated G-code.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:6498",
+        "src/slic3r/GUI/Tab.cpp:6736",
+        "src/slic3r/GUI/Tab.cpp:6737"
+      ],
+      "android_gap": "No creation of the UI line or direct G-code/slicing consumer was located in the inspected src; dynamic references and external/plugin behavior were not ruled out.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6498,
+          "detail": "def = this->add(\"bbl_calib_mark_logo\", coBool);"
+        },
+        {
+          "file": "src/slic3r/GUI/Tab.cpp",
+          "line": 6736,
+          "detail": "for (auto el : {\"scan_first_layer\", \"bbl_calib_mark_logo\", \"bbl_use_printhost\"})"
+        },
+        {
+          "file": "src/slic3r/GUI/Tab.cpp",
+          "line": 6737,
+          "detail": "toggle_line(el, is_BBL_printer, -1, _L(\"This setting requires a Bambu Lab printer.\"));"
+        }
+      ]
+    },
+    {
+      "key": "brim_ears",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 2176,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "registered_bool_no_static_consumer_found",
+      "explanation": "A boolean option is registered. The three literal occurrences in the inspected src comprise that registration and two references to an identically spelled brim_type enum token; the enum token is a separate value, not evidence of a bool consumer.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:2176",
+        "src/libslic3r/PrintConfig.cpp:563",
+        "src/libslic3r/PrintConfig.cpp:2123"
+      ],
+      "android_gap": "No separate static/literal boolean consumer was found in src; dynamically constructed references, plugin behavior and other revisions were not ruled out. Registration alone does not establish a working feature.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 2176,
+          "detail": "def = this->add(\"brim_ears\", coBool);"
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 563,
+          "detail": "{\"brim_ears\", btEar},     // Orca"
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 2123,
+          "detail": "def->enum_values.emplace_back(\"brim_ears\");"
+        }
+      ]
+    },
+    {
+      "key": "clone_objects",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13119,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "compatible_machine_expression_group",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 2248,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_preset_metadata",
+      "explanation": "Per-preset machine compatibility expression array is composed and recovered through the project/preset bundle.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:392",
+        "src/libslic3r/PresetBundle.cpp:6163",
+        "src/OrcaSlicer.cpp:2916"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 392,
+          "detail": "add_if_some_non_empty(std::move(compatible_printers_condition), \"compatible_machine_expression_group\");"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 6163,
+          "detail": "std::vector<std::string> compatible_printers_condition_values   = std::move(config.option<ConfigOptionStrings>(\"compatible_machine_expression_group\", true)->values);"
+        },
+        {
+          "file": "src/OrcaSlicer.cpp",
+          "line": 2916,
+          "detail": "const auto *group    = project_cfg.option<ConfigOptionStrings>(\"compatible_machine_expression_group\");"
+        }
+      ]
+    },
+    {
+      "key": "compatible_process_expression_group",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 2251,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_preset_metadata",
+      "explanation": "Per-preset process compatibility expression array is composed and recovered through the project/preset bundle.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:393",
+        "src/libslic3r/PresetBundle.cpp:6164",
+        "src/OrcaSlicer.cpp:3724"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 393,
+          "detail": "add_if_some_non_empty(std::move(compatible_prints_condition), \"compatible_process_expression_group\");"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 6164,
+          "detail": "std::vector<std::string> compatible_prints_condition_values     = std::move(config.option<ConfigOptionStrings>(\"compatible_process_expression_group\",   true)->values);"
+        },
+        {
+          "file": "src/OrcaSlicer.cpp",
+          "line": 3724,
+          "detail": "ConfigOption *opt = m_print_config.option(\"compatible_process_expression_group\", true);"
+        }
+      ]
+    },
+    {
+      "key": "convert_unit",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12996,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "curr_bed_type",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 1449,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_plate_project_setting",
+      "explanation": "Selected build-plate type is preserved in 3MF plate configuration and determines bed-temperature choice in G-code.",
+      "evidence": [
+        "src/libslic3r/Format/bbs_3mf.cpp:4646",
+        "src/libslic3r/Format/bbs_3mf.cpp:8446",
+        "src/libslic3r/GCode.cpp:2984"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 4646,
+          "detail": "m_curr_plater->config.set_key_value(\"curr_bed_type\", new ConfigOptionEnum<BedType>(bed_type));"
+        },
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 8446,
+          "detail": "ConfigOption* bed_type_opt = plate_data->config.option(\"curr_bed_type\");"
+        },
+        {
+          "file": "src/libslic3r/GCode.cpp",
+          "line": 2984,
+          "detail": "const ConfigOptionInts *bed_temp_opt = m_config.option<ConfigOptionInts>(get_bed_temp_1st_layer_key(m_config.curr_bed_type));"
+        }
+      ]
+    },
+    {
+      "key": "current_extruder",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13345,
+      "enclosing_definition_family": "OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "current_object_idx",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13349,
+      "enclosing_definition_family": "OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "datadir",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13171,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "day",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13578,
+      "enclosing_definition_family": "TimestampsConfigDef::TimestampsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "debug",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13189,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "different_settings_to_system",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 2256,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_preset_metadata",
+      "explanation": "Records per-preset deviations from inherited system settings to support project export and restore.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:5804",
+        "src/libslic3r/PresetBundle.cpp:6169",
+        "src/OrcaSlicer.cpp:2161"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 5804,
+          "detail": "add_if_some_non_empty(std::move(different_settings),            \"different_settings_to_system\");"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 6169,
+          "detail": "bool has_different_settings_to_system                           = config.option(\"different_settings_to_system\")?true:false;"
+        },
+        {
+          "file": "src/OrcaSlicer.cpp",
+          "line": 2161,
+          "detail": "//      `different_settings_to_system` column of an exported 3MF. Without it the CLI"
+        }
+      ]
+    },
+    {
+      "key": "downward_check",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13137,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "downward_settings",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13142,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "e_position",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13336,
+      "enclosing_definition_family": "ReadWriteSlicingStatesConfigDef::ReadWriteSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "e_restart_extra",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13332,
+      "enclosing_definition_family": "ReadWriteSlicingStatesConfigDef::ReadWriteSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "e_retracted",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13327,
+      "enclosing_definition_family": "ReadWriteSlicingStatesConfigDef::ReadWriteSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "enable_filament_dynamic_map",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6380,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_plate_project_setting",
+      "explanation": "Flag for dynamic filament mapping: desktop exposes a mapping checkbox, while 3MF preserves the plate flag.",
+      "evidence": [
+        "src/slic3r/GUI/FilamentMapDialog.cpp:66",
+        "src/slic3r/GUI/FilamentMapDialog.cpp:111",
+        "src/libslic3r/Format/bbs_3mf.cpp:4803"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/slic3r/GUI/FilamentMapDialog.cpp",
+          "line": 66,
+          "detail": "// savings. The checkbox drives the enable_filament_dynamic_map project flag."
+        },
+        {
+          "file": "src/slic3r/GUI/FilamentMapDialog.cpp",
+          "line": 111,
+          "detail": "return dynamic_cast<ConfigOptionBool *>(config.option(\"enable_filament_dynamic_map\"));"
+        },
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 4803,
+          "detail": "m_curr_plater->config.set_key_value(\"enable_filament_dynamic_map\", new ConfigOptionBool(enable_filament_dynamic_map));"
+        }
+      ]
+    },
+    {
+      "key": "enable_timelapse",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13202,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "ensure_on_bed",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12975,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "export_3mf",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12763,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "export_settings",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12911,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "export_slicedata",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12769,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "export_statistics",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13182,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "export_stl",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12786,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "export_stls",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12791,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "extruded_volume",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13394,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "extruded_volume_total",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13402,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "extruded_weight",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13406,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "extruded_weight_total",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13410,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "extruder",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 2798,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_object_volume_assignment",
+      "explanation": "Object/volume configuration for assigning extruder/filament; 3MF import reads and sets it.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:2798",
+        "src/libslic3r/Format/bbs_3mf.cpp:2309",
+        "src/libslic3r/Format/bbs_3mf.cpp:2392"
+      ],
+      "android_gap": "This key must not be conflated with unrelated local variables named extruder.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 2798,
+          "detail": "def = this->add(\"extruder\", coInt);"
+        },
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 2309,
+          "detail": "model_object->config.set_key_value(\"extruder\", new ConfigOptionInt(extruder_itor->second));"
+        },
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 2392,
+          "detail": "const ConfigOptionInt* vol_extruder_opt = dynamic_cast<const ConfigOptionInt*>(mv->config.option(\"extruder\"));"
+        }
+      ]
+    },
+    {
+      "key": "extruder_ams_count",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6333,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "runtime_device_mapping",
+      "explanation": "Per-extruder AMS counts: maintained in printer settings/project config and read for tool ordering.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:6333",
+        "src/libslic3r/PresetBundle.cpp:5806",
+        "src/libslic3r/GCode/ToolOrdering.cpp:1563"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6333,
+          "detail": "def = this->add(\"extruder_ams_count\", coStrings);"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 5806,
+          "detail": "out.option<ConfigOptionStrings>(\"extruder_ams_count\", true)->values   = save_extruder_ams_count_to_string(this->extruder_ams_counts);"
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 1563,
+          "detail": "auto extruder_ams_counts = get_extruder_ams_count(print_config.extruder_ams_count.values);"
+        }
+      ]
+    },
+    {
+      "key": "extruder_nozzle_count",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6352,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "forward_compat_only",
+      "explanation": "Registered for forward-compatible project/config loading; upstream explicitly says slicing uses extruder_nozzle_stats instead.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:6346",
+        "src/libslic3r/PrintConfig.cpp:6349",
+        "src/libslic3r/PrintConfig.cpp:6352"
+      ],
+      "android_gap": "The absence claim is limited to inspected pinned source; future revisions may use the key.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6346,
+          "detail": "// Multi-nozzle: number of physical nozzles per extruder. Forward-compat-only registration"
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6349,
+          "detail": "// src/ reads it. Kept registered so an H2C project/config that carries the key loads without an"
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6352,
+          "detail": "def = this->add(\"extruder_nozzle_count\", coInts);"
+        }
+      ]
+    },
+    {
+      "key": "extruder_nozzle_stats",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6341,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "runtime_device_mapping",
+      "explanation": "Physical nozzle inventory per extruder and volume type; consumed by tool ordering and populated from GUI/device sync.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:6339",
+        "src/libslic3r/GCode/ToolOrdering.cpp:1509",
+        "src/slic3r/GUI/FilamentMapPanel.cpp:386"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6339,
+          "detail": "// Multi-nozzle: per-extruder physical nozzle inventory by volume type,"
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 1509,
+          "detail": "auto extruder_nozzle_counts = get_extruder_nozzle_stats(print_config.extruder_nozzle_stats.values);"
+        },
+        {
+          "file": "src/slic3r/GUI/FilamentMapPanel.cpp",
+          "line": 386,
+          "detail": "// fallback \"manual\" producer of the extruder_nozzle_stats config (the full device nozzle-rack"
+        }
+      ]
+    },
+    {
+      "key": "extruder_nozzle_volume_type",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6363,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "forward_compat_only",
+      "explanation": "Registered for forward compatibility; upstream says no slicing consumer and physical types are resolved using extruder_nozzle_stats.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:6358",
+        "src/libslic3r/PrintConfig.cpp:6359",
+        "src/libslic3r/PrintConfig.cpp:6363"
+      ],
+      "android_gap": "The absence claim is limited to inspected pinned source; future revisions may use the key.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6358,
+          "detail": "// Per-nozzle volume type. Forward-compat-only registration with no slicing consumer — nothing in"
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6359,
+          "detail": "// src/ reads it; the engine resolves per-nozzle volume types from `extruder_nozzle_stats` tokens"
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 6363,
+          "detail": "def = this->add(\"extruder_nozzle_volume_type\", coEnums);"
+        }
+      ]
+    },
+    {
+      "key": "extrusion_role",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13791,
+      "enclosing_definition_family": "CustomGcodeSpecificConfigDef::CustomGcodeSpecificConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "filament_colour",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3061,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_filament_visual",
+      "explanation": "Project filament colors used for display and exported/consumed by preview; tool ordering also reads filament count/colors.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3061",
+        "src/libslic3r/GCode/GCodeProcessor.cpp:3542",
+        "src/libslic3r/GCode/ToolOrdering.cpp:1598"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3061,
+          "detail": "def = this->add(\"filament_colour\", coStrings);"
+        },
+        {
+          "file": "src/libslic3r/GCode/GCodeProcessor.cpp",
+          "line": 3542,
+          "detail": "const ConfigOptionStrings* filament_colour = config.option<ConfigOptionStrings>(\"filament_colour\");"
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 1598,
+          "detail": "info.color      = print_config.filament_colour.get_at(idx);"
+        }
+      ]
+    },
+    {
+      "key": "filament_colour_type",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3083,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_filament_visual",
+      "explanation": "Project filament color-type array distinguishes gradient from default single/multicolor and is populated from tray state.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3082",
+        "src/libslic3r/PresetBundle.cpp:3961",
+        "src/slic3r/GUI/Plater.cpp:6118"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3082,
+          "detail": "// 0: gradient color, 1: default color(single or multi color)"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 3961,
+          "detail": "project_config.option<ConfigOptionStrings>(\"filament_colour_type\")->values = filament_color_types;"
+        },
+        {
+          "file": "src/slic3r/GUI/Plater.cpp",
+          "line": 6118,
+          "detail": "tray_config.set_key_value(\"filament_colour_type\", new ConfigOptionStrings{std::to_string(tray.ctype)});"
+        }
+      ]
+    },
+    {
+      "key": "filament_extruder_id",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13692,
+      "enclosing_definition_family": "CustomGcodeSpecificConfigDef::CustomGcodeSpecificConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "filament_ids",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3640,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_preset_metadata",
+      "explanation": "Full/project configuration records filament preset identifiers and restores them from project configuration.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3640",
+        "src/libslic3r/PresetBundle.cpp:379",
+        "src/libslic3r/PresetBundle.cpp:6166"
+      ],
+      "android_gap": "Other local variables and thumbnail JSON fields sharing this name are not automatically the same option.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3640,
+          "detail": "def = this->add(\"filament_ids\", coStrings);"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 379,
+          "detail": "out.option<ConfigOptionStrings>(\"filament_ids\", true)->values         = filament_ids;"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 6166,
+          "detail": "std::vector<std::string> filament_ids                           = std::move(config.option<ConfigOptionStrings>(\"filament_ids\", true)->values);"
+        }
+      ]
+    },
+    {
+      "key": "filament_is_mixed",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3545,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_multimaterial",
+      "explanation": "Marks a virtual mixed filament slot; actual tool ordering expands mixed slots into physical components.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3541",
+        "src/libslic3r/PresetBundle.cpp:162",
+        "src/libslic3r/GCode/ToolOrdering.cpp:2248"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3541,
+          "detail": "// Mixed-color filament. A slot flagged here is virtual: it is not loaded into any"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 162,
+          "detail": "\"filament_is_mixed\","
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 2248,
+          "detail": "const auto &is_mixed = config.filament_is_mixed.values;"
+        }
+      ]
+    },
+    {
+      "key": "filament_map",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3095,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_plate_project_mapping",
+      "explanation": "Per-filament to extruder assignment: project/plate mappings are read from 3MF and updated by Print after preslicing.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3095",
+        "src/libslic3r/Format/bbs_3mf.cpp:4691",
+        "src/libslic3r/Print.cpp:4692"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3095,
+          "detail": "def = this->add(\"filament_map\", coInts);"
+        },
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 4691,
+          "detail": "m_curr_plater->filament_maps = filament_map;"
+        },
+        {
+          "file": "src/libslic3r/Print.cpp",
+          "line": 4692,
+          "detail": "m_ori_full_print_config.option<ConfigOptionInts>(\"filament_map\", true)->values = f_maps;"
+        }
+      ]
+    },
+    {
+      "key": "filament_map_2",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3106,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "derived_runtime_mapping",
+      "explanation": "Derived per-filament mapping to extruder/volume configuration slot; upstream says it is recomputed at apply time, not direct user input.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3101",
+        "src/libslic3r/PrintConfig.cpp:3104",
+        "src/libslic3r/Print.cpp:4723"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3101,
+          "detail": "// Multi-nozzle: per-filament map to the config slot identified by (extruder, nozzle_volume_type)."
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3104,
+          "detail": "// retract-override fallback; never a user input and never part of the exported full config."
+        },
+        {
+          "file": "src/libslic3r/Print.cpp",
+          "line": 4723,
+          "detail": "m_config.filament_map_2.values = f_maps;"
+        }
+      ]
+    },
+    {
+      "key": "filament_map_mode",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3129,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_plate_project_mapping",
+      "explanation": "Controls automatic/manual mapping mode and is serialized with individual plates.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3129",
+        "src/libslic3r/Format/bbs_3mf.cpp:4680",
+        "src/libslic3r/Format/bbs_3mf.cpp:8507"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3129,
+          "detail": "def = this->add(\"filament_map_mode\", coEnum);"
+        },
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 4680,
+          "detail": "m_curr_plater->config.set_key_value(\"filament_map_mode\", new ConfigOptionEnum<FilamentMapMode>(map_mode));"
+        },
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 8507,
+          "detail": "ConfigOption* filament_map_mode_opt = plate_data->config.option(\"filament_map_mode\");"
+        }
+      ]
+    },
+    {
+      "key": "filament_max_temperature_drop_when_ec",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8849,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "registered_inert",
+      "explanation": "Upstream explicitly labels the setting inert; injector receives a local default-zero vector, not this configuration option.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:8846",
+        "src/libslic3r/PrintConfig.cpp:8849",
+        "src/libslic3r/GCode/GCodeProcessor.cpp:1994"
+      ],
+      "android_gap": "Limited to pinned source; future versions can make this active.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 8846,
+          "detail": "// filament_max_temperature_drop_when_ec: inert (default {0}, passed into the injector context but"
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 8849,
+          "detail": "def = this->add(\"filament_max_temperature_drop_when_ec\", coFloats);"
+        },
+        {
+          "file": "src/libslic3r/GCode/GCodeProcessor.cpp",
+          "line": 1994,
+          "detail": "// filament_max_temperature_drop_when_ec is inert (default {0}, never read by the injector);"
+        }
+      ]
+    },
+    {
+      "key": "filament_mixed_components",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3551,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_multimaterial",
+      "explanation": "Per-slot physical filament component IDs of a mixed virtual filament; consumed by tool ordering.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3551",
+        "src/libslic3r/PresetBundle.cpp:163",
+        "src/libslic3r/GCode/ToolOrdering.cpp:2249"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3551,
+          "detail": "def          = this->add(\"filament_mixed_components\", coStrings);"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 163,
+          "detail": "\"filament_mixed_components\","
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 2249,
+          "detail": "const auto &comp_strs = config.filament_mixed_components.values;"
+        }
+      ]
+    },
+    {
+      "key": "filament_mixed_gradient",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3563,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_multimaterial",
+      "explanation": "Per-slot enable flag for Z-dependent mixed-filament gradient; maintained as project config and used in tool ordering.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3563",
+        "src/libslic3r/PresetBundle.cpp:165",
+        "src/libslic3r/GCode/ToolOrdering.cpp:2306"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3563,
+          "detail": "def          = this->add(\"filament_mixed_gradient\", coBools);"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 165,
+          "detail": "\"filament_mixed_gradient\","
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 2306,
+          "detail": "const auto &gradient_flags = config.filament_mixed_gradient.values;"
+        }
+      ]
+    },
+    {
+      "key": "filament_mixed_gradient_curve",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3577,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_multimaterial",
+      "explanation": "Per-slot control-point encoding for the gradient ratio curve; carried in 3MF and used in tool ordering.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3577",
+        "src/libslic3r/Format/bbs_3mf.cpp:2818",
+        "src/libslic3r/GCode/ToolOrdering.cpp:2308"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3577,
+          "detail": "def          = this->add(\"filament_mixed_gradient_curve\", coStrings);"
+        },
+        {
+          "file": "src/libslic3r/Format/bbs_3mf.cpp",
+          "line": 2818,
+          "detail": "if (auto* curve_opt = config.option<ConfigOptionStrings>(\"filament_mixed_gradient_curve\"))"
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 2308,
+          "detail": "const auto &gradient_curve_strs = config.filament_mixed_gradient_curve.values;"
+        }
+      ]
+    },
+    {
+      "key": "filament_mixed_gradient_per_part",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3589,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_multimaterial",
+      "explanation": "Per-slot flag applying the gradient separately to assembly parts; maintained in project config and consumed in tool ordering.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3589",
+        "src/libslic3r/PresetBundle.cpp:168",
+        "src/libslic3r/GCode/ToolOrdering.cpp:799"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3589,
+          "detail": "def          = this->add(\"filament_mixed_gradient_per_part\", coBools);"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 168,
+          "detail": "\"filament_mixed_gradient_per_part\""
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 799,
+          "detail": "const auto        &per_part_flags = cfg.filament_mixed_gradient_per_part.values;"
+        }
+      ]
+    },
+    {
+      "key": "filament_mixed_gradient_range",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3570,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_multimaterial",
+      "explanation": "Per-slot start/end component ratio range for mixed-filament gradients, consumed in tool ordering.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3570",
+        "src/libslic3r/PresetBundle.cpp:166",
+        "src/libslic3r/GCode/ToolOrdering.cpp:2307"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3570,
+          "detail": "def          = this->add(\"filament_mixed_gradient_range\", coStrings);"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 166,
+          "detail": "\"filament_mixed_gradient_range\","
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 2307,
+          "detail": "const auto &gradient_range_strs = config.filament_mixed_gradient_range.values;"
+        }
+      ]
+    },
+    {
+      "key": "filament_mixed_sublayer_ratios",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3557,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_multimaterial",
+      "explanation": "Per-slot component proportions for mixed-filament sublayers; maintained in project config and consumed by tool ordering.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3557",
+        "src/libslic3r/PresetBundle.cpp:164",
+        "src/libslic3r/GCode/ToolOrdering.cpp:2250"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3557,
+          "detail": "def          = this->add(\"filament_mixed_sublayer_ratios\", coStrings);"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 164,
+          "detail": "\"filament_mixed_sublayer_ratios\","
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 2250,
+          "detail": "const auto &ratio_strs = config.filament_mixed_sublayer_ratios.values;"
+        }
+      ]
+    },
+    {
+      "key": "filament_multi_colour",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3079,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_project_filament_visual",
+      "explanation": "Project stores multicolor representation per filament slot; desktop Plater and PresetBundle manipulate it.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3079",
+        "src/libslic3r/PresetBundle.cpp:3954",
+        "src/slic3r/GUI/Plater.cpp:4498"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3079,
+          "detail": "def = this->add(\"filament_multi_colour\", coStrings);"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 3954,
+          "detail": "else project_config.option<ConfigOptionStrings>(\"filament_multi_colour\")->values = multi_filament_colors;"
+        },
+        {
+          "file": "src/slic3r/GUI/Plater.cpp",
+          "line": 4498,
+          "detail": "auto* multi_colour_opt = project_config.option<ConfigOptionStrings>(\"filament_multi_colour\");"
+        }
+      ]
+    },
+    {
+      "key": "filament_nozzle_map",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3151,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "active_plate_project_mapping",
+      "explanation": "Filament to physical nozzle assignment; user input in fully manual mode, computed and written back in other supported modes.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:3147",
+        "src/libslic3r/PrintConfig.cpp:3148",
+        "src/libslic3r/Print.cpp:4705"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3147,
+          "detail": "// Per-filament -> physical-nozzle assignment. Written back by the grouping engine after"
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 3148,
+          "detail": "// slicing (all non-sequential modes) and read back to the plate config; a user input only"
+        },
+        {
+          "file": "src/libslic3r/Print.cpp",
+          "line": 4705,
+          "detail": "m_ori_full_print_config.option<ConfigOptionInts>(\"filament_nozzle_map\", true)->values = f_nozzle_maps;"
+        }
+      ]
+    },
+    {
+      "key": "filament_preset",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13599,
+      "enclosing_definition_family": "OtherPresetsConfigDef::OtherPresetsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "filament_self_index",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6439,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "derived_runtime_preset_metadata",
+      "explanation": "Maps expanded variant columns back to their original filament; generated by preset bundle and used by tool ordering.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.hpp:1019",
+        "src/libslic3r/PresetBundle.cpp:345",
+        "src/libslic3r/GCode/ToolOrdering.cpp:1323"
+      ],
+      "android_gap": "The corresponding Android scope and end-to-end application have not been independently verified.",
+      "source_details": [
+        {
+          "file": "src/libslic3r/PrintConfig.hpp",
+          "line": 1019,
+          "detail": "// filament_self_index maps the variants to filaments. An option holding one value per filament, or a"
+        },
+        {
+          "file": "src/libslic3r/PresetBundle.cpp",
+          "line": 345,
+          "detail": "std::vector<int> &filament_self_indice = out.option<ConfigOptionInts>(\"filament_self_index\", true)->values;"
+        },
+        {
+          "file": "src/libslic3r/GCode/ToolOrdering.cpp",
+          "line": 1323,
+          "detail": "// filament_self_index maps such a column to its filament."
+        }
+      ]
+    },
+    {
+      "key": "filament_settings_id",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3635,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "preset_identity",
+      "explanation": "Material preset names are populated while composing the full config and consumed by preset/project and G-code processing.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:377",
+        "src/libslic3r/Preset.cpp:4138",
+        "src/libslic3r/Format/bbs_3mf.cpp:2376"
+      ],
+      "android_gap": "Identity is maintained by preset selection/repository, not established as a freely editable setting; end-to-end preservation needs separate testing."
+    },
+    {
+      "key": "filament_volume_map",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 3118,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_multimaterial_mapping",
+      "explanation": "Project-owned per-filament nozzle-volume assignment, persisted with the project.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:150",
+        "src/libslic3r/Format/bbs_3mf.cpp:4707",
+        "src/libslic3r/PresetBundle.cpp:4341"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "first_layer_print_convex_hull",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13516,
+      "enclosing_definition_family": "DimensionsConfigDef::DimensionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "first_layer_print_max",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13525,
+      "enclosing_definition_family": "DimensionsConfigDef::DimensionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "first_layer_print_min",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13521,
+      "enclosing_definition_family": "DimensionsConfigDef::DimensionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "first_layer_print_sequence",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 1478,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "plate_sequence_data",
+      "explanation": "Actual first-layer filament sequence is stored on the plate, and read by tool ordering; the desktop choice row edits this underlying data.",
+      "evidence": [
+        "src/slic3r/GUI/PartPlate.cpp:5653",
+        "src/slic3r/GUI/Tab.cpp:3890",
+        "src/libslic3r/GCode/ToolOrdering.cpp:619"
+      ],
+      "android_gap": "Plate-scoped editing/application requires Phase 3; model_io.cpp:133-138 rejects multiple plates or nonempty plate/project configuration."
+    },
+    {
+      "key": "first_layer_print_size",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13529,
+      "enclosing_definition_family": "DimensionsConfigDef::DimensionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "first_layer_sequence_choice",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 1494,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "plate_ui_choice",
+      "explanation": "Desktop explicit plate setting chooses automatic/custom first-layer sequence; choice controls underlying plate sequence data.",
+      "evidence": [
+        "src/slic3r/GUI/Tab.cpp:4131",
+        "src/slic3r/GUI/Tab.cpp:4212"
+      ],
+      "android_gap": "Plate-scoped editing/application requires Phase 3; model_io.cpp:133-138 rejects multiple plates or nonempty plate/project configuration."
+    },
+    {
+      "key": "flush_multiplier",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8284,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_purge",
+      "explanation": "Project purge-volume matrix/vector or multiplier; consumed while building purge and G-code, not a process preset option.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:126",
+        "src/libslic3r/GCode.cpp:8250",
+        "src/libslic3r/PresetBundle.cpp:5470"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "flush_multiplier_fast",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8293,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_purge",
+      "explanation": "Project purge-volume matrix/vector or multiplier; consumed while building purge and G-code, not a process preset option.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:126",
+        "src/libslic3r/GCode.cpp:8250",
+        "src/libslic3r/PresetBundle.cpp:5470"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "flush_volumes_matrix",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8274,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_purge",
+      "explanation": "Project purge-volume matrix/vector or multiplier; consumed while building purge and G-code, not a process preset option.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:126",
+        "src/libslic3r/GCode.cpp:8250",
+        "src/libslic3r/PresetBundle.cpp:5470"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "flush_volumes_vector",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8264,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_purge",
+      "explanation": "Project purge-volume matrix/vector or multiplier; consumed while building purge and G-code, not a process preset option.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:126",
+        "src/libslic3r/GCode.cpp:8250",
+        "src/libslic3r/PresetBundle.cpp:5470"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "ground_face_normal",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13041,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "ground_face_point",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13050,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "ground_largest_face",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13033,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "handle_hotend_as_extruder",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8842,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "gcode_context",
+      "explanation": "Pre-heat injector context key; G-code processor reads it defensively.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:8840",
+        "src/libslic3r/GCode/GCodeProcessor.cpp:3343",
+        "src/libslic3r/GCode/GCodeProcessor.cpp:3365"
+      ],
+      "android_gap": "Runtime injector behavior has not been independently verified on Android."
+    },
+    {
+      "key": "has_filament_switcher",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6386,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_device_state",
+      "explanation": "Device-synchronised filament switcher state is saved with projects and read by tool ordering/G-code.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:152",
+        "src/libslic3r/Format/bbs_3mf.cpp:4811",
+        "src/libslic3r/GCode/ToolOrdering.cpp:1567"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "has_scarf_joint_seam",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 5367,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "derived_runtime_flag",
+      "explanation": "PrintApply computes this flag from objects; G-code processor uses it for layer-tag detection.",
+      "evidence": [
+        "src/libslic3r/PrintApply.cpp:1399",
+        "src/libslic3r/PrintApply.cpp:1406",
+        "src/libslic3r/GCode/GCodeProcessor.cpp:3276"
+      ],
+      "android_gap": "The upstream-derived value depends on print/object config; Android coverage not independently tested."
+    },
+    {
+      "key": "has_single_extruder_multi_material_priming",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13378,
+      "enclosing_definition_family": "OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "has_wipe_tower",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13353,
+      "enclosing_definition_family": "OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "help",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12816,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "hour",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13581,
+      "enclosing_definition_family": "TimestampsConfigDef::TimestampsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "info",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12886,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "inherits_group",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 5075,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "merged_preset_metadata",
+      "explanation": "Merged full/project config collects inheritance chains for its constituent presets.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:394",
+        "src/libslic3r/PresetBundle.cpp:6160"
+      ],
+      "android_gap": "Identity is maintained by preset selection/repository, not established as a freely editable setting; end-to-end preservation needs separate testing."
+    },
+    {
+      "key": "initial_extruder",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13357,
+      "enclosing_definition_family": "OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "initial_tool",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13361,
+      "enclosing_definition_family": "OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "input_filename_base",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13501,
+      "enclosing_definition_family": "ObjectsInfoConfigDef::ObjectsInfoConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "inspect_mesh",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12891,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "inspect_paint",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12902,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "is_extruder_used",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13365,
+      "enclosing_definition_family": "OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "last_extrusion_role",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13798,
+      "enclosing_definition_family": "CustomGcodeSpecificConfigDef::CustomGcodeSpecificConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "layer_num",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13679,
+      "enclosing_definition_family": "CustomGcodeSpecificConfigDef::CustomGcodeSpecificConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "layer_z",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13684,
+      "enclosing_definition_family": "CustomGcodeSpecificConfigDef::CustomGcodeSpecificConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "load_assemble_list",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13148,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "load_custom_gcodes",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13214,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "load_defaultfila",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12828,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "load_filament_ids",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13220,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "load_filaments",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13107,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "load_settings",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13101,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "load_slicedata",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12775,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "logfile",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13196,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "makerlab_name",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13252,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "makerlab_version",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13258,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "max_layer_z",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13688,
+      "enclosing_definition_family": "CustomGcodeSpecificConfigDef::CustomGcodeSpecificConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "metadata_name",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13264,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "metadata_value",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13270,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "min_save",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12833,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "minute",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13584,
+      "enclosing_definition_family": "TimestampsConfigDef::TimestampsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "month",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13575,
+      "enclosing_definition_family": "TimestampsConfigDef::TimestampsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "mstpp",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12845,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "mtcpp",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12838,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "no_check",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12853,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "normal_print_time",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13418,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "normative_check",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12871,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "nozzle_volume_type",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6284,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_nozzle_mapping",
+      "explanation": "Nozzle volume mode is project-owned and participates in nozzle/material selection and purge calculations.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:139",
+        "src/OrcaSlicer.cpp:3966",
+        "src/slic3r/Utils/CalibUtils.cpp:165"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "num_extruders",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13369,
+      "enclosing_definition_family": "OtherSlicingStatesConfigDef::OtherSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "num_instances",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13491,
+      "enclosing_definition_family": "ObjectsInfoConfigDef::ObjectsInfoConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "num_objects",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13487,
+      "enclosing_definition_family": "ObjectsInfoConfigDef::ObjectsInfoConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "orient",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13001,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "other_layers_print_sequence",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 1484,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "plate_sequence_data",
+      "explanation": "Other-layer sequence and count are maintained on the plate and used by tool ordering/3MF.",
+      "evidence": [
+        "src/slic3r/GUI/PartPlate.cpp:5679",
+        "src/libslic3r/Format/bbs_3mf.cpp:4658",
+        "src/libslic3r/GCode/ToolOrdering.cpp:2931"
+      ],
+      "android_gap": "Plate-scoped editing/application requires Phase 3; model_io.cpp:133-138 rejects multiple plates or nonempty plate/project configuration."
+    },
+    {
+      "key": "other_layers_print_sequence_nums",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 1490,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "plate_sequence_data",
+      "explanation": "Other-layer sequence and count are maintained on the plate and used by tool ordering/3MF.",
+      "evidence": [
+        "src/slic3r/GUI/PartPlate.cpp:5679",
+        "src/libslic3r/Format/bbs_3mf.cpp:4658",
+        "src/libslic3r/GCode/ToolOrdering.cpp:2931"
+      ],
+      "android_gap": "Plate-scoped editing/application requires Phase 3; model_io.cpp:133-138 rejects multiple plates or nonempty plate/project configuration."
+    },
+    {
+      "key": "other_layers_sequence_choice",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 1505,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "plate_ui_choice",
+      "explanation": "Desktop explicit plate setting chooses automatic/custom later-layer sequence; choice controls underlying plate sequence data.",
+      "evidence": [
+        "src/slic3r/GUI/Tab.cpp:4132",
+        "src/slic3r/GUI/Tab.cpp:4233"
+      ],
+      "android_gap": "Plate-scoped editing/application requires Phase 3; model_io.cpp:133-138 rejects multiple plates or nonempty plate/project configuration."
+    },
+    {
+      "key": "outputdir",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13176,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "physical_printer_preset",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13608,
+      "enclosing_definition_family": "OtherPresetsConfigDef::OtherPresetsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "pipe",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12917,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "position",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13322,
+      "enclosing_definition_family": "ReadWriteSlicingStatesConfigDef::ReadWriteSlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "preset_name",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 1296,
+      "enclosing_definition_family": "PrintConfigDef::init_common_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "legacy_physical_printer_identity",
+      "explanation": "Explicit legacy compatibility field used in physical printer preset configuration.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:1294",
+        "src/libslic3r/Preset.cpp:4617",
+        "src/libslic3r/Preset.cpp:4668"
+      ],
+      "android_gap": "Physical-printer legacy configuration and round-trip need independent testing."
+    },
+    {
+      "key": "preset_names",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 1171,
+      "enclosing_definition_family": "PrintConfigDef::init_common_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "physical_printer_preset_list",
+      "explanation": "List of presets associated with a physical printer; separate from print preset option rows.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:1276",
+        "src/libslic3r/Preset.cpp:4674",
+        "src/libslic3r/Preset.cpp:5062"
+      ],
+      "android_gap": "Physical-printer preset associations need independent Android testing."
+    },
+    {
+      "key": "prime_volume_mode",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8310,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_purge",
+      "explanation": "Project-selected prime volume mode, set by the desktop PurgeModeDialog and consumed by purge estimation.",
+      "evidence": [
+        "src/slic3r/GUI/Plater.cpp:3318",
+        "src/slic3r/GUI/PurgeModeDialog.cpp:53",
+        "src/libslic3r/GCode/WipeTowerEstimate.cpp:184"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "print_bed_max",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13537,
+      "enclosing_definition_family": "DimensionsConfigDef::DimensionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_bed_min",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13533,
+      "enclosing_definition_family": "DimensionsConfigDef::DimensionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_bed_size",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13541,
+      "enclosing_definition_family": "DimensionsConfigDef::DimensionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_compatible_printers",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 2260,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "merged_compatibility_metadata",
+      "explanation": "Printer compatibility values are collected in a merged full/project configuration, then restored when loading.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:397",
+        "src/libslic3r/PresetBundle.cpp:6167"
+      ],
+      "android_gap": "Compatibility validation exists, but merged project import and round-trip remain separately unverified."
+    },
+    {
+      "key": "print_preset",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13595,
+      "enclosing_definition_family": "OtherPresetsConfigDef::OtherPresetsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_settings_id",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6044,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "preset_identity",
+      "explanation": "Current process/printer names are populated by the preset bundle and excluded from dirty-option editing.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:378",
+        "src/libslic3r/Preset.cpp:2958",
+        "src/libslic3r/Preset.cpp:4138"
+      ],
+      "android_gap": "Identity is maintained by preset selection/repository, not established as a freely editable setting; end-to-end preservation needs separate testing."
+    },
+    {
+      "key": "print_time",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13426,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_time_day",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13462,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_time_hour",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13466,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_time_minute",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13470,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_time_sec",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13474,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "print_time_total_sec",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13458,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "printer_preset",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13604,
+      "enclosing_definition_family": "OtherPresetsConfigDef::OtherPresetsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "printer_settings_id",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 6049,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "preset_identity",
+      "explanation": "Current process/printer names are populated by the preset bundle and excluded from dirty-option editing.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:378",
+        "src/libslic3r/Preset.cpp:2958",
+        "src/libslic3r/Preset.cpp:4138"
+      ],
+      "android_gap": "Identity is maintained by preset selection/repository, not established as a freely editable setting; end-to-end preservation needs separate testing."
+    },
+    {
+      "key": "repair",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13007,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "repetitions",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12969,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "rotate",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13013,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "rotate_x",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13019,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "rotate_y",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13025,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "scale",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13059,
+      "enclosing_definition_family": "CLITransformConfigDef::CLITransformConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "second",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13587,
+      "enclosing_definition_family": "TimestampsConfigDef::TimestampsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "silent_print_time",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13434,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "skip_modified_gcodes",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13247,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "skip_objects",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13113,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "sla_material_settings_id",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 9397,
+      "enclosing_definition_family": "PrintConfigDef::init_sla_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "sla_preset_identity",
+      "explanation": "Selected SLA preset names are injected by the SLA bundle and exported as SL1 metadata.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:5838",
+        "src/libslic3r/Format/SL1.cpp:411",
+        "src/libslic3r/Format/SL1.cpp:415"
+      ],
+      "android_gap": "SLA slicing is not established in the Android FFF bridge."
+    },
+    {
+      "key": "sla_print_settings_id",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 9409,
+      "enclosing_definition_family": "PrintConfigDef::init_sla_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "sla_preset_identity",
+      "explanation": "Selected SLA preset names are injected by the SLA bundle and exported as SL1 metadata.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:5838",
+        "src/libslic3r/Format/SL1.cpp:411",
+        "src/libslic3r/Format/SL1.cpp:415"
+      ],
+      "android_gap": "SLA slicing is not established in the Android FFF bridge."
+    },
+    {
+      "key": "slice",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12809,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "start_end_points",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 5853,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "readonly_gcode_geometry",
+      "explanation": "Read-only developer config defines cutter-to-chute path endpoints consumed by G-code travel generation.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:5853",
+        "src/libslic3r/GCode.cpp:325",
+        "src/libslic3r/PrintConfig.hpp:2141"
+      ],
+      "android_gap": "Read-only geometry is not a user-editable preset row; behavior requires device-specific validation."
+    },
+    {
+      "key": "strict",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12860,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "timestamp",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13568,
+      "enclosing_definition_family": "TimestampsConfigDef::TimestampsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "total_cost",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13438,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "total_layer_count",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13414,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "total_toolchanges",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13398,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "total_weight",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13442,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "total_wipe_tower_cost",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13446,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "total_wipe_tower_filament",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13450,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "tree_support_with_infill",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 7967,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "legacy_ignored_key",
+      "explanation": "The legacy conversion ignore set explicitly identifies this option as obsolete; a definition still remains.",
+      "evidence": [
+        "src/libslic3r/PrintConfig.cpp:7967",
+        "src/libslic3r/PrintConfig.cpp:10002"
+      ],
+      "android_gap": "Legacy migration/round-trip behavior should remain delegated to Orca."
+    },
+    {
+      "key": "uptodate",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 12822,
+      "enclosing_definition_family": "CLIActionsConfigDef::CLIActionsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "uptodate_filaments",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13131,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "uptodate_settings",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13125,
+      "enclosing_definition_family": "CLIMiscConfigDef::CLIMiscConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "used_filament",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13454,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "used_filament_length",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13478,
+      "enclosing_definition_family": "PrintStatisticsConfigDef::PrintStatisticsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "wipe_tower_x",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8323,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_plate_geometry",
+      "explanation": "Per-plate purge tower position is stored in project config and updated by desktop canvas/CLI.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:132",
+        "src/slic3r/GUI/GLCanvas3D.cpp:3601",
+        "src/OrcaSlicer.cpp:4248"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "wipe_tower_y",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 8331,
+      "enclosing_definition_family": "PrintConfigDef::init_fff_params",
+      "disposition": "reviewed_scope",
+      "note": "Neither classification proves UI visibility or lack thereof.",
+      "classification": "project_plate_geometry",
+      "explanation": "Per-plate purge tower position is stored in project config and updated by desktop canvas/CLI.",
+      "evidence": [
+        "src/libslic3r/PresetBundle.cpp:132",
+        "src/slic3r/GUI/GLCanvas3D.cpp:3601",
+        "src/OrcaSlicer.cpp:4248"
+      ],
+      "android_gap": "Project-scoped editing, persistence and slicing application are not established for Android; embedded project configuration is currently blocked by engine/src/model_io.cpp:133-138."
+    },
+    {
+      "key": "year",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13572,
+      "enclosing_definition_family": "TimestampsConfigDef::TimestampsConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    },
+    {
+      "key": "zhop",
+      "file": "src/libslic3r/PrintConfig.cpp",
+      "line": 13313,
+      "enclosing_definition_family": "ReadOnlySlicingStatesConfigDef::ReadOnlySlicingStatesConfigDef",
+      "disposition": "separate_config_definition_family",
+      "note": "Neither classification proves UI visibility or lack thereof."
+    }
+  ],
+  "android_sources": {
+    "engine/src/model_io.cpp": "8db67a0d1adf6f3c8385efdde75613f66f3b5b706a871987ee7f9b3f0c15c681"
+  },
+  "absence_checks": [
+    {
+      "symbol": "brim_ears",
+      "extensions": [
+        ".c",
+        ".cc",
+        ".cpp",
+        ".cxx",
+        ".h",
+        ".hpp"
+      ],
+      "expected": [
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 563
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 2123
+        },
+        {
+          "file": "src/libslic3r/PrintConfig.cpp",
+          "line": 2176
+        }
+      ],
+      "limitation": "Literal identifier search cannot rule out dynamically constructed names, unscanned extensions or plugins."
+    }
+  ]
+}
