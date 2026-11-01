@@ -1,8 +1,10 @@
 # Kepler Slicer — статус Фазы 2 (Android)
 
-Дата среза: 2026-11-01. Основание: `SPEC.md` в `Desktop/orca-mobile-handoff`, разделы 0.5, 5, 9–11; копия [ТЗ](handoff/SPEC.md) хранится в проекте. Разрешена Фаза 2: Settings, Process, Filament, Printer, Preferences, поиск, пресеты и проверка покрытия. iOS отложен. Фазы 3–7 не разрешены этим отчётом.
+Дата среза: 2026-11-01. Основание: `SPEC.md` в `Desktop/orca-mobile-handoff`, разделы 0.5, 5, 9–11; копия [ТЗ](handoff/SPEC.md) хранится в проекте и обновлена побайтно с оригинала (SHA-256 `994F8399BCAD8655C2767BE4454CA5BE7A51EBB4BBD363C8D49D48FCAA052168`). Разрешена Фаза 2: Settings, Process, Filament, Printer, Preferences, поиск, пресеты и проверка покрытия. iOS отложен. Фазы 3–7 не разрешены этим отчётом.
 
-**Фаза 2 не объявляется завершённой.** Исправленный кандидат 30B9… установлен с разрешения владельца и проверен через computer use. В нём найдены проблемы picker и контраста; их исправления включены в новый, ещё не установленный кандидат E327…. Финальная runtime-проверка, приёмка покрытия и сравнение с настольной Orca остаются открытыми.
+**Фаза 2 не объявляется завершённой.** Текущий 61C9… с исправлением identity установлен с разрешения владельца через Android Studio; новый Save As и JSON export проверены через CU и извлечение файла. Исторические E327… проверки picker, выбранного контраста, JSON conflict и 3MF сохранены отдельно. Полная приёмка Фазы 2, успешный импорт нового профиля, ZIP UI и сравнение с настольной Orca остаются открытыми.
+
+Основной `Kepler-Slicer-Glass-Phase2.apk` соответствует **61C9…**, code commit `1835779`. Исторический E327… сохранён отдельным `Kepler-Slicer-Glass-Phase2-E327.apk`. Восемь прежних снимков не переобозначены; дополнительный Save As/export proof 61C9… указан отдельно. Source archive упаковывается после фиксации code/docs snapshot; его метаданные находятся в [release.json](../../Kepler-Glass-Phase2-review/release.json), hash архива не встраивается в его собственные документы.
 
 ## Реализовано и ограничения
 
@@ -31,7 +33,7 @@
 5. Изменённые настройки Process проходят существующую native-валидацию. Один объект может наложить свои Process values поверх глобального профиля; результат нарезки связан с fingerprint профилей, overrides и выбранной модели/пластины. Несовпадение scope приводит к ошибке, а не к применению настроек к другой модели.
 6. `ObjectSettingsStore.current()` получает native metadata на worker. После save рядом с hash(file + plate) атомарно хранится доказательство `native_object_count=1`. UI-safe `snapshot()` не импортирует OBJ/3MF/mesh; старые или повреждённые непустые записи без доказательства требуют снова открыть и сохранить настройки объекта. Очистка и rollback затрагивают и data, и count.
 
-Чтение значений для показа отдельно отслеживает источник: типизированные Process metadata, сериализованные metadata / проверенный resolved INI, definition default. В коде приблизительные сериализованные значения отмечаются `≈`, fallback из определения — `†`; они не объявляются точным effective value выбранного профиля и не записываются обратно как неизменённые overrides. Stream-сериализация INI может округлять числа. На установленном 30B9… Process загрузился без ошибки INI и легенда `† / ≈` видна; это проверка отображения, а не доказательство точности всех effective values.
+Чтение значений для показа отдельно отслеживает источник: типизированные Process metadata, сериализованные metadata / проверенный resolved INI, definition default. В коде приблизительные сериализованные значения отмечаются `≈`, fallback из определения — `†`; они не объявляются точным effective value выбранного профиля и не записываются обратно как неизменённые overrides. Stream-сериализация INI может округлять числа. На установленных 30B9… и E327… Process загрузился без ошибки INI и легенда `† / ≈` видна; это проверка отображения, а не доказательство точности всех effective values.
 
 Подключённая библиотека и JNI/core в Фазе 2 не изменялись. SHA-256 [libkepler_slicer_experimental.so](../app/src/main/jniLibs/arm64-v8a/libkepler_slicer_experimental.so) совпадает с зафиксированным исходным состоянием:
 
@@ -62,14 +64,14 @@
 
 | Проверка | Результат | Что доказывает |
 |---|---|---|
-| `tools/test_presets.ps1` с официальной OrcaBadge.3mf | 59 assertions | Наследование, неизвестные поля/null, запрет изменения system, draft/reset/save, конфликты, transactional import, JSON/ZIP ancestors, сохранность остальных 3MF payloads |
+| `tools/test_presets.ps1` с официальной OrcaBadge.3mf | 81 assertions после identity fix (ранее 59) | Прежние проверки и 22 regression assertions: system/user → новый Save As очищает ASCII-case `setting_id`; existing Save/import/export сохраняют identity; unknown Unicode keys и parent links не теряются |
 | `tools/test_settings_state.ps1` | 87 assertions | Immutable overlays/fingerprints, path/vendor safety, selection/rollback, однообъектный scope и proof, отсутствие native mesh load на UI fingerprint path |
 | `tools/test_process_overrides.ps1` | 26 assertions | Привязка overrides и результата к выбору/идентичности, конкурентные изменения, транзакционные отказы |
 | `tools/test_settings_schema.ps1` | Settings schema host checks passed; Orca INI codec checks passed | Схема 431/168/230, typed parsing/validation, immutable metadata, строки/векторы/percent/nullable и экранирование INI |
 | `tools/test_native_config_values.ps1` | 32 checks, **JNI not executed** | Источники значений, fallback/ошибки, сериализованные типы и отсутствие ложного утверждения о precise effective defaults; реальные JNI/device этим набором не проверяются |
 | `tools/tests/test_settings_coverage.py --orca work/OrcaSlicer` | Host checks passed; overall audit remains incomplete | Обнаружение устаревшего audit и отсутствующего UI key на искусственном inventory; отдельный прогон с реальным runtime inventory описан ниже |
 | `:app:compileDebugJavaWithJavac` | BUILD SUCCESSFUL | Компиляция Android Java на текущем срезе; не замена runtime-проверке |
-| `:app:assembleDebug` | BUILD SUCCESSFUL; APK E327… собран | Установка этого кандидата ещё ожидается |
+| `:app:assembleDebug` | BUILD SUCCESSFUL; текущий 61C9… установлен | Ограниченные runtime-проверки разных сборок описаны ниже; весь объём Фазы 2 не закрыт |
 | `:app:lintDebug` | Не проходит: 8 существующих ошибок | Три старых обработчика Back, два API 27 атрибута при minSdk 26 и три старых WrongConstant. Новых ошибок Фазы 2 в этом запуске не найдено; lint нельзя считать зелёным |
 
 Актуальный статический audit: 598 literal calls (525 direct + 73 reference-only); 0 missing schema keys/placements; 42 dynamic calls и 7 dynamic definitions разобраны с привязкой к хешам исходников; schema stale=false, audit_error=null. Дополнительно проверен отдельно экспортированный через CU runtime inventory `runtime_adapter_rows_all_sections_advanced` (431 Process, 168 Filament, 230 Printer; SHA-256 `AFF339D0A799B11988F9CB60B22C6D128B6EB2611ABC4650CC2192FDA2FB6BE0`): отсутствующих в inventory ключей среди разобранных literal и dynamic calls — 0. `extruders_count` является отдельным desktop UI-псевдополем, а не preset key. Inventory отражает объявленные строки adapter, но не доказывает работоспособность каждого редактора, применение значений или всю условную desktop UI; общий статус остаётся **`incomplete`**.
@@ -78,7 +80,7 @@
 
 ## Проверено через computer use и что ещё ожидается
 
-Наблюдения ниже переданы root-агентом после работы через Windows UI / Android Studio, без shell adb. Две установленные сборки и новый неустановленный кандидат различаются явно.
+Наблюдения ниже переданы root-агентом после работы через Windows UI / Android Studio, без shell adb. Результаты четырёх установленных сборок разделены; действия, проверенные на одной сборке, не объявляются автоматически проверенными на другой.
 
 ### Первый установленный кандидат
 
@@ -117,20 +119,65 @@ APK установлен успешно после разрешения влад
 | Числовой редактор / IME | Компактный диалог; Save / Cancel доступны при открытой клавиатуре | Остальные типы редакторов и поворот требуют проверки |
 | Транспорт 3MF | Открыт `project.3mf` ≈817 КБ: config `{}`, embedded presets 0; Save NEW 3MF сохранил `Downloads/project-settings.3mf`, показан `Document saved` | Config не редактировался. Desktop comparison и сравнение сохранённого файла с исходным в этом CU-сценарии не выполнены |
 
-Снимки [пакета проверки](../../Kepler-Glass-Phase2-review/index.html) `settings.png`, `process.png`, `filament.png`, `printer.png`, `preferences.png`, `transfer.png`, `editor-ime.png` сняты **на 30B9…**, а не на текущем новом кандидате. Для picker оставлено место ожидания снимка после исправления и установки.
+Исторические семь снимков 30B9… сохранены в `Kepler-Glass-Phase2-review/previous-30B9/`. В текущей галерее `filament.png`, `printer.png`, `preferences.png`, `editor-ime.png` остаются снимками **30B9…**. `settings.png`, `process.png`, `preset-picker.png`, `transfer.png` заменены или добавлены по результатам **E327…**. Пофайловые SHA-256 и сборки указаны в [release.json](../../Kepler-Glass-Phase2-review/release.json).
 
-### Найдено на устройстве; исправления пока не установлены
+### Исторический установленный E327…: ограниченная runtime-проверка
 
-- В picker поле поиска занимало всю высоту и закрывало список. В исходниках высота исправлена на 52 dp; runtime-подтверждение исправления ожидается.
-- Во вложенном поле Printer на 30B9… измерен контраст **3.91:1**, ниже требуемого 4.5:1. Для этого поля в новом кандидате используется непрозрачная заливка token `#5A5F69`; расчётный контраст с белым **6.41:1**. Это расчёт, а не повторный замер установленного исправления.
-
-Новый готовый APK 219 819 620 байт (≈219,8 МБ), SHA-256:
+APK 219 819 620 байт (≈219,8 МБ) установлен успешно через Android Studio **Shift+F10** после разрешения владельца. SHA-256:
 
 `E327B46319299B6670C44B79F81E66456D77A936C1398E956A2E4A1366EB77CE`
 
-Установка и проверка E327… ожидают ответа владельца на запрос установки. Промежуточный кандидат `50E01266175A2DDF9648A89EC767E792292645765A01CD3FFBD389A9985F5E91` **не устанавливался**. Для E327… прежде всего нужны повторные CU-проверки picker и контраста; остаются проверки поиска, типов редакторов, object save, ошибок/отмены/поворота, JSON/ZIP/3MF transport и повторной нарезки/экспорта. Нельзя переносить результаты 30B9… или D5D3… на новый APK без проверки.
+| Сценарий на E327… | Подтверждённое наблюдение | Предел проверки |
+|---|---|---|
+| Сохранённое состояние | geometry.3mf, CORE One 0.6, Prusament PLA и пользовательский Process 0.24 сохранились | Все модели и комбинации профилей не проверены |
+| Process | Native values загрузились без ошибки INI; Quality: 109 строк в Advanced, легенда `† / ≈` видна | Все effective values и редакторы не проверены |
+| Picker | Компактное поле поиска не закрывает список; запрос `core` фильтрует список; пользовательская строка отмечена выбранной | Полная совместимость и все фильтры не проверены |
+| JSON export | Выбранный user Process экспортирован через SAF в Downloads; статус `Document saved.` | Desktop import/export этого файла не проверен |
+| Повторный импорт того же JSON | Отказ `A user preset with this name already exists` | Это проверенный conflict, **не dedup и не успешный импорт нового профиля** |
+| Открытие 3MF | project.3mf ≈817 КБ открыт, config `{}`, embedded presets 0; соответствующие embedded actions отключены | Проект с embedded presets/активными настройками этим не проверен |
+| Невалидный JSON | Ввод `{` и Save отклонён: `End of input at character 1`, до открытия SAF | Другие синтаксические и семантические ошибки не проверены |
+| Восстановление / отмена | Повторное открытие оригинала вернуло `{}`; отмена Save в SAF дала `Operation canceled.`, загруженная конфигурация сохранилась | Отмена во время копирования большого output не проверена |
+| Save new 3MF | Новое уникальное `qproject-settings.3mf` сохранено через SAF; `Document saved.`; извлечённый output затем сравнен на host, результаты ниже | Проверены распакованные payloads проекта с config `{}`; это не сохранение реально изменённой настройки и не desktop round-trip |
 
-Остаются не подтверждены реальным desktop UI: двусторонний JSON/ZIP/3MF round-trip без потерь и одинаковый G-code на одинаковых моделях/настройках. Нужны выбранные владельцем версия desktop Orca и критерий сравнения. Фаза 2 остаётся **runtime pending**, а не phase complete.
+Picker снят как `Screenshot_20261101_111754` → `preset-picker.png`; transport — `Screenshot_20261101_112200` → `transfer.png`. Все текущие снимки и их сборки перечислены в [пакете проверки](../../Kepler-Glass-Phase2-review/index.html) и `release.json`.
+
+На 30B9… поиск picker перекрывал список, а вложенное поле Printer имело контраст **3.912:1**. На E327… в трёх выбранных полях (`printer_name`, `nozzle`, `filament`) подтверждён непрозрачный фон RGB(90,95,105) / token `#5A5F69` и контраст белого **6.411:1**. Измерения, координаты и SHA снимков сохранены в [e327-contrast.json](../../Kepler-Glass-Phase2-review/evidence/e327-contrast.json); parent card — 4.983:1, выбранная точка фона — 7.255:1. Это выборочные измерения, **не полный аудит контраста UI**.
+
+### Извлечённые export artifacts E327…
+
+Файлы, сохранённые Android-приложением через SAF и извлечённые через Device Explorer, проверены на host. Машинный отчёт со статическим review upstream identity: [e327-export-verification.json](../../Kepler-Glass-Phase2-review/evidence/e327-export-verification.json), SHA-256 `48DC97E71BAD3E265FE38B0220BA3FE220A475FF34D245B36CBC4ADCCD635EC6`.
+
+| Артефакт | Размер | Проверенные факты |
+|---|---:|---|
+| [e327-process-024.json](../../Kepler-Glass-Phase2-review/evidence/e327-process-024.json) | 1 031 bytes | `type=process`, `from=user`, `layer_height` — строка `"0.24"`, `instantiation` — строка `"true"`; пользовательское name равно `print_settings_id`; `inherits` соответствует единственному системному родителю `Prusa/process/0.20mm SPEED @CORE One 0.6.json` |
+| [e327-project-source.3mf](../../Kepler-Glass-Phase2-review/evidence/e327-project-source.3mf) | 817 091 bytes | Исходный проект для сравнения: 16 ZIP entries, config семантически `{}`, embedded preset entries по правилам приложения — 0 |
+| [e327-project-saved.3mf](../../Kepler-Glass-Phase2-review/evidence/e327-project-saved.3mf) | 819 628 bytes | 16 ZIP entries; добавленных/удалённых нет; у 15 entries распакованные bytes совпадают. Отличается только `Metadata/project_settings.config`: 6 → 2 bytes, оба JSON семантически `{}` |
+
+В экспортированном user Process значение `setting_id` **совпадает с системным родителем**. Статический review закреплённой upstream revision показывает расхождение с desktop Save As, который очищает identity нового Preset. Однако просмотренный прямой JSON-import извлекает metadata ID и не назначает его импортированному Preset; коллизия в этом пути **не доказана**. Cloud/другие пути и фактический импорт в desktop не проверены. Нельзя считать файл доказанно совместимым desktop round-trip только по валидному JSON и правильному `layer_height`.
+
+Это исторический export **E327… до исправления creation identity**. Текущий 61C9… меняет только создание нового профиля; уже сохранённые user identities автоматически не мигрируют и существующий экспорт не переписывается.
+
+Сравнение 3MF подтверждает сохранность остальных распакованных payloads именно этой пары файлов. ZIP metadata/compression и побайтная идентичность всего архива не сравнивались; реального семантического изменения project config не было. Поддержка активного embedded config текущим native slicing path не доказана. SHA-256 каждого исходного/выходного файла приведён в машинном отчёте и `release.json`.
+
+Промежуточный кандидат `50E01266175A2DDF9648A89EC767E792292645765A01CD3FFBD389A9985F5E91` **не устанавливался**. Остаются не проверены через CU: успешный импорт нового JSON-профиля, ZIP import/export, изменение/save object overrides, редактирование валидного project config с проверкой полученного файла, все типы редакторов, поворот и остальные error/cancel-сценарии. Проверки на D5D3… и 30B9… сохраняются как исторические результаты.
+
+Остаются не подтверждены реальным desktop UI: двусторонний JSON/ZIP/3MF round-trip без потерь и одинаковый G-code на одинаковых моделях/настройках. Нужны выбранные владельцем версия desktop Orca и критерий сравнения. Перечисленные runtime-сценарии E327… проверены; **Фаза 2 остаётся incomplete**, не phase complete.
+
+### Текущий установленный 61C9…: новый Save As и export проверены
+
+[Kepler-Slicer-Glass-Phase2.apk](../../Kepler-Slicer-Glass-Phase2.apk) и [identity-fix alias](../../Kepler-Slicer-Glass-Phase2-identity-fix.apk), **219 490 100 bytes**, SHA-256:
+
+`61C90994B8C6C3014BAB7466A1239DE997767339E1E14F4B7E2027EFB5CE563D`
+
+`PresetRepository.saveAs()` клонирует draft и удаляет из новой source только top-level aliases `setting_id` без учёта **ASCII-регистра**, как для новой identity в desktop Save As. Unknown Unicode-поля, imports, system JSON и identity при существующем Save сохраняются. `parent_id` / `inherits` остаются связью с родителем; неподтверждённая cloud/base_id логика не добавлена.
+
+Host-проверки нового кода: **81** preset assertions с официальной OrcaBadge, **87** SettingsState assertions, `assembleDebug` — успешно. Native SHA-256 остаётся `28EBDE4D17FFA8D5EAF53C244C49DC9B3DEC46C02068FCDE0D7479EC0F4B18E3`. Перед исправлением regression воспроизводил копирование parent ID; после исправления проходит.
+
+61C9… успешно установлен через Android Studio **Shift+F10** после нового разрешения владельца. geometry.3mf, CORE One 0.6 и прежний user Process 0.24 восстановились; Process загрузился без INI error. Save As из старого user в `0.20mm SPEED @CORE One 0.6 — Kepler — Kepler` прошёл Orca validation, сохранил 0.24; JSON экспортирован через SAF, показан `Document saved.`
+
+Извлечённый [61c9-saveas-process-024.json](../../Kepler-Glass-Phase2-review/evidence/61c9-saveas-process-024.json), **1 028 bytes**, SHA-256 `DD1E6959208EAF7180C4060D01D8828EC5A32FD9B3FEACE8407987898EFC8F84`, подтверждает: `setting_id` и его ASCII-case aliases отсутствуют, `layer_height` — строка `"0.24"`, новое `name` равно `print_settings_id`, `inherits` — имя предыдущего пользовательского профиля. Это ожидаемый parent link, а не замена его новым system profile. [61c9-saveas-verification.json](../../Kepler-Glass-Phase2-review/evidence/61c9-saveas-verification.json), SHA-256 `9582F28542566B2F74EFDE50BEEFE8A6C041A171F381CB1BAB112CF5711548F5`, подтверждает сохранность всех **22 non-identity полей и их JSON-типов** по сравнению с предыдущим export. Такое сравнение не проверяет состояние старого preset в storage. Creation-only fix не выполняет автоматическую миграцию старых identities; desktop/cloud совместимость не заявляется.
+
+Дополнительный [saveas-export-61c9.png](../../Kepler-Glass-Phase2-review/saveas-export-61c9.png), capture `Screenshot_20261101_113930`, относится к **61C9…**; остальные восемь снимков сохраняют прежние E327… / 30B9… provenance. Исторический [E327 APK](../../Kepler-Slicer-Glass-Phase2-E327.apk) и его export artifacts остаются отдельными доказательствами. Source ZIP metadata находятся в `release.json`; архив упаковывается после code/docs snapshot, без встраивания собственного hash.
 
 ## Preferences: явно не перенесённые пункты
 
