@@ -51,6 +51,7 @@ public final class PresetRepositoryTest {
             rejects(()->repo.saveUser("process","Vendor","Orphan",null,new JSONObject("{\"inherits\":\"missing\"}")),"Missing parent must fail");rejects(()->repo.deleteUser(base),"System delete must fail");
             repo.deleteUser(child.id);repo.deleteUser(user.id);check(repo.list("process").size()==1,"User deletion leaves system archive untouched");
         }
+        testSaveAsIdentity(root);
         testProject(root);
         File official=new File(args.length>2?args[2]:"");
         if(official.isFile())testOfficialProject(root,official);
@@ -58,6 +59,44 @@ public final class PresetRepositoryTest {
             check(real.list("process").size()>3000,"Original process catalog available");String id=PresetRepository.systemId("printer","Prusa","Prusa CORE One 0.6 nozzle");JSONObject config=real.resolve(id);check(config.getJSONArray("nozzle_diameter").getString(0).equals("0.6"),"Real upstream machine inheritance resolves");check(real.load(id).path.equals("Prusa/machine/Prusa CORE One 0.6 nozzle.json"),"Original system path retained");
         }
         System.out.println("Preset repository: "+assertions+" assertions passed");
+    }
+    private static void testSaveAsIdentity(File root) throws Exception {
+        Fixtures source=new Fixtures();JSONObject system=source.json.get("Vendor/process/fine.json");
+        system.put("setting_id","system-fine-id");String original=PresetJson.fingerprint(system);
+        try(PresetRepository repo=new PresetRepository(new File(root,"save-as-identity"),source)){
+            String systemId=PresetRepository.systemId("process","Vendor","fine");PresetRepository.Draft draft=repo.beginDraft(systemId);
+            PresetRepository.Preset first=repo.saveAs(draft,"New identity");
+            check(!first.source.has("setting_id"),"System Save As must not copy its parent's setting_id into the new user source");
+            check(!repo.exportPreset(first.id).has("setting_id"),"Export of a newly saved user must not publish its parent's identity");
+            check(first.parentId.equals(systemId)&&first.source.getString("inherits").equals("fine"),"Clearing new identity keeps the exact system inheritance link");
+            check(PresetJson.fingerprint(repo.load(systemId).source).equals(original),"Save As must leave original system JSON unchanged");
+            check(draft.source().getString("setting_id").equals("system-fine-id"),"Save As must not mutate its source draft identity");
+            PresetRepository.Draft firstEdit=repo.beginDraft(first.id);firstEdit.set("layer_height","0.19");repo.save(firstEdit);
+            check(!repo.exportPreset(first.id).has("setting_id"),"Saving a new identity-free user does not restore its parent's ID");
+
+            JSONObject opaque=new JSONObject("{\"nested\":[null,true,{\"text\":\"retained\"}]}");
+            JSONObject incoming=new JSONObject().put("type","process").put("name","Existing identity").put("inherits","fine").put("setting_id","existing-user-id").put("SETTING_ID","upper-user-id").put("SeTtInG_Id","mixed-user-id").put("sett\u0131ng_id","opaque-unicode-key").put("base_id","imported-base-metadata").put("unknown_payload",opaque).put("layer_height","0.24");
+            PresetRepository.Preset existing=repo.importBundle(incoming).get(0);
+            check(existing.source.getString("setting_id").equals("existing-user-id"),"Import preserves the original explicit setting_id");
+            check(existing.source.getString("SETTING_ID").equals("upper-user-id")&&existing.source.getString("SeTtInG_Id").equals("mixed-user-id"),"Import keeps original case variants of metadata unchanged");
+            check(PresetJson.equal(existing.source.get("unknown_payload"),opaque),"Import retains unknown JSON beside identity metadata");
+            PresetRepository.Draft existingEdit=repo.beginDraft(existing.id);existingEdit.set("layer_height","0.25");PresetRepository.Preset saved=repo.save(existingEdit);
+            check(saved.id.equals(existing.id)&&saved.source.getString("setting_id").equals("existing-user-id"),"Save of an existing user retains its UUID and explicit identity");
+            check(saved.source.getString("SETTING_ID").equals("upper-user-id")&&saved.source.getString("SeTtInG_Id").equals("mixed-user-id"),"Existing Save preserves the original identity key variants");
+            check(repo.exportPreset(existing.id).getString("setting_id").equals("existing-user-id"),"Export does not silently rewrite existing saved identity");
+            String savedSource=PresetJson.fingerprint(saved.source);PresetRepository.Draft copyDraft=repo.beginDraft(existing.id);
+            PresetRepository.Preset copy=repo.saveAs(copyDraft,"Different identity");
+            check(!copy.id.equals(existing.id)&&!copy.id.equals(first.id),"Save As assigns a distinct local user UUID");
+            check(!copy.source.has("setting_id")&&!repo.exportPreset(copy.id).has("setting_id"),"User-to-new-name Save As clears copied setting_id in source and export");
+            check(!copy.source.has("SETTING_ID")&&!copy.source.has("SeTtInG_Id")&&!repo.exportPreset(copy.id).has("SETTING_ID"),"Save As clears every ASCII-case setting_id alias recognized by Orca");
+            check(copy.parentId.equals(existing.id)&&copy.source.getString("inherits").equals("Existing identity"),"User Save As keeps the selected parent link");
+            check(PresetJson.equal(copy.source.get("unknown_payload"),opaque)&&copy.source.getString("base_id").equals("imported-base-metadata"),"Save As retains unknown/imported metadata except the deliberately cleared own setting_id");
+            check(copy.source.getString("sett\u0131ng_id").equals("opaque-unicode-key"),"ASCII metadata clearing preserves an unknown Unicode lookalike key");
+            check(PresetJson.fingerprint(repo.load(existing.id).source).equals(savedSource),"Creating a new name does not rewrite the existing user profile");
+            check(copyDraft.source().getString("setting_id").equals("existing-user-id"),"Creating a new name does not rewrite the existing user draft");
+            rejects(()->repo.saveAs(copyDraft,"Existing identity"),"Duplicate Save As still rejects the conflicting name");
+            check(copyDraft.source().getString("setting_id").equals("existing-user-id"),"Failed Save As keeps its source draft identity intact");
+        }
     }
     private static void testProject(File root) throws Exception {
         File original=new File(root,"original.3mf"),modified=new File(root,"modified.3mf");byte[] geometry=new byte[1_048_577];for(int i=0;i<geometry.length;i++)geometry[i]=(byte)(i*31);byte[] unknown="unknown entry\u0000payload".getBytes(StandardCharsets.UTF_8);
