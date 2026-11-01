@@ -1,0 +1,169 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 56ce42f5..0dd296bd 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -110,6 +110,10 @@ endif()
+ 
+ option(SLIC3R_STATIC            "Compile OrcaSlicer with static libraries (Boost, TBB)" ${SLIC3R_STATIC_INITIAL})
+ option(SLIC3R_GUI               "Compile OrcaSlicer with GUI components (OpenGL, wxWidgets)" 1)
++option(ORCA_ANDROID_ENGINE_ONLY "Experimental Android libslic3r-only build; no CLI, GUI, or packaging" OFF)
++if (ORCA_ANDROID_ENGINE_ONLY AND (NOT ANDROID OR SLIC3R_GUI))
++    message(FATAL_ERROR "ORCA_ANDROID_ENGINE_ONLY requires Android and SLIC3R_GUI=OFF")
++endif()
+ option(SLIC3R_CAD               "Compile OrcaSlicer with the parametric Design/CAD tab (needs OCCT ModelingAlgorithms)" 1)
+ option(SLIC3R_FHS               "Assume OrcaSlicer is to be installed in a FHS directory structure" 0)
+ option(SLIC3R_PROFILE           "Compile OrcaSlicer with an invasive Shiny profiler" 0)
+@@ -152,7 +156,7 @@ if(ORCA_BUNDLED_UV_EXECUTABLE MATCHES "/\\.uv/")
+     set(ORCA_BUNDLED_UV_EXECUTABLE "" CACHE FILEPATH "Path to the auto-downloaded uv executable" FORCE)
+ endif()
+ 
+-if(NOT ORCA_BUNDLED_UV_EXECUTABLE)
++if(NOT ORCA_BUNDLED_UV_EXECUTABLE AND NOT ORCA_ANDROID_ENGINE_ONLY)
+     if(NOT EXISTS "${ORCA_UV_BINARY}")
+         # Select uv by TARGET arch. On macOS universal builds each leg sets a single
+         # CMAKE_OSX_ARCHITECTURES (and the x86_64 leg cross-builds on an arm64 runner),
+@@ -893,6 +897,11 @@ endif()
+ find_package(EXPAT)
+ 
+ if (NOT EXPAT_FOUND)
++    if (ORCA_ANDROID_ENGINE_ONLY)
++        # deps_src adds the real bundled expat target later in this configure.
++        set(EXPAT_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/deps_src/expat")
++        set(EXPAT_LIBRARIES expat)
++    else()
+     add_library(expat STATIC
+         ${LIBDIR}/expat/xmlparse.c
+         ${LIBDIR}/expat/xmlrole.c
+@@ -901,10 +910,13 @@ if (NOT EXPAT_FOUND)
+     set(EXPAT_FOUND 1)
+     set(EXPAT_INCLUDE_DIRS ${LIBDIR}/expat/)
+     set(EXPAT_LIBRARIES expat)
++    endif()
++    set(EXPAT_FOUND 1)
+ endif ()
+ 
+ find_package(PNG REQUIRED)
+ 
++if (NOT ORCA_ANDROID_ENGINE_ONLY)
+ set(OpenGL_GL_PREFERENCE "LEGACY")
+ find_package(OpenGL REQUIRED)
+ 
+@@ -913,6 +925,7 @@ if(APPLE AND CMAKE_VERSION VERSION_GREATER_EQUAL "4.0")
+ endif()
+ 
+ find_package(glfw3 REQUIRED)
++endif()
+ 
+ # Find the Cereal serialization library
+ find_package(cereal REQUIRED)
+@@ -965,6 +978,8 @@ endforeach()
+ 
+ find_package(NLopt 1.4 REQUIRED)
+ 
++# The desktop GUI embeds Python. It is not linked by libslic3r.
++if (NOT ORCA_ANDROID_ENGINE_ONLY)
+ # Use bundled Python from deps instead of system Python
+ set(_bundled_python_version "3.12.13")
+ set(_bundled_python_abi "312")
+@@ -1044,6 +1059,7 @@ add_library(pybind11_embed INTERFACE)
+ target_link_libraries(pybind11_embed INTERFACE pybind11_headers Python3::Python)
+ target_compile_definitions(pybind11_embed INTERFACE PYBIND11_SIMPLE_GIL_MANAGEMENT)
+ add_library(pybind11::embed ALIAS pybind11_embed)
++endif()
+ 
+ 
+ if(SLIC3R_STATIC)
+@@ -1256,6 +1272,10 @@ elseif (MSVC AND NOT IS_CLANG_CL)
+ endif ()
+ 
+ add_subdirectory(src)
++if (ORCA_ANDROID_ENGINE_ONLY)
++    # The desktop executable, installer and resources are not part of this target.
++    return()
++endif()
+ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT OrcaSlicer_app_gui)
+ 
+ add_dependencies(gettext_make_pot hintsToPot)
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index c8d882f2..e3c31f54 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -13,6 +13,25 @@ find_package(libnoise REQUIRED)
+ 
+ add_subdirectory(libslic3r)
+ 
++if (ORCA_ANDROID_ENGINE_ONLY)
++    # OrcaSlicer.cpp includes wxWidgets and GLFW, including CLI thumbnail code.
++    # This experimental target exposes only libslic3r; it does not build the CLI.
++    set(KEPLER_SLICE_JNI "" CACHE FILEPATH "Optional experimental JNI bridge source")
++    if (KEPLER_SLICE_JNI)
++        if (NOT EXISTS "${KEPLER_SLICE_JNI}")
++            message(FATAL_ERROR "KEPLER_SLICE_JNI does not exist: ${KEPLER_SLICE_JNI}")
++        endif()
++        add_library(kepler_slicer_experimental SHARED "${KEPLER_SLICE_JNI}")
++        get_filename_component(_kepler_jni_dir "${KEPLER_SLICE_JNI}" DIRECTORY)
++        target_sources(kepler_slicer_experimental PRIVATE
++            "${_kepler_jni_dir}/nanosvg_impl.cpp" "${_kepler_jni_dir}/system_profile_config.cpp" "${_kepler_jni_dir}/process_settings.cpp")
++        target_include_directories(kepler_slicer_experimental PRIVATE
++            "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/deps_src/nanosvg")
++        target_link_libraries(kepler_slicer_experimental PRIVATE libslic3r)
++    endif()
++    return()
++endif()
++
+ if (SLIC3R_GUI)
+     add_subdirectory(glad)
+     # imgui, imguizmo, and hidapi are now included from deps_src
+diff --git a/src/libslic3r/CMakeLists.txt b/src/libslic3r/CMakeLists.txt
+index 034f8b57..996ca217 100644
+--- a/src/libslic3r/CMakeLists.txt
++++ b/src/libslic3r/CMakeLists.txt
+@@ -625,7 +625,12 @@ cmake_policy(SET CMP0011 NEW)
+ # can't reach it; the default opts its Boost lookup into BoostConfig (CMP0167).
+ set(CMAKE_POLICY_DEFAULT_CMP0167 NEW)
+ find_package(CGAL 6.2 REQUIRED)
+-find_package(OpenCV REQUIRED core)
++if (ORCA_ANDROID_ENGINE_ONLY)
++    # The Android dependency build supplies OpenCV as opencv_world, not opencv_core.
++    find_package(OpenCV REQUIRED COMPONENTS world)
++else()
++    find_package(OpenCV REQUIRED core)
++endif()
+ find_package(assimp REQUIRED)
+ unset(CMAKE_POLICY_DEFAULT_CMP0167)
+ cmake_policy(POP)
+@@ -665,12 +670,22 @@ endif ()
+ # Lets CGAL algorithms given CGAL::Parallel_if_available_tag run on TBB.
+ target_compile_definitions(libslic3r_cgal PRIVATE CGAL_LINKED_WITH_TBB)
+ target_link_libraries(libslic3r_cgal PRIVATE ${_cgal_tgt} admesh libigl mcut boost_libs TBB::tbb)
++if (ORCA_ANDROID_ENGINE_ONLY)
++    # TextureToColor.cpp also includes CGAL headers directly, so it needs the
++    # target's include directories and dependencies in the cross build.
++    target_link_libraries(libslic3r PRIVATE ${_cgal_tgt})
++endif()
+ 
+ if (MSVC AND "${CMAKE_SIZEOF_VOID_P}" STREQUAL "4") # 32 bit MSVC workaround
+     target_compile_definitions(libslic3r_cgal PRIVATE CGAL_DO_NOT_USE_MPZF)
+ endif ()
+ 
+-encoding_check(libslic3r)
++if (NOT ORCA_ANDROID_ENGINE_ONLY)
++    # The encoding-check executable is a host tool; the cross-compiled Android
++    # executable cannot run during a Windows-host build. Run source checks on
++    # the host separately for this experimental configuration.
++    encoding_check(libslic3r)
++endif()
+ 
+ target_compile_definitions(libslic3r PUBLIC -DUSE_TBB -DTBB_USE_CAPTURED_EXCEPTION=0)
+ # CGAL changes Kd_tree's member layout when TBB is enabled. Match libslic3r_cgal
+@@ -683,7 +698,9 @@ target_include_directories(libslic3r PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE
+ target_include_directories(libslic3r SYSTEM PUBLIC ${EXPAT_INCLUDE_DIRS})
+ 
+ # Find the OCCT and related libraries
+-set(OpenCASCADE_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/occt")
++if (NOT ORCA_ANDROID_ENGINE_ONLY)
++    set(OpenCASCADE_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/occt")
++endif()
+ find_package(OpenCASCADE REQUIRED)
+ target_include_directories(libslic3r SYSTEM PUBLIC ${OpenCASCADE_INCLUDE_DIR})
+ 
