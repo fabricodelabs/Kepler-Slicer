@@ -29,6 +29,7 @@
     <string name="glass_unit_mm">mm</string>
     <string name="glass_unit_mm_percent" formatted="false">mm or %</string>
     <string name="glass_unit_seconds">sec</string>
+    <string name="glass_seconds_value">%1$s sec</string>
     <string name="glass_choose_value">Choose a value</string>
     <string name="glass_info_title">About this example</string>
     <string name="glass_info_body">This control demonstrates a setting row. It does not change the current print configuration.</string>
@@ -111,7 +112,7 @@
     <string name="glass_back">Back to component gallery</string>
     <string name="glass_single_instance">Allow only one OrcaSlicer instance</string>
     <string name="glass_recent_models">Add STL/STEP files to recent files list</string>
-    <string name="glass_no_warning">Don’t warn when loading 3MF with modified G-code</string>
+    <string name="glass_no_warning">Donâ€™t warn when loading 3MF with modified G-code</string>
     <string name="glass_import_step">Show options when importing STEP file</string>
     <string name="glass_preset">Preset</string>
     <string name="glass_remember_printer">Remember printer configuration</string>
