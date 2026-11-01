@@ -37,12 +37,17 @@ final class CompatibilityResources {
         return prepareTriple(context, vendor, processVendor, null);
     }
     static synchronized CompatibilityResources prepareTriple(Context context, String vendor, String processVendor, String filamentVendor) throws IOException {
+        return prepareTriple(context,vendor,processVendor,filamentVendor,SettingsState.capture(context));
+    }
+    static synchronized CompatibilityResources prepareTriple(Context context, String vendor, String processVendor, String filamentVendor, SettingsState.Snapshot snapshot) throws IOException {
         requireVendor(vendor);
         Set<String> vendors = new LinkedHashSet<>(); vendors.add(vendor); vendors.add("OrcaFilamentLibrary");
         if (processVendor != null && !processVendor.isEmpty()) { requireVendor(processVendor); vendors.add(processVendor); }
         if (filamentVendor != null && !filamentVendor.isEmpty()) { requireVendor(filamentVendor); vendors.add(filamentVendor); }
+        if(snapshot==null)throw new IOException("Missing immutable settings snapshot");
+        for(String overlayVendor:snapshot.vendors()){requireVendor(overlayVendor);vendors.add(overlayVendor);}
         File parent = new File(context.getCacheDir(), "orca-compat-6d2869c4"); mkdir(parent);
-        File finalRoot = new File(parent, key(vendors));
+        File finalRoot = new File(parent, key(vendors)+"-"+snapshot.fingerprint);
         if (new File(finalRoot,".complete").isFile()) return new CompatibilityResources(finalRoot);
         File staging = new File(parent, "staging-" + UUID.randomUUID()); mkdir(staging);
         boolean complete = false;
@@ -84,6 +89,7 @@ final class CompatibilityResources {
                 }
                 if (!found) throw new IOException("Не найден файл совместимости Orca.");
             }
+            snapshot.install(new File(staging,"data"));
             if (!new File(staging,".complete").createNewFile()) throw new IOException("Не удалось подготовить профили.");
             if (!staging.renameTo(finalRoot)) throw new IOException("Не удалось сохранить кэш профилей.");
             complete = true; return new CompatibilityResources(finalRoot);

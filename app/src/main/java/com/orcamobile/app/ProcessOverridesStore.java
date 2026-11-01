@@ -16,33 +16,47 @@ final class ProcessOverridesStore {
     private static final Object LOCK = new Object();
     interface SelectionWrite { void commit() throws IOException; }
     static final class Identity {
-        final String fingerprint, printerName, processName, filamentName;
+        final String fingerprint, legacyFingerprint, priorProfileFingerprint, printerName, processName, filamentName;
         final OrcaProfileCatalog.Profile printer;
         final OrcaProcessFilamentCatalog.Profile process, filament;
-        private Identity(String fingerprint, OrcaProfileCatalog.Profile printer, OrcaProcessFilamentCatalog.Profile process,
-                         OrcaProcessFilamentCatalog.Profile filament) {
-            this.fingerprint = fingerprint; this.printer = printer; this.process = process; this.filament = filament;
+        final SettingsState.Snapshot profileSettings;
+        final ObjectSettingsStore.Snapshot objectSettings;
+        private Identity(String fingerprint, String legacyFingerprint, String priorProfileFingerprint, OrcaProfileCatalog.Profile printer, OrcaProcessFilamentCatalog.Profile process,
+                         OrcaProcessFilamentCatalog.Profile filament, SettingsState.Snapshot profileSettings, ObjectSettingsStore.Snapshot objectSettings) {
+            this.fingerprint = fingerprint; this.legacyFingerprint = legacyFingerprint; this.priorProfileFingerprint = priorProfileFingerprint; this.printer = printer; this.process = process; this.filament = filament;
             this.printerName = printer.name; this.processName = process.name; this.filamentName = filament.name;
+            this.profileSettings=profileSettings;
+            this.objectSettings=objectSettings;
         }
         static Identity capture(Context context) throws IOException {
             OrcaProfileCatalog.Profile p = OrcaProfileCatalog.loadSelection(context);
             OrcaProcessFilamentCatalog.Profile process = OrcaProcessFilamentCatalog.loadSelection(context, OrcaProcessFilamentCatalog.PROCESS);
             OrcaProcessFilamentCatalog.Profile filament = OrcaProcessFilamentCatalog.loadSelection(context, OrcaProcessFilamentCatalog.FILAMENT);
             if (p == null || p.imported || process == null || filament == null) throw new IOException("Сначала выберите системные профили принтера, процесса и материала.");
-            String[] fields = {OrcaProfileCatalog.UPSTREAM_REVISION, p.vendor, p.name, p.path,
-                    process.vendor, process.name, process.path, filament.vendor, filament.name, filament.path};
+            SettingsState.Snapshot profileSettings=SettingsState.capture(context);
+            requireMatchingOverlay(profileSettings,"printer",p.vendor,p.name,p.path);
+            requireMatchingOverlay(profileSettings,"process",process.vendor,process.name,process.path);
+            requireMatchingOverlay(profileSettings,"filament",filament.vendor,filament.name,filament.path);
+            ObjectSettingsStore.Snapshot objectSettings=ObjectSettingsStore.snapshot(context);
+            String[] triple={OrcaProfileCatalog.UPSTREAM_REVISION,p.vendor,p.name,p.path,
+                    process.vendor,process.name,process.path,filament.vendor,filament.name,filament.path};
+            String legacy=hash(triple);
+            String[] prior=java.util.Arrays.copyOf(triple,triple.length+1);prior[triple.length]=profileSettings.fingerprint;
+            String[] full=java.util.Arrays.copyOf(prior,prior.length+1);full[prior.length]=objectSettings.fingerprint;
+            return new Identity(hash(full),legacy,hash(prior),p,process,filament,profileSettings,objectSettings);
+        }
+        private static void requireMatchingOverlay(SettingsState.Snapshot snapshot,String kind,String vendor,String name,String path)throws IOException {
+            SettingsState.Overlay overlay=snapshot.overlays.get(kind);
+            if(overlay==null||!name.equals(overlay.name)||!path.equals(overlay.path)||!vendor.equals(SettingsState.requireOverlayPath(kind,overlay.path)))
+                throw new IOException("Профили изменились при подготовке снимка. Повторите операцию.");
+        }
+        private static String hash(String[] fields)throws IOException {
             try {
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                for (String field : fields) {
-                    if (field == null || field.isEmpty()) throw new IOException("Выбран неполный профиль.");
-                    byte[] bytes = field.getBytes(StandardCharsets.UTF_8);
-                    int n = bytes.length;
-                    digest.update((byte)(n >>> 24)); digest.update((byte)(n >>> 16)); digest.update((byte)(n >>> 8)); digest.update((byte)n); digest.update(bytes);
-                }
-                StringBuilder result = new StringBuilder(64);
-                for (byte b : digest.digest()) result.append(String.format(java.util.Locale.ROOT, "%02x", b & 255));
-                return new Identity(result.toString(), p, process, filament);
-            } catch (NoSuchAlgorithmException e) { throw new IOException("Не удалось проверить выбранные профили.", e); }
+                MessageDigest digest=MessageDigest.getInstance("SHA-256");
+                for(String field:fields){if(field==null||field.isEmpty())throw new IOException("Выбран неполный профиль.");byte[] bytes=field.getBytes(StandardCharsets.UTF_8);int n=bytes.length;digest.update((byte)(n>>>24));digest.update((byte)(n>>>16));digest.update((byte)(n>>>8));digest.update((byte)n);digest.update(bytes);}
+                StringBuilder result=new StringBuilder(64);for(byte b:digest.digest())result.append(String.format(java.util.Locale.ROOT,"%02x",b&255));return result.toString();
+            }catch(NoSuchAlgorithmException e){throw new IOException("Не удалось проверить выбранные профили.",e);}
+
         }
     }
 
@@ -52,11 +66,14 @@ final class ProcessOverridesStore {
             if (!Identity.capture(context).fingerprint.equals(expected.fingerprint)) throw new IOException("Выбор профилей изменился. Откройте параметры снова.");
             SharedPreferences p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             String id = p.getString(ID, "");
-            if (!expected.fingerprint.equals(id)) {
-                if (id != null && !id.isEmpty() && !p.edit().clear().commit()) throw new IOException("Не удалось сбросить параметры для другого профиля.");
-                return "{}";
+            boolean same=expected.legacyFingerprint.equals(id);
+            boolean migrate=expected.priorProfileFingerprint.equals(id)||expected.fingerprint.equals(id);
+            if (!same&&!migrate) return "{}";
+            String stored=validateStoredJson(p.getString(JSON, "{}"));
+            if(migrate&&!p.edit().putString(ID,expected.legacyFingerprint).commit()){
+                p.edit().putString(ID,id).apply();throw new IOException("Не удалось перенести сохранённые параметры процесса.");
             }
-            return validateStoredJson(p.getString(JSON, "{}"));
+            return stored;
         }
     }
     static final class Snapshot {
@@ -72,8 +89,13 @@ final class ProcessOverridesStore {
     /** Both locks are acquired in process→model order; selection writers use the same locks. */
     static String currentResultFingerprint(Context context) throws IOException {
         synchronized (LOCK) {
-            Snapshot snapshot = snapshotForSlice(context);
-            return ResultFingerprint.of(CurrentModelStore.selectionKey(context), snapshot.identity.fingerprint, snapshot.overrides);
+            for(int attempt=0;attempt<3;attempt++){
+                Snapshot snapshot=snapshotForSlice(context);String modelKey=CurrentModelStore.selectionKey(context);
+                ObjectSettingsStore.Snapshot object=snapshot.identity.objectSettings;
+                if(modelKey.startsWith(object.modelFileName+"\n")&&modelKey.endsWith("\n"+object.plateIndex)&&modelKey.equals(CurrentModelStore.selectionKey(context)))
+                    return ResultFingerprint.of(modelKey,snapshot.identity.fingerprint,snapshot.overrides);
+            }
+            throw new IOException("Модель или стол изменились при проверке результата. Повторите операцию.");
         }
     }
     static void save(Context context, Identity expected, String overrides) throws IOException {
@@ -82,7 +104,7 @@ final class ProcessOverridesStore {
             String validated = validateStoredJson(overrides);
             SharedPreferences p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             String oldId = p.getString(ID, ""), oldJson = p.getString(JSON, "{}");
-            if (!p.edit().putString(ID, expected.fingerprint).putString(JSON, validated).commit()) {
+            if (!p.edit().putString(ID, expected.legacyFingerprint).putString(JSON, validated).commit()) {
                 p.edit().putString(ID, oldId).putString(JSON, oldJson).apply();
                 throw new IOException("Не удалось сохранить параметры процесса.");
             }
@@ -96,9 +118,12 @@ final class ProcessOverridesStore {
      * the matching profile selection; otherwise a mixed snapshot is possible.
      */
     static void changeSelection(Context context, SelectionWrite operation) throws IOException {
+        changeSelection(context,true,operation);
+    }
+    static void changeSelection(Context context, boolean clearLegacy, SelectionWrite operation) throws IOException {
         synchronized (LOCK) {
-            SharedPreferences p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            if (!p.edit().clear().commit()) throw new IOException("Не удалось сбросить параметры перед сменой профиля.");
+            if(clearLegacy){SharedPreferences p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE);
+                if(!p.edit().clear().commit())throw new IOException("Не удалось сбросить параметры перед сменой профиля.");}
             operation.commit();
         }
     }
