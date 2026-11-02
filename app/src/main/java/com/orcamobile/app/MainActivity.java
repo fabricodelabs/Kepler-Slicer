@@ -65,19 +65,22 @@ public class MainActivity extends Activity {
     private Uri pendingUri;
     private boolean loadingMesh;
     private int loadSequence;
+    private CurrentModelStore pendingPrepared;
 
     @Override public void onCreate(Bundle state) {
         MdUi.prepare(this); super.onCreate(state);
         if (state != null) {selected = state.getInt("tab", 0);pendingLayerPreview=state.getBoolean("pending_layer_preview",false);}
         render();
-        if (state != null && state.getString("pending_model_uri") != null) loadStl(Uri.parse(state.getString("pending_model_uri")));
-        else restoreModel();
+        if (state != null && state.getString("pending_model_uri") != null) loadModelUri(Uri.parse(state.getString("pending_model_uri")));
+        else if(GeneralPreferences.modelUri(getIntent())==null)restoreModel();
         dispatchNavigationIntent(getIntent());
     }
 
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); dispatchNavigationIntent(intent); }
     private void dispatchNavigationIntent(Intent intent) {
         if(intent==null)return;
+        Uri external=GeneralPreferences.modelUri(intent);if(external!=null){intent.setData(null);intent.removeExtra(Intent.EXTRA_STREAM);intent.setClipData(null);loadStl(external);return;}
+        if(intent.getBooleanExtra("general_start_home",false)){intent.removeExtra("general_start_home");chooseStl();return;}
         if(intent.getBooleanExtra("kepler_show_layers",false)){intent.removeExtra("kepler_show_layers");pendingLayerPreview=true;maybeOpenRequestedLayers();}
         if (!intent.hasExtra("kepler_nav")) return;
         int target = intent.getIntExtra("kepler_nav", 0); intent.removeExtra("kepler_nav");
@@ -97,6 +100,8 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         visibleWorkspace = true;
+        String storedFile=getSharedPreferences("current_model",0).getString("file","");
+        if(!loadingMesh&&!storedFile.isEmpty()&&!storedFile.equals(meshFileName)){restoreModel();}
         if (refreshAfterResume) { loadedBed = null; bedPending = false; ++bedGeneration; }
         if (refreshAfterResume && (activeTransformEditor == null || !activeTransformEditor.isShowing())) render();
         else {
@@ -108,7 +113,7 @@ public class MainActivity extends Activity {
         if (stlView != null) stlView.onResume();
         maybeOpenRequestedLayers();
     }
-    @Override protected void onDestroy() { cancelLayerWork(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
+    @Override protected void onDestroy() { if(pendingPrepared!=null){pendingPrepared.discard();pendingPrepared=null;}cancelLayerWork(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
 
     private void chooseStl() {
         startActivityForResult(new Intent(this, ImportActivity.class), REQUEST_IMPORT);
@@ -117,12 +122,24 @@ public class MainActivity extends Activity {
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
         if(request==REQUEST_MODEL_DETAILS){restoreModel();return;}
-        if (request == PICK_PRINTER || request == PICK_PROCESS || request == PICK_FILAMENT) { if (result == RESULT_OK) render(); return; }
+        if (request == PICK_PRINTER || request == PICK_PROCESS || request == PICK_FILAMENT) { if (result == RESULT_OK) {render();ControlPreferences.scheduleAutoSlice(this);} return; }
         if ((request != OPEN_STL && request != REQUEST_IMPORT) || result != RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
         selected = 0; loadStl(uri);
     }
     private void loadStl(Uri uri) {
+        if(getSharedPreferences("current_model",0).getString("file","").isEmpty()){loadModelUri(uri);return;}
+        String choice=GeneralPreferences.prefs(this).getString(GeneralPreferences.CHOICE_PROJECT,"ask");
+        if("replace".equals(choice)){loadModelUri(uri);return;}
+        if("backup_replace".equals(choice)){backupThenLoad(uri);return;}
+        android.widget.CheckBox remember=new android.widget.CheckBox(this);remember.setText(R.string.general_remember_choice);
+        MdUi.alert(this).setTitle(R.string.general_replace_title).setMessage(R.string.general_replace_detail).setView(remember)
+                .setPositiveButton(R.string.general_replace_backup,(d,w)->{if(remember.isChecked())GeneralPreferences.prefs(this).edit().putString(GeneralPreferences.CHOICE_PROJECT,"backup_replace").apply();backupThenLoad(uri);})
+                .setNeutralButton(R.string.general_replace,(d,w)->{if(remember.isChecked())GeneralPreferences.prefs(this).edit().putString(GeneralPreferences.CHOICE_PROJECT,"replace").apply();loadModelUri(uri);})
+                .setNegativeButton(R.string.general_project_cancel,null).show();
+    }
+    private void backupThenLoad(Uri uri){new Thread(()->{try{GeneralPreferences.backupNow(this);runOnUiThread(()->{if(!isDestroyed())loadModelUri(uri);});}catch(Exception e){runOnUiThread(()->{if(!isDestroyed())dialog(getString(R.string.general_replace_title),e.getMessage());});}},"backup-before-import").start();}
+    private void loadModelUri(Uri uri) {
         final int sequence = ++loadSequence;
         pendingUri = uri; loadingMesh = true; render();
         new Thread(() -> {
@@ -132,23 +149,13 @@ public class MainActivity extends Activity {
                     if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) name = cursor.getString(0);
                 } catch (RuntimeException ignored) { }
                 try { mime=getContentResolver().getType(uri); } catch(RuntimeException ignored) { }
+                if(name!=null&&(name.toLowerCase(java.util.Locale.ROOT).endsWith(".step")||name.toLowerCase(java.util.Locale.ROOT).endsWith(".stp")))throw new java.io.IOException(getString(R.string.general_step_blocked));
                 name=ModelFilename.normalize(name,uri.getLastPathSegment(),mime);
                 CurrentModelStore prepared = CurrentModelStore.prepare(this, uri, name);
+                GeneralProjectPolicy policy=GeneralProjectPolicy.inspect(prepared.metadata);
                 runOnUiThread(() -> {
                     if (isDestroyed() || sequence != loadSequence) { prepared.discard(); return; }
-                    try {
-                        prepared.publish(this);
-                        RecentModels.remember(getApplicationContext(), uri, prepared.name, prepared.mesh);
-                        mesh = prepared.mesh; meshName = prepared.name; meshFileName = prepared.file.getName(); modelTransform = prepared.transform; modelMetadata=prepared.metadata;
-                        pendingUri = null; loadingMesh = false; render();
-                        if(prepared.file.getName().endsWith(".obj")) dialog("Материалы OBJ", "Загружена геометрия OBJ. Внешние файлы материалов .mtl и текстуры пока не импортируются; цвета и связанные настройки могут отсутствовать.");
-                        else if(prepared.metadata!=null && prepared.metadata.optBoolean("mapping_unresolved",false)) dialog("Пластина не определена", "В предпросмотре показаны все объекты проекта: соответствие экземпляров пластине определить не удалось. Нарезка недоступна.");
-                        else if(prepared.metadata!=null && prepared.metadata.optInt("non_printable_instances",0)>0) dialog("Объекты на столе", "Непечатаемые экземпляры видны в предпросмотре, но не попадут в нарезку. Исходный проект сохранён.");
-                    } catch (java.io.IOException e) {
-                        prepared.discard(); pendingUri = null; loadingMesh = false; render();
-                        if (mesh == null) restoreModel();
-                        dialog("Не удалось сохранить STL", e.getMessage());
-                    }
+                    reviewPreparedImport(prepared,uri,sequence,policy);
                 });
             } catch (Exception e) {
                 final String message = e.getMessage() == null ? "Не удалось прочитать файл." : e.getMessage();
@@ -160,6 +167,30 @@ public class MainActivity extends Activity {
                 });
             }
         }, "stl-loader").start();
+    }
+
+    private void reviewPreparedImport(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy){
+        if(pendingPrepared!=null&&pendingPrepared!=prepared)pendingPrepared.discard();pendingPrepared=prepared;
+        Runnable accept=()->publishPreparedImport(prepared,uri,sequence,policy);
+        Runnable project=()->{String mode=GeneralPreferences.projectLoadBehaviour(this);boolean ask=policy.needsDecision(mode);
+            if(!ask){accept.run();return;}
+            int message=policy.settingsPresent?("load_all".equals(mode)?R.string.general_project_load_all_blocked:R.string.general_project_config_blocked):R.string.general_project_no_config;
+            MdUi.alert(this).setTitle(R.string.general_project_title).setMessage(message).setPositiveButton(R.string.general_project_geometry,(d,w)->accept.run()).setNegativeButton(R.string.general_project_cancel,(d,w)->cancelPreparedImport(prepared,sequence)).setOnCancelListener(d->cancelPreparedImport(prepared,sequence)).show();};
+        if(policy.customCodePresent&&!GeneralPreferences.suppressModifiedGcodeWarning(this)){
+            android.widget.CheckBox suppress=new android.widget.CheckBox(this);suppress.setText(R.string.phase2_preferences_gcode_warning);
+            MdUi.alert(this).setTitle(R.string.general_modified_gcode_title).setMessage(R.string.general_modified_gcode_detail).setView(suppress).setPositiveButton(R.string.general_continue,(d,w)->{if(suppress.isChecked())GeneralPreferences.prefs(this).edit().putBoolean("no_warn_when_modified_gcodes",true).apply();project.run();}).setNegativeButton(R.string.general_project_cancel,(d,w)->cancelPreparedImport(prepared,sequence)).setOnCancelListener(d->cancelPreparedImport(prepared,sequence)).show();
+        }else project.run();
+    }
+    private void cancelPreparedImport(CurrentModelStore prepared,int sequence){prepared.discard();if(pendingPrepared==prepared)pendingPrepared=null;if(sequence==loadSequence){pendingUri=null;loadingMesh=false;render();if(mesh==null)restoreModel();}}
+    private void publishPreparedImport(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy){
+        if(isDestroyed()||sequence!=loadSequence){prepared.discard();return;}
+        try{prepared.publish(this);if(pendingPrepared==prepared)pendingPrepared=null;RecentModels.remember(getApplicationContext(),uri,prepared.name,prepared.mesh);mesh=prepared.mesh;meshName=prepared.name;meshFileName=prepared.file.getName();modelTransform=prepared.transform;modelMetadata=prepared.metadata;pendingUri=null;loadingMesh=false;render();
+            if(prepared.file.getName().endsWith(".obj"))dialog("Материалы OBJ","Загружена геометрия OBJ. Внешние файлы материалов .mtl и текстуры пока не импортируются; цвета и связанные настройки могут отсутствовать.");
+            else if(policy.settingsPresent)dialog(getString(R.string.general_project_title),getString(R.string.general_project_config_blocked));
+            else if(prepared.metadata!=null&&prepared.metadata.optBoolean("mapping_unresolved",false))dialog("Пластина не определена","Нельзя определить соответствие объектов пластине. Исходный проект сохранён; нарезка недоступна.");
+            else if(prepared.metadata!=null&&prepared.metadata.optInt("non_printable_instances",0)>0)dialog("Объекты на столе","Непечатаемые экземпляры видны в предпросмотре, но не попадут в нарезку.");
+            if(!policy.settingsPresent&&canSliceModel())ControlPreferences.scheduleAutoSlice(this);
+        }catch(java.io.IOException e){prepared.discard();pendingUri=null;loadingMesh=false;render();if(mesh==null)restoreModel();dialog("Не удалось сохранить модель",e.getMessage());}
     }
 
     private void restoreModel() {
@@ -345,7 +376,7 @@ public class MainActivity extends Activity {
             CurrentModelStore.saveTransform(this,expected,next);modelTransform=next;dragReady(view,transform,move,false);
             view.setModelTransform(next,error->{
                 if(isDestroyed()||stlView!=view)return;
-                if(error==null){dragReady(view,transform,move,true);return;}
+                if(error==null){dragReady(view,transform,move,true);ControlPreferences.scheduleAutoSlice(this);return;}
                 try{CurrentModelStore.saveTransform(this,expected,old);modelTransform=old;}
                 catch(Exception rollback){view.discardPendingMove();dialog("Ошибка сохранения",rollback.getMessage());return;}
                 view.setModelTransform(old,restoreError->{if(isDestroyed()||stlView!=view)return;dragReady(view,transform,move,restoreError==null);});
@@ -574,7 +605,7 @@ public class MainActivity extends Activity {
                         try {
                             if (error != null) throw new IllegalArgumentException(error.getMessage());
                             CurrentModelStore.saveTransform(this, currentFile, next);
-                            modelTransform = next; editor.dismiss(); render();
+                            modelTransform = next; editor.dismiss(); render();ControlPreferences.scheduleAutoSlice(this);
                         } catch (Exception e) {
                             view.setModelTransform(old, ignored2 -> { });
                             editor.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);

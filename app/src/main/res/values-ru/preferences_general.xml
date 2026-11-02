@@ -1,0 +1,31 @@
+<resources>
+    <string name="general_starting">Открываем рабочее поле…</string>
+    <string name="general_all_user_filaments">Пользовательские материалы</string>
+    <string name="general_folder_invalid">Выберите папку в системном окне Android.</string>
+    <string name="general_folder_read_only">В выбранную папку нельзя записывать файлы.</string>
+    <string name="general_folder_permission">Android не смог сохранить доступ к этой папке.</string>
+    <string name="general_folder_not_saved">Не удалось сохранить выбранную папку.</string>
+    <string name="general_folder_system">Выбор папки системой</string>
+    <string name="general_folder_selected">Выбранная папка документов</string>
+    <string name="general_backup_none">Резервных копий модели пока нет</string>
+    <string name="general_backup_status">Копия модели: %1$s, %2$s</string>
+    <string name="general_backup_missing">Резервная копия модели недоступна.</string>
+    <string name="general_backup_error">Не удалось завершить резервное копирование: %1$s</string>
+    <string name="general_project_title">Открыть проект 3MF</string>
+    <string name="general_project_geometry">Открыть предпросмотр геометрии</string>
+    <string name="general_project_cancel">Отмена</string>
+    <string name="general_project_config_blocked">В проекте есть настройки принтера, материала или процесса. Текущий нативный интерфейс не умеет применять всю конфигурацию проекта. Оригинал сохранён. Предпросмотр геометрии использует выбранные профили; ограничения нарезки остаются.</string>
+    <string name="general_project_no_config">Сохранить текущие профили принтера, материала и процесса и открыть геометрию проекта?</string>
+    <string name="general_project_load_all_blocked">Загрузить всё можно только через полный API конфигурации проекта, которого нет в текущем нативном интерфейсе. Выберите предпросмотр геометрии или отмену.</string>
+    <string name="general_replace_title">Заменить текущую модель?</string>
+    <string name="general_replace_detail">Текущая модель будет заменена. Сначала можно сохранить резервную копию исходного файла, выбранной пластины и размещения.</string>
+    <string name="general_replace_backup">Создать копию и заменить</string>
+    <string name="general_replace">Заменить</string>
+    <string name="general_remember_choice">Запомнить выбор</string>
+    <string name="general_modified_gcode_title">В проекте есть пользовательский G-code</string>
+    <string name="general_modified_gcode_detail">В проекте есть поля или вставки G-code. Этот интерфейс Android не может проверить их эквивалентность настольной Orca. При открытии предпросмотра команды не выполняются. Проверьте проект перед нарезкой.</string>
+    <string name="general_continue">Продолжить</string>
+    <string name="general_step_blocked">В текущем JNI нет импорта STEP и параметров его триангуляции. Чтобы эти настройки влияли на импорт, необходимо согласовать изменение нативного интерфейса.</string>
+    <string name="general_associations_info">Kepler принимает STL, OBJ и 3MF через «Открыть с помощью» и «Поделиться» Android. Ниже можно выбрать файл для открытия. Приложения по умолчанию назначает Android; этот экран не меняет чужие ассоциации.</string>
+    <string name="general_association_wrong_type">Для этого действия выберите модель %1$s.</string>
+</resources>

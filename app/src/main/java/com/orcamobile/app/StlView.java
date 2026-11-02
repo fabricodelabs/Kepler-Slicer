@@ -19,19 +19,21 @@ final class StlView extends GLSurfaceView {
     private final float orbitSpeed;
     private final float moveSpeed, density;
     private final boolean reverseZoom;
+    private final boolean zoomToGesture,freeCamera,swapGestures,touchpad;
     private final java.util.concurrent.atomic.AtomicInteger transformRevision = new java.util.concurrent.atomic.AtomicInteger();
     private final java.util.concurrent.atomic.AtomicInteger pathRevision = new java.util.concurrent.atomic.AtomicInteger();
     private volatile BedGeometry bed;
     private volatile boolean volumeReady;
     private volatile ModelTransform currentTransform = ModelTransform.identity();
-    private float lastX, lastY, lastDistance;
+    private float lastX, lastY, lastDistance,lastMidX,lastMidY,lastHoverX,lastHoverY;
+    private int mouseAction,hoverAction;
     private boolean moveMode, dragging, pinchGesture;
     private volatile boolean toolpathMode;
     private double dragStartX, dragStartY;
     private ModelTransform dragBase;
     private MoveCallback moveCallback;
     interface MoveCallback { void completed(ModelTransform transform); }
-    void setMoveMode(boolean enabled, MoveCallback callback) { cancelDrag(); moveMode=enabled&&!toolpathMode; moveCallback=callback; setContentDescription(moveMode ? "Трёхмерный стол. Перетащите модель одним пальцем; два пальца изменяют масштаб вида." : "Трёхмерный стол. Перетащите для вращения вида; два пальца изменяют масштаб вида."); }
+    void setMoveMode(boolean enabled, MoveCallback callback) { cancelDrag(); moveMode=enabled&&!toolpathMode; moveCallback=callback; setContentDescription(cameraDescription(moveMode,toolpathMode)); }
     void discardPendingMove() { cancelDrag(); renderer.dragX=renderer.dragY=0; requestRender(); }
     @Override public void onPause() { cancelDrag(); super.onPause(); }
     private void cancelDrag() { if(dragging) { dragging=false; renderer.dragX=renderer.dragY=0; requestRender(); } }
@@ -45,10 +47,12 @@ final class StlView extends GLSurfaceView {
         float move = prefs.getFloat("move_speed", .6f); moveSpeed = Float.isFinite(move) ? Math.max(.1f, Math.min(2f, move)) : .6f;
         density=Math.max(.1f,context.getResources().getDisplayMetrics().density);
         reverseZoom = prefs.getBoolean("reverse_zoom", false);
+        zoomToGesture=ControlPreferences.zoomToGesture(context);freeCamera=ControlPreferences.freeCamera(context);
+        swapGestures=ControlPreferences.swapGestures(context);touchpad=ControlPreferences.touchpad(context);
         renderer = new MeshRenderer(mesh); setRenderer(renderer); setRenderMode(RENDERMODE_WHEN_DIRTY);
-        setContentDescription("Трёхмерный стол. Перетащите для вращения вида, сведите или разведите пальцы для изменения масштаба.");
+        setContentDescription(cameraDescription(false,false));
     }
-    void resetCamera() { renderer.yaw = -35; renderer.pitch = 25; renderer.zoom = 1; requestRender(); }
+    void resetCamera() { renderer.yaw = -35; renderer.pitch = 25; renderer.zoom = 1;renderer.panX=renderer.panY=0; requestRender(); }
     void setDarkMode(boolean dark) { renderer.dark = dark; requestRender(); }
     /** Update only the view; raw printable dimensions remain owned by the selected profile. */
     void setBuildVolume(BedGeometry volume, TransformCallback callback) {
@@ -72,7 +76,7 @@ final class StlView extends GLSurfaceView {
     void setToolpaths(ToolpathGeometry geometry,int visibleLayers,TransformCallback callback) {
         if(geometry==null||visibleLayers<1||visibleLayers>geometry.layerCount)throw new IllegalArgumentException("Некорректный слой предпросмотра.");
         cancelDrag();moveMode=false;toolpathMode=true;final int revision=pathRevision.incrementAndGet();
-        setContentDescription("Траектории печати на трёхмерном столе. Перетащите для вращения вида; два пальца изменяют масштаб.");
+        setContentDescription(cameraDescription(false,true));
         queueEvent(()->{
             if(revision!=pathRevision.get())return;
             try {
@@ -90,7 +94,7 @@ final class StlView extends GLSurfaceView {
     }
     void clearToolpaths() {
         toolpathMode=false;final int revision=pathRevision.incrementAndGet();
-        setContentDescription("Трёхмерный стол. Перетащите для вращения вида; два пальца изменяют масштаб вида.");
+        setContentDescription(cameraDescription(false,false));
         queueEvent(()->{if(revision==pathRevision.get()){renderer.clearToolpaths();requestRender();}});
     }
     /** Object editing is separate from camera gestures. Completion runs on the UI thread. */
@@ -130,21 +134,85 @@ final class StlView extends GLSurfaceView {
     }
     @Override public boolean onTouchEvent(MotionEvent e) {
         int action=e.getActionMasked();
-        if(action==MotionEvent.ACTION_DOWN) { getParent().requestDisallowInterceptTouchEvent(true);lastX=e.getX();lastY=e.getY();lastDistance=0;pinchGesture=false;
-            if(moveMode&&sourceMesh!=null&&volumeReady&&renderer.sceneScale>0&&moveCallback!=null){double[] p=bedPoint(lastX,lastY);if(p!=null){dragging=true;dragStartX=p[0];dragStartY=p[1];dragBase=currentTransform;}} return true; }
-        if(action==MotionEvent.ACTION_POINTER_DOWN&&e.getPointerCount()>=2){cancelDrag();pinchGesture=true;lastDistance=distance(e);return true;}
+        if(action==MotionEvent.ACTION_DOWN) { getParent().requestDisallowInterceptTouchEvent(true);lastX=e.getX();lastY=e.getY();lastDistance=0;pinchGesture=false;mouseAction=mouseAction(e);
+            if(moveMode&&mouseAction==0&&sourceMesh!=null&&volumeReady&&renderer.sceneScale>0&&moveCallback!=null){double[] p=bedPoint(lastX,lastY);if(p!=null){dragging=true;dragStartX=p[0];dragStartY=p[1];dragBase=currentTransform;}} return true; }
+        if(action==MotionEvent.ACTION_POINTER_DOWN&&e.getPointerCount()>=2){cancelDrag();pinchGesture=true;lastDistance=distance(e);lastMidX=(e.getX(0)+e.getX(1))/2;lastMidY=(e.getY(0)+e.getY(1))/2;return true;}
         if(action==MotionEvent.ACTION_MOVE){
-            if(e.getPointerCount()>=2){float d=distance(e);if(lastDistance>0&&d>0)renderer.zoom=Math.max(.35f,Math.min(5f,renderer.zoom*(reverseZoom?lastDistance/d:d/lastDistance)));lastDistance=d;}
+            if(e.getPointerCount()>=2){float d=distance(e),mx=(e.getX(0)+e.getX(1))/2,my=(e.getY(0)+e.getY(1))/2;
+                if(lastDistance>0&&d>0)zoomAt(mx,my,reverseZoom?lastDistance/d:d/lastDistance);
+                if(swapGestures)orbit(mx-lastMidX,my-lastMidY);else pan(mx-lastMidX,my-lastMidY);
+                lastDistance=d;lastMidX=mx;lastMidY=my;}
             else if(dragging){double[] p=bedPoint(e.getX(),e.getY());if(p!=null){double dx=(p[0]-dragStartX)*moveSpeed,dy=(p[1]-dragStartY)*moveSpeed,scale=renderer.sceneScale,ox=dragBase.offsetX+dx/scale,oy=dragBase.offsetY+dy/scale;if(Double.isFinite(ox)&&Double.isFinite(oy)&&Math.abs(ox)<=10000&&Math.abs(oy)<=10000){renderer.dragX=(float)dx;renderer.dragY=(float)dy;}}}
-            else if(!moveMode&&!pinchGesture){renderer.yaw+=(e.getX()-lastX)*.22f*orbitSpeed/density;renderer.pitch+=(e.getY()-lastY)*.22f*orbitSpeed/density;}
+            else if(mouseAction!=0&&!pinchGesture){if(mouseAction==2)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
+            else if(!moveMode&&!pinchGesture&&!isMouse(e)){if(swapGestures)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
             lastX=e.getX();lastY=e.getY();requestRender();return true; }
         if(action==MotionEvent.ACTION_POINTER_UP){lastDistance=0;int n=e.getActionIndex()==0?1:0;lastX=e.getX(n);lastY=e.getY(n);return true;}
         if(action==MotionEvent.ACTION_CANCEL){cancelDrag();getParent().requestDisallowInterceptTouchEvent(false);return true;}
         if(action==MotionEvent.ACTION_UP){getParent().requestDisallowInterceptTouchEvent(false);if(dragging){dragging=false;double scale=renderer.sceneScale;float dx=renderer.dragX,dy=renderer.dragY;if(dx==0&&dy==0){renderer.dragX=renderer.dragY=0;}else try{moveCallback.completed(new ModelTransform(dragBase.rx,dragBase.ry,dragBase.rz,dragBase.sx,dragBase.sy,dragBase.sz,dragBase.offsetX+dx/scale,dragBase.offsetY+dy/scale));}catch(RuntimeException ex){renderer.dragX=renderer.dragY=0;requestRender();}}return true;}
         return true;
     }
+    private static boolean isMouse(MotionEvent e){return (e.getSource()&android.view.InputDevice.SOURCE_MOUSE)==android.view.InputDevice.SOURCE_MOUSE;}
+    private String cameraDescription(boolean moving,boolean paths){
+        String subject=paths?"Траектории печати на трёхмерном столе. ":"Трёхмерный стол. ";
+        if(moving)return subject+(swapGestures?"Одним пальцем перемещайте модель, двумя вращайте или изменяйте масштаб вида.":"Одним пальцем перемещайте модель, двумя панорамируйте или изменяйте масштаб вида.");
+        return subject+(swapGestures?"Одним пальцем панорамируйте; двумя вращайте или изменяйте масштаб вида.":"Одним пальцем вращайте; двумя панорамируйте или изменяйте масштаб вида.");
+    }
+    private int mouseAction(MotionEvent e) {
+        if(!isMouse(e))return 0;
+        boolean alt=(e.getMetaState()&android.view.KeyEvent.META_ALT_ON)!=0,shift=(e.getMetaState()&android.view.KeyEvent.META_SHIFT_ON)!=0;
+        if(touchpad){if(alt&&!shift)return 1;if(shift&&!alt)return 2;return 0;}
+        int buttons=e.getButtonState();
+        if((buttons&(MotionEvent.BUTTON_SECONDARY|MotionEvent.BUTTON_TERTIARY))!=0)return 2;
+        return moveMode?0:1;
+    }
+    private void orbit(float dx,float dy) {
+        renderer.yaw=CameraGestureMath.yaw(renderer.yaw,dx*.22f*orbitSpeed/density);
+        renderer.pitch=CameraGestureMath.pitch(renderer.pitch,dy*.22f*orbitSpeed/density,freeCamera);
+    }
+    private void pan(float dx,float dy) {
+        renderer.panX=CameraGestureMath.pan(renderer.panX,dx,getHeight(),9.5);
+        renderer.panY=CameraGestureMath.pan(renderer.panY,-dy,getHeight(),9.5);
+    }
+    private void zoomAt(float x,float y,float ratio) {
+        double[] anchor=zoomToGesture?bedPoint(x,y):null;
+        renderer.zoom=CameraGestureMath.zoom(renderer.zoom,ratio);
+        if(anchor==null)return;
+        int w=getWidth(),h=getHeight();if(w<=0||h<=0)return;
+        float[] projection=new float[16],camera=new float[16],mvp=new float[16],point={(float)anchor[0],(float)anchor[1],0,1},eye=new float[4],clip=new float[4];
+        Matrix.perspectiveM(projection,0,40,(float)w/h,.1f,20f);cameraMatrix(camera);Matrix.multiplyMV(eye,0,camera,0,point,0);
+        Matrix.multiplyMM(mvp,0,projection,0,camera,0);Matrix.multiplyMV(clip,0,mvp,0,point,0);
+        if(!Float.isFinite(clip[3])||clip[3]<=.00001f||!Float.isFinite(eye[2])||eye[2]>=-.1f)return;
+        float sx=(clip[0]/clip[3]+1)*w/2,sy=(1-clip[1]/clip[3])*h/2;
+        if(!Float.isFinite(sx)||!Float.isFinite(sy))return;
+        renderer.panX=CameraGestureMath.pan(renderer.panX,x-sx,h,-eye[2]);
+        renderer.panY=CameraGestureMath.pan(renderer.panY,sy-y,h,-eye[2]);
+    }
+    @Override public boolean onGenericMotionEvent(MotionEvent e) {
+        if((e.getSource()&android.view.InputDevice.SOURCE_MOUSE)==android.view.InputDevice.SOURCE_MOUSE) {
+            if(e.getActionMasked()==MotionEvent.ACTION_SCROLL) {
+                float delta=e.getAxisValue(MotionEvent.AXIS_VSCROLL);
+                if(Float.isFinite(delta)&&delta!=0){float ratio=(float)Math.pow(1.15,Math.max(-20,Math.min(20,reverseZoom?-delta:delta)));zoomAt(e.getX(),e.getY(),ratio);requestRender();return true;}
+            }
+        }
+        return super.onGenericMotionEvent(e);
+    }
+    @Override public boolean onHoverEvent(MotionEvent e) {
+        if(touchpad&&isMouse(e)&&e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER){lastHoverX=e.getX();lastHoverY=e.getY();hoverAction=0;return true;}
+        if(touchpad&&isMouse(e)&&e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE) {
+            boolean alt=(e.getMetaState()&android.view.KeyEvent.META_ALT_ON)!=0,shift=(e.getMetaState()&android.view.KeyEvent.META_SHIFT_ON)!=0;
+            int action=alt&&!shift?1:shift&&!alt?2:0;
+            if(action!=0&&hoverAction==action){if(action==1)orbit(e.getX()-lastHoverX,e.getY()-lastHoverY);else pan(e.getX()-lastHoverX,e.getY()-lastHoverY);requestRender();}
+            lastHoverX=e.getX();lastHoverY=e.getY();hoverAction=action;return true;
+        } else if(touchpad&&isMouse(e)&&e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT){hoverAction=0;return true;}
+        return super.onHoverEvent(e);
+    }
+    private void cameraMatrix(float[] camera) {
+        Matrix.setIdentityM(camera,0);Matrix.translateM(camera,0,renderer.panX,renderer.panY,-9.5f);
+        Matrix.scaleM(camera,0,renderer.zoom,renderer.zoom,renderer.zoom);Matrix.rotateM(camera,0,renderer.pitch,1,0,0);
+        Matrix.rotateM(camera,0,renderer.yaw,0,1,0);Matrix.rotateM(camera,0,-90,1,0,0);
+    }
     private double[] bedPoint(float x,float y){int w=getWidth(),h=getHeight();if(w<=0||h<=0)return null;float[] p=new float[16],camera=new float[16],mvp=new float[16],inverse=new float[16];
-        Matrix.perspectiveM(p,0,40,(float)w/h,.1f,20f);Matrix.setIdentityM(camera,0);Matrix.translateM(camera,0,0,0,-9.5f);Matrix.scaleM(camera,0,renderer.zoom,renderer.zoom,renderer.zoom);Matrix.rotateM(camera,0,renderer.pitch,1,0,0);Matrix.rotateM(camera,0,renderer.yaw,0,1,0);Matrix.rotateM(camera,0,-90,1,0,0);Matrix.multiplyMM(mvp,0,p,0,camera,0);if(!Matrix.invertM(inverse,0,mvp,0))return null;return intersectBed(inverse,x,y,w,h);}
+        Matrix.perspectiveM(p,0,40,(float)w/h,.1f,20f);cameraMatrix(camera);Matrix.multiplyMM(mvp,0,p,0,camera,0);if(!Matrix.invertM(inverse,0,mvp,0))return null;return intersectBed(inverse,x,y,w,h);}
     static double[] intersectBed(float[] inverse,float x,float y,int width,int height){float nx=2*x/width-1,ny=1-2*y/height;float[] near={nx,ny,-1,1},far={nx,ny,1,1},a=new float[4],b=new float[4];Matrix.multiplyMV(a,0,inverse,0,near,0);Matrix.multiplyMV(b,0,inverse,0,far,0);
         if(Math.abs(a[3])<1e-8||Math.abs(b[3])<1e-8)return null;double ax=a[0]/a[3],ay=a[1]/a[3],az=a[2]/a[3],bx=b[0]/b[3],by=b[1]/b[3],bz=b[2]/b[3],dz=bz-az;if(Math.abs(dz)<1e-7)return null;double t=-az/dz;if(t<0||t>1)return null;double px=ax+t*(bx-ax),py=ay+t*(by-ay);return Double.isFinite(px)&&Double.isFinite(py)?new double[]{px,py}:null;}
     private static float distance(MotionEvent e) { return (float)Math.hypot(e.getX(0)-e.getX(1), e.getY(0)-e.getY(1)); }
@@ -152,7 +220,7 @@ final class StlView extends GLSurfaceView {
     private static final class MeshRenderer implements Renderer {
         FloatBuffer positions, normals, gridPositions, bedPositions; int count, gridCount, bedCount;
         ToolpathGeometry pathGeometry; FloatBuffer pathPositions; int visiblePathLayers; double bedCenterX,bedCenterY;
-        volatile float yaw = -35, pitch = 25, zoom = 1;
+        volatile float yaw = -35, pitch = 25, zoom = 1,panX,panY;
         volatile float dragX, dragY; volatile double sceneScale;
         volatile boolean dark = true;
         final float[] projection = new float[16], model = new float[16], mvp = new float[16];
@@ -237,7 +305,7 @@ final class StlView extends GLSurfaceView {
         public void onSurfaceChanged(GL10 gl, int width, int height) { GLES20.glViewport(0,0,width,height); float aspect=(float)width/Math.max(height,1); Matrix.perspectiveM(projection,0,40,aspect,.1f,20f); }
         public void onDrawFrame(GL10 gl) {
             if (dark) GLES20.glClearColor(.067f,.075f,.067f,1); else GLES20.glClearColor(.980f,.980f,.969f,1);
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT|GLES20.GL_DEPTH_BUFFER_BIT); Matrix.setIdentityM(model,0); Matrix.translateM(model,0,0,0,-9.5f); Matrix.scaleM(model,0,zoom,zoom,zoom); Matrix.rotateM(model,0,pitch,1,0,0); Matrix.rotateM(model,0,yaw,0,1,0);
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT|GLES20.GL_DEPTH_BUFFER_BIT); Matrix.setIdentityM(model,0); Matrix.translateM(model,0,panX,panY,-9.5f); Matrix.scaleM(model,0,zoom,zoom,zoom); Matrix.rotateM(model,0,pitch,1,0,0); Matrix.rotateM(model,0,yaw,0,1,0);
             // STL and the bed use Z-up. Convert to OpenGL's Y-up camera after
             // camera orbit, without changing the printable object transform.
             Matrix.rotateM(model,0,-90,1,0,0); Matrix.multiplyMM(mvp,0,projection,0,model,0);

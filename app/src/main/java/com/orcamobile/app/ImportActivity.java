@@ -61,10 +61,11 @@ public final class ImportActivity extends Activity {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);if(row.getChildCount()>0)p.leftMargin=ui.dp(12);row.addView(tile,p);
     }
     private void chooseFile() {if(pickerOpen)return;Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        Uri initial=GeneralPreferences.initialDocumentUri(this);if(initial!=null)i.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,initial);
         try {pickerOpen=true;startActivityForResult(i,PICK_FILE);}catch(android.content.ActivityNotFoundException e){pickerOpen=false;MdUi.alert(this).setTitle("Выбор файла").setMessage("На устройстве нет приложения для выбора документов.").setPositiveButton("Понятно",null).show();}
     }
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request!=PICK_FILE)return;pickerOpen=false;if(result==RESULT_OK&&data!=null&&data.getData()!=null){
-        if((data.getFlags()&Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)!=0)try{getContentResolver().takePersistableUriPermission(data.getData(),data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}
+        if((data.getFlags()&Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)!=0&&(data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0)try{getContentResolver().takePersistableUriPermission(data.getData(),Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}
         returnUri(data.getData());
     }}
     private void returnUri(Uri uri){setResult(RESULT_OK,new Intent().setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));finish();}
