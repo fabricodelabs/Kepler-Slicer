@@ -7,6 +7,11 @@ import java.util.*;
 
 /** Streaming HTTP transport shared by the original Orca host protocol ports. */
 final class NetworkHttp {
+    interface RequestPolicy { void check(URI uri)throws IOException; }
+    private static volatile RequestPolicy requestPolicy;
+    static void setRequestPolicy(RequestPolicy policy){requestPolicy=policy;}
+    private static final Set<Cancellation> active=java.util.concurrent.ConcurrentHashMap.newKeySet();
+    static void cancelActive(){for(Cancellation token:active)token.cancel();}
     interface ProgressListener { void uploaded(long sent,long total); }
     static final class Cancellation {
         private volatile boolean cancelled;
@@ -37,6 +42,7 @@ final class NetworkHttp {
     static Response request(String method,URI uri,Map<String,String> headers,Body body,Cancellation cancel,int responseLimit)throws IOException{
         if(cancel==null)cancel=new Cancellation();cancel.check();
         if(uri==null||uri.getHost()==null||uri.getRawUserInfo()!=null||uri.getRawFragment()!=null||(!"http".equalsIgnoreCase(uri.getScheme())&&!"https".equalsIgnoreCase(uri.getScheme())))throw new IOException("Нужен корректный HTTP(S)-адрес без пароля в URL.");
+        RequestPolicy policy=requestPolicy;if(policy!=null)policy.check(uri);
         if(!Arrays.asList("GET","POST","PUT","DELETE","HEAD","OPTIONS","PATCH","PROPFIND","MKCOL").contains(method))throw new IOException("Неизвестный метод HTTP.");
         if(responseLimit<0||responseLimit>32*1024*1024)throw new IOException("Некорректный предел ответа.");
         HttpURLConnection connection=(HttpURLConnection)uri.toURL().openConnection();
@@ -47,8 +53,9 @@ final class NetworkHttp {
             connection.setRequestProperty(h.getKey(),h.getValue());
         }
         final Closeable close=connection::disconnect;
-        cancel.setCloser(close);
+        cancel.setCloser(close);active.add(cancel);
         try{
+            cancel.check();RequestPolicy latest=requestPolicy;if(latest!=null)latest.check(uri);
             if(body!=null){
                 connection.setDoOutput(true);if(connection.getRequestProperty("Content-Type")==null)connection.setRequestProperty("Content-Type",body.contentType());
                 long total=body.length();if(total>=0)connection.setFixedLengthStreamingMode(total);else connection.setChunkedStreamingMode(65536);
@@ -58,12 +65,12 @@ final class NetworkHttp {
                     body.write(counting,cancel);counting.flush();
                 }
             }
-            cancel.check();int code=connection.getResponseCode();
+            cancel.check();latest=requestPolicy;if(latest!=null)latest.check(uri);cancel.check();int code=connection.getResponseCode();
             Map<String,List<String>> copy=new LinkedHashMap<>();for(Map.Entry<String,List<String>> entry:connection.getHeaderFields().entrySet())if(entry.getKey()!=null&&entry.getValue()!=null)copy.put(entry.getKey(),Collections.unmodifiableList(new ArrayList<>(entry.getValue())));
             InputStream stream=code>=400?connection.getErrorStream():connection.getInputStream();ByteArrayOutputStream data=new ByteArrayOutputStream();
             if(stream!=null)try(InputStream in=stream){byte[] buffer=new byte[32768];int n;while((n=in.read(buffer))!=-1){cancel.check();if(data.size()>(responseLimit-n))throw new IOException("Ответ сервера превышает допустимый размер.");data.write(buffer,0,n);}}
             cancel.check();return new Response(code,data.toByteArray(),Collections.unmodifiableMap(copy));
-        }catch(IOException e){if(cancel.isCancelled())throw new InterruptedIOException("Операция отменена.");throw e;}finally{cancel.clearCloser(close);connection.disconnect();}
+        }catch(IOException e){if(cancel.isCancelled())throw new InterruptedIOException("Операция отменена.");throw e;}finally{active.remove(cancel);cancel.clearCloser(close);connection.disconnect();}
     }
     static Body bytes(byte[] value){final byte[] copy=value.clone();return new Body(){public long length(){return copy.length;}public void write(OutputStream out,Cancellation c)throws IOException{c.check();out.write(copy);}};}
     static Body file(File file)throws IOException{return fileSlice(file,0,file.length());}
