@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="phase2_option_other_group">Other settings</string>
+    <string name="phase2_option_not_set">Not set</string>
+    <string name="phase2_option_overridden">Modified</string>
+    <string name="phase2_option_origin_default">Default value from the definition; the effective value has not been confirmed</string>
+    <string name="phase2_option_origin_approximate">Approximate value from the serialized configuration; the effective value has not been confirmed</string>
+    <string name="phase2_option_unit_mm">mm</string>
+</resources>

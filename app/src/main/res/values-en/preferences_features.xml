@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="pref_requires_support">Unavailable</string>
+<string name="pref_bambu_missing">No plug-in</string>
+<string name="pref_bambu_detail">The Bambu network plug-in is not connected on Android yet. This setting will become available with support for the corresponding Bambu features.</string>
+<string name="pref_system_language">System</string>
+<string name="pref_workspace">Workspace</string><string name="pref_home">Recent files</string>
+<string name="pref_android_managed">Android</string>
+<string name="pref_single_detail">Android maintains one Kepler workspace. Concurrent editing of the shared model from multiple tasks is not supported yet.</string>
+<string name="pref_load_all">Full project</string><string name="pref_load_relevant">By contents</string><string name="pref_load_ask">Always ask</string><string name="pref_load_geometry">Geometry</string>
+<string name="pref_load_detail">Loading a complete 3MF project configuration is not supported yet. The app offers geometry import separately and preserves the original project file.</string>
+<string name="pref_step_detail">STEP import is not available on Android yet. Accuracy controls will become available with support for this format.</string>
+<string name="pref_backup_interval">Backup interval</string><string name="pref_backup_actions">Backup and restore</string>
+<string name="pref_group_all">All together</string><string name="pref_group_none">None</string><string name="pref_group_type">By type</string><string name="pref_group_vendor">By vendor</string>
+<string name="pref_group_unspecified">Unspecified</string>
+<string name="pref_multimaterial_detail">Printing with multiple materials is not supported yet. This setting will become available with multi-material projects.</string>
+<string name="pref_clone_detail">Object cloning is not available yet. Automatic arrangement will be connected together with cloning.</string>
+<string name="pref_auto_slice_delay">Auto slicing delay</string>
+<string name="pref_camera_default">Default</string><string name="pref_camera_touchpad">Touchpad</string>
+<string name="pref_sync_prompt_detail">This reset requires the connected-printer preset synchronization prompt. It does not clear cloud profiles.</string>
+<string name="pref_clear_detail">Only the remembered dialog answer is reset. Models, profiles and backups are kept.</string>
+<string name="pref_stealth_detail">Stealth mode permits local connections and blocks cloud operations. Offline mode also blocks local requests.</string>
+<string name="pref_check_updates">Check Orca releases</string><string name="pref_sync_now">Sync now</string>
+<string name="pref_on">On</string><string name="pref_off">Off</string>
+<string name="pref_system_profiles_detail">Automatic built-in profile updates are not connected yet. Desktop release checks are available separately and do not replace application profiles.</string>
+<string name="pref_associate_detail">Kepler handles STL, 3MF and OBJ through Android Open with and Share. Select a file to test. Android controls the persistent default application choice.</string>
+<string name="pref_diagnostics">Diagnostics</string><string name="pref_java_log_detail">This level controls structured Java diagnostics. Device addresses, keys, tokens and server response bodies are excluded. The native engine logging level is not changed yet.</string>
+<string name="pref_choice_cleared">Remembered answer reset</string><string name="pref_working">Working…</string>
+<string name="pref_seconds_range">From %1$d to %2$d seconds</string><string name="pref_save">Save</string><string name="pref_cancel">Cancel</string>
+<string name="pref_seconds_value">%1$d s</string>
+<string name="pref_backup_now">Back up now</string><string name="pref_restore_backup">Restore backup</string>
+<string name="pref_restore_question">Replace the current model and its transforms with the backup?</string><string name="pref_restored">Workspace restored. Open Workspace to view it.</string>
+<string name="pref_sync_consent">Automatic synchronization sends user profiles to your Orca Cloud account when the app opens. Conflicts are kept for manual resolution.</string>
+<string name="pref_sync_enable">Enable automatic sync</string>
+</resources>
