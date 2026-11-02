@@ -51,6 +51,7 @@ public final class PresetRepositoryTest {
             rejects(()->repo.saveUser("process","Vendor","Orphan",null,new JSONObject("{\"inherits\":\"missing\"}")),"Missing parent must fail");rejects(()->repo.deleteUser(base),"System delete must fail");
             repo.deleteUser(child.id);repo.deleteUser(user.id);check(repo.list("process").size()==1,"User deletion leaves system archive untouched");
         }
+        testPartialCommitBaseline(root);
         testSaveAsIdentity(root);
         testProject(root);
         File official=new File(args.length>2?args[2]:"");
@@ -59,6 +60,22 @@ public final class PresetRepositoryTest {
             check(real.list("process").size()>3000,"Original process catalog available");String id=PresetRepository.systemId("printer","Prusa","Prusa CORE One 0.6 nozzle");JSONObject config=real.resolve(id);check(config.getJSONArray("nozzle_diameter").getString(0).equals("0.6"),"Real upstream machine inheritance resolves");check(real.load(id).path.equals("Prusa/machine/Prusa CORE One 0.6 nozzle.json"),"Original system path retained");
         }
         System.out.println("Preset repository: "+assertions+" assertions passed");
+    }
+    private static void testPartialCommitBaseline(File root) throws Exception {
+        try(PresetRepository repo=new PresetRepository(new File(root,"partial-commit"),new Fixtures())){
+            String system=PresetRepository.systemId("process","Vendor","fine");
+            PresetRepository.Draft original=repo.beginDraft(system);original.set("layer_height","0.24");
+            PresetRepository.Preset saved=repo.saveAs(original,"Partial Save As");
+            // Simulate a later object-store failure: the new global preset already exists.
+            PresetRepository.Draft rebased=repo.beginDraft(saved.id);
+            check(rebased.baseId.equals(saved.id)&&!rebased.dirty(),"Partial Save As reloads the committed identity and baseline");
+            rebased.set("top_shell_layers","5");repo.save(rebased);
+            check(repo.load(saved.id).effective.getString("top_shell_layers").equals("5"),"Retry can save against the reloaded baseline");
+            PresetRepository.Draft normal=repo.beginDraft(saved.id);normal.set("top_shell_layers","7");repo.save(normal);
+            check(!normal.dirty(),"Ordinary committed save advances its draft baseline before later failure");
+            PresetRepository.Draft retried=repo.beginDraft(saved.id);retried.set("top_shell_layers","8");repo.save(retried);
+            check(repo.load(saved.id).effective.getString("top_shell_layers").equals("8"),"A second retry uses the new committed baseline");
+        }
     }
     private static void testSaveAsIdentity(File root) throws Exception {
         Fixtures source=new Fixtures();JSONObject system=source.json.get("Vendor/process/fine.json");

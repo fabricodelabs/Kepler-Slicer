@@ -77,13 +77,22 @@ final class CurrentModelStore {
 
     /** Called only for the latest completed import; preserves the previous selection on failure. */
     void publish(Context context) throws IOException {
+        publish(context,null,-1,null);
+    }
+    private void publish(Context context,ModelTransform restoredTransform,int restoredPlate,RestoreSelection expected) throws IOException {
       synchronized (LOCK) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if(expected!=null){
+            if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("Workspace restore canceled");
+            if(!expected.matches(prefs.getAll()))throw new IOException("Workspace changed while restoring the backup; current model was kept");
+        }
         String previous = prefs.getString(FILE, "");
         String previousName = prefs.getString(NAME, "");
         String previousTransform = prefs.getString(TRANSFORM, "");
         String previousPlate = prefs.getString(PLATE, "-1");
-        if (!prefs.edit().putString(FILE, file.getName()).putString(NAME, name).remove(TRANSFORM).remove(PLATE).commit()) {
+        SharedPreferences.Editor edit=prefs.edit().putString(FILE,file.getName()).putString(NAME,name);
+        if(restoredTransform==null)edit.remove(TRANSFORM).remove(PLATE);else edit.putString(TRANSFORM,restoredTransform.encode()).putString(PLATE,Integer.toString(restoredPlate));
+        if (!edit.commit()) {
             // Android updates the in-memory preferences even if the disk write fails.
             prefs.edit().putString(FILE, previous).putString(NAME, previousName).putString(TRANSFORM, previousTransform).putString(PLATE,previousPlate).apply();
             throw new IOException("Не удалось сохранить выбор модели.");
@@ -91,6 +100,27 @@ final class CurrentModelStore {
         if (validName(previous) && !previous.equals(file.getName()))
             new File(directory(context), previous).delete();
       }
+    }
+
+    /** Open an immutable original under the selection lock; large backup copies happen after unlocking. */
+    static final class BackupInput implements java.io.Closeable {
+        final String fileName,name,selectionKey;final int plate;final ModelTransform transform;final FileInputStream input;
+        BackupInput(String fileName,String name,ModelTransform transform,int plate,FileInputStream input){this.fileName=fileName;this.name=name;this.transform=transform;this.plate=plate;this.input=input;selectionKey=fileName+"\n"+transform.encode()+"\n"+plate;}
+        public void close()throws IOException{input.close();}
+    }
+    static BackupInput openBackup(Context context)throws IOException {synchronized(LOCK){SharedPreferences prefs=context.getSharedPreferences(PREFS,0);String filename=prefs.getString(FILE,"");if(!validName(filename))throw new IOException("Open a model before creating a backup");File source=new File(directory(context),filename);ModelTransform transform=readTransform(prefs);int plate=readPlate(prefs);return new BackupInput(filename,prefs.getString(NAME,"Model"),transform,plate,new FileInputStream(source));}}
+    /** Raw preference identity also represents an empty or broken current selection without native loading. */
+    static final class RestoreSelection {
+        private final Object file,transform,plate;
+        private RestoreSelection(java.util.Map<String,?> values){file=values.get(FILE);transform=values.get(TRANSFORM);plate=values.get(PLATE);}
+        private boolean matches(java.util.Map<String,?> values){return java.util.Objects.equals(file,values.get(FILE))&&java.util.Objects.equals(transform,values.get(TRANSFORM))&&java.util.Objects.equals(plate,values.get(PLATE));}
+    }
+    static RestoreSelection captureRestoreSelection(Context context)throws IOException {synchronized(LOCK){if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("Workspace restore canceled");return new RestoreSelection(context.getSharedPreferences(PREFS,0).getAll());}}
+    /** Worker-only recovery; final guard and publication are atomic with every model/placement/plate writer. */
+    static void restoreBackup(Context context,File source,String name,ModelTransform transform,int plate,RestoreSelection expected)throws IOException {
+        if(expected==null)throw new IOException("Missing workspace restore identity");
+        CurrentModelStore prepared=prepare(context,Uri.fromFile(source),name);boolean published=false;
+        try{if(plate>=0){if(!prepared.file.getName().endsWith(".3mf"))throw new IOException("A model without plates cannot restore a selected plate");ImportedModelPreview preview=ImportedModelPreview.read(context,prepared.file,plate);prepared=new CurrentModelStore(prepared.file,name,preview.mesh,transform,preview.metadata);}prepared.publish(context,transform,plate,expected);published=true;}finally{if(!published)prepared.discard();}
     }
 
     static void saveTransform(Context context, String expectedFile, ModelTransform transform) throws IOException {

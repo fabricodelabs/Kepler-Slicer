@@ -1,0 +1,31 @@
+<resources>
+    <string name="general_starting">Opening workspace…</string>
+    <string name="general_all_user_filaments">User filaments</string>
+    <string name="general_folder_invalid">Choose an Android document folder.</string>
+    <string name="general_folder_read_only">The selected folder does not allow writing.</string>
+    <string name="general_folder_permission">Android could not retain access to that folder.</string>
+    <string name="general_folder_not_saved">Could not save the selected folder.</string>
+    <string name="general_folder_system">System document picker</string>
+    <string name="general_folder_selected">Selected document folder</string>
+    <string name="general_backup_none">No workspace backup yet</string>
+    <string name="general_backup_status">Last model backup: %1$s, %2$s</string>
+    <string name="general_backup_missing">No workspace backup is available.</string>
+    <string name="general_backup_error">Backup could not complete: %1$s</string>
+    <string name="general_project_title">Open 3MF project</string>
+    <string name="general_project_geometry">Open geometry preview</string>
+    <string name="general_project_cancel">Cancel</string>
+    <string name="general_project_config_blocked">This project contains printer, filament or process settings. The current native interface cannot apply the complete project configuration. The original project is preserved. Geometry preview keeps your current profiles; native slicing restrictions still apply.</string>
+    <string name="general_project_no_config">Keep the current printer, filament and process profiles and open this project geometry?</string>
+    <string name="general_project_load_all_blocked">Load All requires the complete project configuration API, which is not exposed by the current native engine. Choose geometry preview or cancel.</string>
+    <string name="general_replace_title">Replace the current workspace?</string>
+    <string name="general_replace_detail">The current model will be replaced. Save a private model/plate/placement backup first, or continue without a backup.</string>
+    <string name="general_replace_backup">Back up and replace</string>
+    <string name="general_replace">Replace</string>
+    <string name="general_remember_choice">Remember this choice</string>
+    <string name="general_modified_gcode_title">Project contains custom G-code</string>
+    <string name="general_modified_gcode_detail">The project has custom G-code fields or embedded G-code. Desktop equivalence cannot be validated by this Android interface. The code is not executed when opening a preview. Review the project before slicing.</string>
+    <string name="general_continue">Continue</string>
+    <string name="general_step_blocked">STEP import and meshing tolerances are unavailable in the current JNI interface. Native engine approval is needed before these settings can affect imports.</string>
+    <string name="general_associations_info">Kepler accepts STL, OBJ and 3MF through Android Open with and Share. Choose a file below to open it. Android controls default handlers; this screen does not change another application’s defaults.</string>
+    <string name="general_association_wrong_type">Choose a %1$s model for this action.</string>
+</resources>

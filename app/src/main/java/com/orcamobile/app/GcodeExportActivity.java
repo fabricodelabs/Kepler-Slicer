@@ -77,6 +77,11 @@ public final class GcodeExportActivity extends Activity {
         if (name.length() > 150) name = name.substring(0,150);
         if (!name.toLowerCase(java.util.Locale.ROOT).endsWith(".gcode")) name += ".gcode";
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/octet-stream").putExtra(Intent.EXTRA_TITLE,name);
+        android.net.Uri initial=GeneralPreferences.initialDocumentUri(this);
+        if(initial!=null)try{
+            android.net.Uri directory=android.provider.DocumentsContract.buildDocumentUriUsingTree(initial,android.provider.DocumentsContract.getTreeDocumentId(initial));
+            intent.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,directory);
+        }catch(IllegalArgumentException ignored){/* A provider may no longer expose the persisted tree. */}
         try { pickerOpen = true; refreshEnabled(); startActivityForResult(intent,CREATE_DOCUMENT); }
         catch (android.content.ActivityNotFoundException e) { pickerOpen = false; status.setText("На устройстве нет приложения для сохранения документов."); refreshEnabled(); }
     }

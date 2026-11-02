@@ -40,12 +40,14 @@ final class RecentModels {
     }
     /** Best effort; an unavailable history never invalidates a successfully imported model. */
     static void remember(Context context,Uri uri,String name,StlMesh mesh) {
+        if(!GeneralPreferences.addModelToRecent(context,name))return;
         Context c=context.getApplicationContext();
         long selectedAt=System.currentTimeMillis();
         WRITER.execute(()->rememberNow(c,uri,name,mesh,selectedAt));
     }
     private static void rememberNow(Context c,Uri uri,String name,StlMesh mesh,long selectedAt) {
         try {
+            if(!GeneralPreferences.addModelToRecent(c,name))return;
             if(!"content".equals(uri.getScheme())) return;
             boolean retained=false;
             for(android.content.UriPermission permission:c.getContentResolver().getPersistedUriPermissions())
