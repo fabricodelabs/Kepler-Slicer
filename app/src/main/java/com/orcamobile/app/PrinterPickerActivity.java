@@ -41,6 +41,7 @@ import java.util.concurrent.Executors;
 
 /** Real printer-model and nozzle variant picker backed by the bundled upstream Orca catalog. */
 public class PrinterPickerActivity extends Activity {
+    private Object backCallback;
     private int INK, MUTED, BG, SURFACE, LINE, CARD;
     private final ExecutorService worker = Executors.newFixedThreadPool(3);
     private final LruCache<String, Bitmap> images = new LruCache<String, Bitmap>(16 * 1024 * 1024) {
@@ -62,7 +63,7 @@ public class PrinterPickerActivity extends Activity {
         String key() { return vendor + "\u0000" + name; }
     }
     @Override public void onCreate(Bundle state) {
-        MdUi.prepare(this); super.onCreate(state);
+        MdUi.prepare(this); super.onCreate(state); if(android.os.Build.VERSION.SDK_INT>=33)backCallback=Api33.register(this);
         MdUi palette = new MdUi(this);
         INK=palette.ink; MUTED=palette.muted; BG=palette.bg; SURFACE=palette.container; LINE=palette.line; CARD=palette.surface;
         if (state != null) { query = state.getString("query", ""); restoredModel = state.getString("model"); restoredVariant = state.getString("variant"); }
@@ -108,8 +109,10 @@ public class PrinterPickerActivity extends Activity {
         return result;
     }
     @Override protected void onSaveInstanceState(Bundle out) { out.putString("query",query); if(chosenModel!=null) out.putString("model",chosenModel.key()); if(chosenVariant!=null) out.putString("variant",chosenVariant.path); super.onSaveInstanceState(out); }
-    @Override protected void onDestroy() { worker.shutdownNow(); super.onDestroy(); }
-    @Override public void onBackPressed() { if(chosenModel!=null) { chosenModel=null; chosenVariant=null; render(); } else super.onBackPressed(); }
+    @Override protected void onDestroy() { worker.shutdownNow(); if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback); super.onDestroy(); }
+    @android.annotation.TargetApi(33) private static final class Api33 {static Object register(PrinterPickerActivity a){android.window.OnBackInvokedCallback cb=a::handleBack;a.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,cb);return cb;}static void unregister(PrinterPickerActivity a,Object cb){a.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)cb);}}
+    private void handleBack() { if(chosenModel!=null) { chosenModel=null; chosenVariant=null; render(); } else finish(); }
+    @android.annotation.SuppressLint("GestureBackNavigation") @Override public void onBackPressed() { handleBack(); }
     private int dp(float n) { return (int)(n*getResources().getDisplayMetrics().density+.5f); }
     private GradientDrawable shape(int color, int radius) { GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d; }
     private GradientDrawable outline(int color,int radius) { GradientDrawable d=shape(color,radius); d.setStroke(dp(1),LINE); return d; }
