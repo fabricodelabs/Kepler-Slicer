@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="phase2_picker_process">Профиль процесса</string>
+<string name="phase2_picker_filament">Профиль материала</string>
+<string name="phase2_picker_printer">Профиль принтера</string>
+<string name="phase2_picker_title">Профили Orca</string>
+<string name="phase2_picker_search">Поиск по названию, производителю или типу</string>
+<string name="phase2_picker_loading">Загружаем профили OrcaSlicer…</string>
+<string name="phase2_picker_empty">Профили не найдены</string>
+<string name="phase2_picker_error">Не удалось загрузить профили</string>
+<string name="phase2_picker_retry">Повторить</string>
+<string name="phase2_picker_system">Системный</string>
+<string name="phase2_picker_user">Пользовательский</string>
+<string name="phase2_picker_selected">Выбран</string>
+<string name="phase2_picker_back">Назад</string>
+<string name="phase2_picker_invalid">Неизвестный тип профиля.</string>
+</resources>

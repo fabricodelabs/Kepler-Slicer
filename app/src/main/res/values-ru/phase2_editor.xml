@@ -1,0 +1,23 @@
+<resources>
+    <string name="phase2_editor_value">Значение</string>
+    <string name="phase2_editor_cancel">Отмена</string>
+    <string name="phase2_editor_save">Сохранить</string>
+    <string name="phase2_editor_inherit">Наследовать из базового профиля</string>
+    <string name="phase2_editor_on">Включено</string>
+    <string name="phase2_editor_off">Выключено</string>
+    <string name="phase2_editor_choose_value">Выберите значение</string>
+    <string name="phase2_editor_choose_unit">Выберите единицу измерения</string>
+    <string name="phase2_editor_unit_mm">мм</string>
+    <string name="phase2_editor_unit_percent" formatted="false">%</string>
+    <string name="phase2_editor_json_hint">JSON-массив, например []</string>
+    <string name="phase2_editor_unknown_enum">Другое значение</string>
+    <string name="phase2_editor_input_error">Проверьте значение</string>
+    <string name="phase2_editor_details_title">О параметре</string>
+    <string name="phase2_editor_details_key">Ключ: %1$s</string>
+    <string name="phase2_editor_details_type">Тип: %1$s</string>
+    <string name="phase2_editor_details_min">Минимум: %1$s</string>
+    <string name="phase2_editor_details_max">Максимум: %1$s</string>
+    <string name="phase2_editor_details_sources">Источники:</string>
+    <string name="phase2_editor_details_unknown">Не определено</string>
+    <string name="phase2_editor_vector_validation">Массив проверяется как JSON; дополнительные ограничения определяет Orca.</string>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="phase2_option_other_group">Другие параметры</string>
+    <string name="phase2_option_not_set">Не задано</string>
+    <string name="phase2_option_overridden">Изменено</string>
+    <string name="phase2_option_origin_default">Значение по умолчанию из определения; фактическое значение не подтверждено</string>
+    <string name="phase2_option_origin_approximate">Приблизительное значение из сериализованной конфигурации; фактическое значение не подтверждено</string>
+    <string name="phase2_option_unit_mm">mm</string>
+</resources>
