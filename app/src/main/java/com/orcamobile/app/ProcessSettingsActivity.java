@@ -29,6 +29,7 @@ import java.util.Map;
 
 /** Mobile editor backed by the resolved upstream process config and definitions. */
 public final class ProcessSettingsActivity extends Activity {
+    private Object backCallback;
     private int BG, INK, MUTED, SURFACE;
     private MdUi ui;
     private static final String[] PAGES={"Quality","Strength","Speed","Support","Multimaterial","Others"};
@@ -50,7 +51,7 @@ public final class ProcessSettingsActivity extends Activity {
     private void gap(LinearLayout parent,int h) { parent.addView(new View(this),lp(1,h)); }
     private TextView button(String label,boolean primary) { TextView t=text(label,14,primary?BG:INK,true); t.setGravity(Gravity.CENTER); t.setMinHeight(dp(48)); t.setPadding(dp(15),0,dp(15),0); t.setBackground(shape(primary?INK:SURFACE,100)); return t; }
     @Override public void onCreate(Bundle state) {
-        MdUi.prepare(this); super.onCreate(state); restored=state;
+        MdUi.prepare(this); super.onCreate(state); if(android.os.Build.VERSION.SDK_INT>=33)backCallback=Api33.register(this); restored=state;
         ui=new MdUi(this); BG=ui.bg; INK=ui.ink; MUTED=ui.muted; SURFACE=ui.surface;
         if(state!=null) selected=state.getString("page","");
         root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(BG);
@@ -169,7 +170,9 @@ public final class ProcessSettingsActivity extends Activity {
     }
     @Override protected void onSaveInstanceState(Bundle out) { capture(); out.putString("page",selected); out.putStringArrayList("draft_keys",new ArrayList<>(raw.keySet())); out.putStringArrayList("draft_values",new ArrayList<>(raw.values())); super.onSaveInstanceState(out); }
     private void back() { if(saving)return; if(!selected.isEmpty()&&options!=null) {capture();selected="";renderPage();renderActions();} else finish(); }
-    @Override public void onBackPressed() { back(); }
+    @android.annotation.TargetApi(33) private static final class Api33 {static Object register(ProcessSettingsActivity a){android.window.OnBackInvokedCallback cb=a::back;a.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,cb);return cb;}static void unregister(ProcessSettingsActivity a,Object cb){a.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)cb);}}
+    @Override protected void onDestroy(){if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback);super.onDestroy();}
+    @android.annotation.SuppressLint("GestureBackNavigation") @Override public void onBackPressed() { back(); }
     private static String message(Throwable e) { return e.getMessage()==null?e.getClass().getSimpleName():e.getMessage(); }
     private void showError(Throwable e) { MdUi.alert(this).setTitle("Проверьте параметры").setMessage(message(e)).setPositiveButton("Понятно",null).show(); }
 }

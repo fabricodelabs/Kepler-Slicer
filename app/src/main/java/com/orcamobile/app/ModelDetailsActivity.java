@@ -11,11 +11,13 @@ import java.util.Locale;
 
 /** Read-only Orca project contents and explicit plate selection. */
 public final class ModelDetailsActivity extends Activity {
+    private Object backCallback;
     private MdUi ui;private LinearLayout page;private CurrentModelStore current;private boolean busy=true;private String error="";private volatile boolean alive=true;private boolean selecting,closeAfterSelection;
-    @Override public void onCreate(Bundle state){MdUi.prepare(this);super.onCreate(state);render();load();}
-    @Override public void onBackPressed(){requestClose();}
+    @Override public void onCreate(Bundle state){MdUi.prepare(this);super.onCreate(state);if(android.os.Build.VERSION.SDK_INT>=33)backCallback=Api33.register(this);render();load();}
+    @android.annotation.SuppressLint("GestureBackNavigation") @Override public void onBackPressed(){requestClose();}
+    @android.annotation.TargetApi(33) private static final class Api33 {static Object register(ModelDetailsActivity a){android.window.OnBackInvokedCallback cb=a::requestClose;a.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,cb);return cb;}static void unregister(ModelDetailsActivity a,Object cb){a.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)cb);}}
     private void requestClose(){if(selecting){closeAfterSelection=true;return;}finish();}
-    @Override protected void onDestroy(){alive=false;super.onDestroy();}
+    @Override protected void onDestroy(){alive=false;if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback);super.onDestroy();}
     private void load(){new Thread(()->{try{CurrentModelStore data=CurrentModelStore.load(getApplicationContext());runOnUiThread(()->{if(!alive)return;current=data;busy=false;error=data==null?"Откройте модель на столе.":"";render();});}catch(Exception e){fail(e);}},"model-details").start();}
     private void fail(Exception e){runOnUiThread(()->{if(!alive)return;busy=false;selecting=false;error=e.getMessage()==null?"Не удалось прочитать проект.":e.getMessage();if(closeAfterSelection){finish();return;}render();});}
     private void selectPlate(int index){if(busy||current==null)return;String expected=current.file.getName();busy=true;selecting=true;error="";render();new Thread(()->{try{CurrentModelStore result=CurrentModelStore.selectPlate(getApplicationContext(),expected,index);runOnUiThread(()->{if(!alive)return;current=result;busy=false;selecting=false;setResult(RESULT_OK);if(closeAfterSelection){finish();return;}render();});}catch(Exception e){fail(e);}},"select-project-plate").start();}
