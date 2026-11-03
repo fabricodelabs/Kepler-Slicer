@@ -11,6 +11,19 @@ public final class ExperimentalSlicer {
     public static byte[] projectMetadata;
     public static int projectCalls;
     public static Runnable projectHook;
+    public static byte[] resolvedMetadata;
+    public static int resolvedCalls;
+    public static boolean typedUnavailable;
+    public static RuntimeException typedFailure;
+    public static Runnable resolvedHook;
+    public static String lastResolvedSettings;
+    public static byte[] resolvedSettingsSnapshot(String pv,String qv,String fv,String pn,String qn,String fn,String resources,String data,String settings) {
+        verify(pv,qv,fv,pn,qn,fn);resolvedCalls++;lastResolvedSettings=settings;
+        if(resolvedHook!=null)resolvedHook.run();
+        if(typedUnavailable)throw new UnsatisfiedLinkError("No older JNI typed snapshot entry point");
+        if(typedFailure!=null)throw typedFailure;
+        return resolvedMetadata;
+    }
     public static byte[] projectSettingsSnapshot(String pv,String qv,String fv,String pn,String qn,String fn,String resources,String data,String settings,String materials,String model,int plate) {
         verify(pv,qv,fv,pn,qn,fn);projectCalls++;if(projectHook!=null)projectHook.run();return projectMetadata;
     }
