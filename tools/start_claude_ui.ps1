@@ -1,4 +1,4 @@
-param([switch]$Interactive)
+param([switch]$Interactive,[switch]$Stream)
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
@@ -13,6 +13,9 @@ if(!$cli){throw 'Claude Code not installed'}
 if($LASTEXITCODE -ne 0){throw 'Claude is not signed in. Run claude auth login and complete browser sign-in, then rerun this launcher.'}
 $prompt=Get-Content -LiteralPath (Join-Path $projectRoot 'docs/collaboration/CLAUDE-TASK.md') -Raw
 $arguments=@('--permission-mode','acceptEdits','--tools','Read,Glob,Grep,Edit,Write','--disallowedTools','Bash,PowerShell,mcp__*')
-if(!$Interactive){$arguments+=@('-p','--output-format','json')}
+if(!$Interactive){
+    if($Stream){$arguments+=@('-p','--output-format','stream-json','--verbose')}
+    else{$arguments+=@('-p','--output-format','json')}
+}
 & $cli @arguments '--' $prompt
 if($LASTEXITCODE -ne 0){throw "Claude exited with code $LASTEXITCODE"}
