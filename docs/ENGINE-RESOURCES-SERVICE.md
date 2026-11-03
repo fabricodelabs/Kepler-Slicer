@@ -17,7 +17,13 @@ callbacks must not call the service recursively or change resource files.
 
 The packaged trusted `upstream_resources.zip` is copied to a private staging
 directory so `ZipFile` can validate its central directory. Every extracted file
-is checked against its declared byte length and CRC32 and flushed with `fsync`.
+is checked against its declared byte length and CRC32, and its output stream is
+closed before publication. The compressed staging archive and final manifest
+are flushed with `fsync`; extracted files use normal OS writeback rather than
+17,706 separate durability barriers. This avoids excessive cold-start I/O on
+Android. Killing the app does not discard the OS page cache. Power loss or an OS
+crash can still lose extracted file data; the manifest is not a durability proof,
+and same-length damage is outside the structural cache check described below.
 Absolute paths, traversal, backslashes, duplicates and root `.complete` entries
 are rejected. The compatibility JSON and all three Orca flush datasets must be
 present and nonempty. The asset has independent 512 MiB compressed/expanded and
@@ -73,9 +79,13 @@ recovery and cleanup of old numeric staging orphans on cache hits while preservi
 unrelated/recovery paths. The optional command
 also extracts the actual packaged Orca asset and reuses its generated manifest.
 The symlink case reports an explicit skip when Windows denies symlink creation.
-Measured on the Windows development host: the actual packaged archive extracted
-17,706 files in 19.328 seconds, and the subsequent manifest cache check took
-0.507 seconds. This includes per-file `fsync` and is not an Android-device timing.
+Earlier Windows-host measurements with per-file `fsync` were 19.298 seconds for
+17,706 extracted files and 0.554 seconds for the manifest cache check. Those
+measurements predate removal of per-file durability barriers and do not represent
+Android-device performance.
+After their removal, the same Windows-host packaged-asset suite passed 95 checks:
+extraction took 8.959 seconds and the cache check took 0.527 seconds. The emulator's
+cold-start behavior still requires a separate check of the installed APK.
 
 The suite does not simulate a failed OS rename/rollback, process death, or ENOSPC;
 those remain filesystem fault-injection checks rather than claimed coverage.

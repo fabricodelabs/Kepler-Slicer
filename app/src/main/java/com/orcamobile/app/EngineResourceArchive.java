@@ -81,7 +81,6 @@ final class EngineResourceArchive {
                 try(InputStream in=zip.getInputStream(entry);FileOutputStream out=new FileOutputStream(destination.toFile())){
                     byte[] bytes=new byte[65536];int n;
                     while((n=in.read(bytes))!=-1){interrupted();size+=n;total+=n;if(total>LIMIT||size>entry.getSize())throw new IOException("Resources exceed their declared size");out.write(bytes,0,n);crc.update(bytes,0,n);}
-                    out.getFD().sync();
                 }
                 if(size!=entry.getSize()||crc.getValue()!=entry.getCrc())throw new IOException("Resource CRC or size does not match");
                 records.add(new Record(name,size,crc.getValue()));
