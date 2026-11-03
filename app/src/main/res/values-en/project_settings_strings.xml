@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="native_project_title">Open 3MF project</string>
+    <string name="native_project_scope_detail">Load the project’s global, plate and object settings, or use the geometry with your selected profiles. The original 3MF is retained in either mode.</string>
+    <string name="native_project_load_full">Load project settings</string>
+    <string name="native_project_geometry">Geometry only</string>
+    <string name="native_project_unavailable">Project settings cannot be applied: %1$s</string>
+    <string name="native_project_snapshot_unavailable">Select compatible printer, process and filament profiles before applying project settings.</string>
+    <string name="native_project_sync_title">Printer settings from 3MF</string>
+    <string name="native_project_sync_detail">Selected printer: %1$s\nProject printer: %2$s\n\nUse the project’s printer settings or keep the selected printer. Only compatible choices can be applied. This choice does not overwrite your saved presets.</string>
+    <string name="native_project_keep_printer">Keep selected printer</string>
+    <string name="native_project_use_printer">Use project printer settings</string>
+    <string name="native_project_context_changed">The selected profiles changed while the project was being checked. Open the project again to review the current choices.</string>
+    <string name="native_project_loaded_full">The original project and its settings are loaded. Global, plate and object settings are applied directly by Orca during slicing. The saved profile library was not replaced.</string>
+    <string name="native_project_loaded_geometry">The original 3MF was retained. Slicing uses a detached geometry copy with the selected profiles; embedded configurations, paint, layer profiles and custom plate G-code are not applied.</string>
+    <string name="native_project_effective_note">3MF project settings · effective values for slicing. Editing the embedded project configuration is not available on this screen; saved library presets remain separate.</string>
+    <string name="native_project_slice_detail">3MF settings mode: %1$s</string>
+    <string name="native_project_mode_current">project with selected printer</string>
+    <string name="native_project_mode_embedded">project with embedded printer</string>
+    <string name="native_project_mode_geometry">geometry with selected profiles</string>
+    <string name="native_project_stale_values">The model, plate or project mode changed while settings were loading.</string>
+    <string name="native_project_legacy_mode">Choose how to use this saved 3MF: load its settings or use geometry only. The project was opened before these modes were available.</string>
+    <string name="native_project_review_existing">Choose 3MF settings mode</string>
+    <string name="native_project_open_failed">Could not open the model</string>
+    <string name="native_import_formats">STL · OBJ · 3MF · STEP/STP · no fixed STL size limit</string>
+    <string name="native_import_format_description">%1$s model import</string>
+    <string name="native_slice_profiles_loading">Checking effective settings…</string>
+    <string name="native_slice_profiles_unavailable">Unavailable</string>
+    <string name="native_slice_summary_error">Could not read the slicing settings: %1$s</string>
+    <string name="native_slice_unnamed_printer">Unnamed project printer</string>
+    <string name="native_slice_unnamed_process">Unnamed project process</string>
+    <string name="native_slice_unnamed_filament">Unnamed material %1$d</string>
+    <string name="native_slice_project_summary_note">Read-only summary of the project’s effective global and plate settings. Object and volume settings are retained for slicing.</string>
+    <string name="native_slice_layer_height_value">Layer height: %1$s mm</string>
+    <string name="native_slice_selected_summary_note">Selected saved profiles with effective global settings and overrides. Local object settings are applied separately.</string>
+</resources>

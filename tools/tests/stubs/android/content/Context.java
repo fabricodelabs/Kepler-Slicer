@@ -10,6 +10,7 @@ public final class Context {
     public File getFilesDir(){File f=new File(root,"files");f.mkdirs();return f;}
     public File getCacheDir(){File f=new File(root,"cache");f.mkdirs();return f;}
     public AssetManager getAssets(){return assets;}
+    public String getString(int id){return "test-resource-"+id;}
     public synchronized SharedPreferences getSharedPreferences(String name,int mode){return preferences.computeIfAbsent(name,k->new MemoryPreferences());}
     public synchronized void failNextCommit(String name){((MemoryPreferences)getSharedPreferences(name,0)).fail=true;}
     public ContentResolver getContentResolver(){return new ContentResolver();}

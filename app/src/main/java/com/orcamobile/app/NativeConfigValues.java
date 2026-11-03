@@ -25,17 +25,22 @@ import java.util.List;
 final class NativeConfigValues {
     private static final String TAG = "NativeConfigValues";
     private NativeConfigValues() {}
-    enum Source { PROCESS_METADATA, PROCESS_METADATA_SERIALIZED, VALIDATED_INI, DEFINITION_DEFAULT }
+    enum Source { PROCESS_METADATA, PROCESS_METADATA_SERIALIZED, VALIDATED_INI, DEFINITION_DEFAULT, PROJECT_CONFIGURATION }
     static final class Result {
         final JSONObject values;
         final Map<String, Source> sources;
         final boolean resolvedConfigurationAvailable;
         final String optionalDiagnostic;
+        final boolean projectConfiguration;
         Result(JSONObject values, Map<String, Source> sources, boolean available, String diagnostic) {
+            this(values,sources,available,diagnostic,false);
+        }
+        Result(JSONObject values, Map<String, Source> sources, boolean available, String diagnostic,boolean project) {
             this.values = values;
             this.sources = Collections.unmodifiableMap(new HashMap<>(sources));
             this.resolvedConfigurationAvailable = available;
             this.optionalDiagnostic = diagnostic;
+            this.projectConfiguration = project;
         }
         int count(Source source) { int result=0; for(Source value:sources.values()) if(value==source)result++; return result; }
     }
@@ -56,6 +61,7 @@ final class NativeConfigValues {
     static Result loadDetailed(Context context, SettingsSchema schema, String kind,
                                ProcessOverridesStore.Identity id) throws IOException {
         if (context == null || schema == null || id == null) throw new IOException("Не выбраны профили для чтения настроек.");
+        if(CurrentModelStore.projectMode(context)>0)return projectValues(context,schema,kind,id);
         // Validate the section before treating errors in the optional native fallback as non-fatal.
         List<SettingsSchema.Option> options = schema.options(kind);
         JSONObject result = new JSONObject(); Map<String,Source> sources = new HashMap<>();
@@ -95,6 +101,27 @@ final class NativeConfigValues {
             catch (JSONException e) { throw new IOException("Некорректное значение определения Orca.",e); }
         }
         return new Result(result,sources,resolved,diagnostic);
+    }
+
+    private static Result projectValues(Context context,SettingsSchema schema,String kind,ProcessOverridesStore.Identity id)throws IOException {
+        File working=new File(context.getCacheDir(),"project-settings-"+UUID.randomUUID());
+        if(!working.mkdir())throw new IOException("Cannot prepare an immutable project settings snapshot");
+        CurrentModelStore.Snapshot model=null;
+        try {
+            model=CurrentModelStore.snapshotToDirectory(context,working);
+            if(model.projectMode<=0||!model.file.getName().endsWith(".3mf"))throw new IOException(context.getString(R.string.native_project_stale_values));
+            CompatibilityResources prepared=CompatibilityResources.prepareTriple(context,id.printer.vendor,id.process.vendor,id.filament.vendor,id.profileSettings);
+            ProjectSettingsSnapshot snapshot=ProjectSettingsSnapshot.parse(ExperimentalSlicer.projectSettingsSnapshot(
+                id.printer.vendor,id.process.vendor,id.filament.vendor,id.printerName,id.processName,id.filamentName,
+                prepared.resources.getAbsolutePath(),prepared.data.getAbsolutePath(),ProcessOverridesStore.load(context,id),model.materialEdits,model.file.getAbsolutePath(),model.plateIndex));
+            boolean embedded=model.projectMode==2;
+            if(!snapshot.canLoad(embedded))throw new IOException(snapshot.validationError(embedded));
+            if(!model.selectionKey.equals(CurrentModelStore.selectionKey(context)))throw new IOException(context.getString(R.string.native_project_stale_values));
+            JSONObject all=snapshot.effectiveValues(embedded),filtered=new JSONObject();Map<String,Source> origins=new HashMap<>();
+            for(SettingsSchema.Option option:schema.options(kind))if(all.has(option.key)){filtered.put(option.key,all.get(option.key));origins.put(option.key,Source.PROJECT_CONFIGURATION);}
+            return new Result(filtered,origins,true,context.getString(R.string.native_project_effective_note),true);
+        } catch(IOException e){throw e;} catch(Exception|LinkageError e){throw new IOException("Could not read native project settings: "+e.getMessage(),e);}
+        finally {if(model!=null)model.file.delete();working.delete();}
     }
 
     private static JSONObject resolveIni(CompatibilityResources prepared, SettingsSchema schema, String kind,

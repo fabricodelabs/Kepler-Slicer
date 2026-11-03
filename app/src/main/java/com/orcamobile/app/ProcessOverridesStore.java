@@ -42,7 +42,7 @@ final class ProcessOverridesStore {
                     process.vendor,process.name,process.path,filament.vendor,filament.name,filament.path};
             String legacy=hash(triple);
             String[] prior=java.util.Arrays.copyOf(triple,triple.length+1);prior[triple.length]=profileSettings.fingerprint;
-            String[] full=java.util.Arrays.copyOf(prior,prior.length+1);full[prior.length]=objectSettings.fingerprint;
+            String[] full=java.util.Arrays.copyOf(prior,prior.length+2);full[prior.length]=objectSettings.fingerprint;full[prior.length+1]="mixed-temperatures:"+context.getSharedPreferences("app_preferences",0).getBoolean("allow_mixed_temperatures",false);
             return new Identity(hash(full),legacy,hash(prior),p,process,filament,profileSettings,objectSettings);
         }
         private static void requireMatchingOverlay(SettingsState.Snapshot snapshot,String kind,String vendor,String name,String path)throws IOException {

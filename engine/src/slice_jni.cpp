@@ -24,6 +24,12 @@
 #include "process_settings.hpp"
 #include "model_transform.hpp"
 #include "model_io.hpp"
+#include "project_settings.hpp"
+#include "project_settings_tests.hpp"
+#include "native_preferences.hpp"
+#include "step_import.hpp"
+#include "libslic3r/Format/3mf.hpp"
+#include <nlohmann/json.hpp>
 
 // Experimental proof of the upstream API, not integrated into the app.
 // Orca's resource and data directories are process-global, so calls are serialized.
@@ -137,15 +143,27 @@ std::filesystem::path create_job_directory(const std::string &job_path, const st
 
 // Caller holds engine_mutex and supplies an already validated full configuration.
 std::string slice_model(const std::string &model_file, const std::string &output_file,
-                        const Slic3r::DynamicPrintConfig &config, const kepler::ModelTransform *transform = nullptr, int plate = -1)
+                        const Slic3r::DynamicPrintConfig &config, const kepler::ModelTransform *transform = nullptr, int plate = -1,
+                        Slic3r::Model *prepared = nullptr, bool allow_mixed_temperatures = false,
+                        bool center_derived_step = false)
 {
     const auto extension=std::filesystem::path(model_file).extension().string();
     if(extension==".stl") validate_stl_before_import(model_file);
-    Slic3r::Model model = extension==".stl" ? Slic3r::Model::read_from_file(model_file) : kepler::load_plate_model(model_file,plate);
+    Slic3r::Model model = prepared ? std::move(*prepared) : extension==".stl" ? Slic3r::Model::read_from_file(model_file) : kepler::load_plate_model(model_file,plate);
     if(model.objects.empty()) throw std::runtime_error("Model has no objects");
     if (extension==".stl" && (model.objects.size() != 1 || model.objects.front()->instances.size() != 1))
         throw std::runtime_error("Only one STL object and one instance are supported");
     Slic3r::Print print;
+    if(allow_mixed_temperatures) {
+        const auto *types=config.opt<Slic3r::ConfigOptionStrings>("filament_type");
+        const auto *temperatures=config.opt<Slic3r::ConfigOptionInts>("nozzle_temperature");
+        const auto *lows=config.opt<Slic3r::ConfigOptionInts>("nozzle_temperature_range_low");
+        const auto *highs=config.opt<Slic3r::ConfigOptionInts>("nozzle_temperature_range_high");
+        if(!types||!temperatures||!lows||!highs)throw std::runtime_error("Missing filament temperature compatibility data");
+        if(Slic3r::Print::check_multi_filaments_compatibility(types->values,temperatures->values,lows->values,highs->values)==Slic3r::InvalidTemperatureRange)
+            throw std::runtime_error("A filament nozzle temperature is outside its permitted range");
+    }
+    print.set_check_multi_filaments_compatibility(!allow_mixed_temperatures);
     print.set_status_silent();
     for (Slic3r::ModelObject *object : model.objects) {
         print.auto_assign_extruders(object);
@@ -165,7 +183,10 @@ std::string slice_model(const std::string &model_file, const std::string &output
     // Match the desktop's lateral centering step for a newly loaded model.
     // This is centering, not the multi-object arrangement algorithm.
     const bool identity=!transform || (transform->rotation_x==0 && transform->rotation_y==0 && transform->rotation_z==0 && transform->scale_x==1 && transform->scale_y==1 && transform->scale_z==1 && transform->offset_x==0 && transform->offset_y==0);
-    if(extension==".3mf") {
+    if(center_derived_step) {
+        const kepler::ModelTransform unchanged{0,0,0,1,1,1,0,0};
+        kepler::place_step_geometry(model,volume,transform?*transform:unchanged);
+    } else if(extension==".3mf") {
         if(!identity) throw std::runtime_error("Editing a 3MF project transform is not yet supported; the original layout is preserved");
     } else if(extension==".obj" && (model.objects.size()!=1 || model.objects.front()->instances.size()!=1)) {
         if(!identity) throw std::runtime_error("Transforming a multi-object OBJ is not yet supported");
@@ -433,6 +454,18 @@ void prepare_settings_context(const std::string &resources, const std::string &d
     if (!std::filesystem::is_directory(resources) || !std::filesystem::is_directory(data)) throw std::invalid_argument("Resource or private data directory not found");
     Slic3r::set_resources_dir(resources); Slic3r::set_data_dir(data); Slic3r::set_temporary_dir(data);
 }
+jbyteArray json_bytes(JNIEnv *env,const std::string &json) {
+    if(json.size()>static_cast<size_t>(std::numeric_limits<jsize>::max()))throw std::runtime_error("Native snapshot exceeds Java array capacity");
+    jbyteArray out=env->NewByteArray(static_cast<jsize>(json.size()));
+    if(out)env->SetByteArrayRegion(out,0,static_cast<jsize>(json.size()),reinterpret_cast<const jbyte*>(json.data()));
+    return out;
+}
+kepler::ModelTransform read_transform(JNIEnv *env,jdoubleArray params) {
+    if(!params||env->GetArrayLength(params)!=8)throw std::invalid_argument("Expected eight transform values");
+    jdouble v[8];env->GetDoubleArrayRegion(params,0,8,v);
+    if(env->ExceptionCheck())throw std::runtime_error("Cannot read transform");
+    return {v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7]};
+}
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
@@ -534,4 +567,162 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_printerBuildVolume(
     } catch (const std::exception &e) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), e.what()); }
       catch (...) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown printer bed error"); }
     return nullptr;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_projectSettingsSnapshot(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring resources_path,jstring data_path,
+    jstring settings_json,jstring material_edits,jstring model_path,jint plate) {
+    try {
+        const auto resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),path=standard_utf8(env,model_path),settings=standard_utf8(env,settings_json),edits=standard_utf8(env,material_edits);
+        const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        const auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
+        return json_bytes(env,kepler::project_settings_snapshot_json(path,plate,config,edits));
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown project snapshot error");}
+    return nullptr;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_resolvedSettingsSnapshot(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring resources_path,jstring data_path,jstring settings_json) {
+    try {
+        const auto resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),settings=standard_utf8(env,settings_json);
+        const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        return json_bytes(env,kepler::typed_config_snapshot_json(kepler::resolve_system_profile_config_with_overrides(selection,settings)));
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown resolved snapshot error");}
+    return nullptr;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_prepareStep(JNIEnv *env,jclass,jstring source_path,
+    jstring resources_path,jstring data_path,jstring job_path,jdouble linear,jdouble angular,jboolean split) {
+    try {
+        const auto source=standard_utf8(env,source_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),job_name=standard_utf8(env,job_path);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        const auto job=create_job_directory(job_name,data),output=job/"model.3mf";
+        const auto metadata=kepler::convert_step_to_3mf(source,output.string(),linear,angular,split);
+        std::ofstream meta(job/"step-import.json",std::ios::binary);meta<<metadata;meta.close();if(!meta)throw std::runtime_error("Cannot save STEP tessellation provenance");
+        return env->NewStringUTF(output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown STEP import error");}
+    return nullptr;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_sliceProjectWithSettings(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
+    jstring job_path,jdoubleArray params,jstring settings_json,jstring material_edits,jint plate,jint mode,jboolean allow_mixed) {
+    try {
+        if(mode< -1||mode>3)throw std::invalid_argument("Unknown project import mode");
+        auto transform=read_transform(env,params);
+        const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),job_name=standard_utf8(env,job_path),settings=standard_utf8(env,settings_json),edits=standard_utf8(env,material_edits);
+        const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
+        const auto job=create_job_directory(job_name,data);std::string result;
+        if(mode==3) {
+            if(edits!="{}"||plate!=-1)throw std::invalid_argument("STEP derivative cannot contain project material edits or plate settings");
+            kepler::validate_step_snapshot(path);
+            result=slice_model(path,(job/"result.gcode").string(),config,&transform,-1,nullptr,allow_mixed,true);
+        } else if(std::filesystem::path(path).extension()==".3mf"&&mode>=0) {
+            auto candidate=mode==0?kepler::prepare_project_geometry(path,plate,config):kepler::prepare_project_settings(path,plate,config,mode==2);
+            if(mode==1||mode==2)candidate.config=kepler::apply_material_edits(candidate.config,edits);
+            else if(edits!="{}")throw std::invalid_argument("Geometry import cannot apply project material edits");
+            result=slice_model(path,(job/"result.gcode").string(),candidate.config,&transform,candidate.selected_plate,&candidate.model,allow_mixed);
+        } else {if(edits!="{}")throw std::invalid_argument("No configured project for material edits");result=slice_model(path,(job/"result.gcode").string(),config,&transform,plate,nullptr,allow_mixed);}
+        return env->NewStringUTF(result.c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown project slicing error");}
+    return nullptr;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_projectMaterialSettings(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring resources_path,jstring data_path,jstring settings_json,
+    jstring model_path,jint plate,jint mode,jstring material_edits,jint slot,jstring new_colour,jboolean recalculate) {
+    try {
+        if(mode!=1&&mode!=2)throw std::invalid_argument("Load a 3MF project with its settings before editing materials");
+        const auto resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),path=standard_utf8(env,model_path),settings=standard_utf8(env,settings_json),edits=standard_utf8(env,material_edits),colour=standard_utf8(env,new_colour);
+        const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        auto project=kepler::prepare_project_settings(path,plate,kepler::resolve_system_profile_config_with_overrides(selection,settings),mode==2);
+        auto config=kepler::apply_material_edits(project.config,edits);
+        if(slot>=0){
+            auto *colours=config.option<Slic3r::ConfigOptionStrings>("filament_colour");
+            if(!colours||static_cast<size_t>(slot)>=colours->values.size())throw std::invalid_argument("The selected filament slot no longer exists");
+            const auto *saved_matrix=config.opt<Slic3r::ConfigOptionFloats>("flush_volumes_matrix");
+            if(!saved_matrix)throw std::runtime_error("Project has no flushing matrix");
+            nlohmann::json change={{"colours",colours->values},{"flush_volumes",saved_matrix->values}};change["colours"][slot]=colour;
+            config=kepler::apply_material_edits(config,change.dump());
+            if(recalculate)config=kepler::recalculate_flushing(config,slot);
+        } else if(slot!=-1||!colour.empty())throw std::invalid_argument("Invalid filament slot request");
+        auto result=nlohmann::json::parse(kepler::material_snapshot_json(config));
+        const auto *colours=config.opt<Slic3r::ConfigOptionStrings>("filament_colour");
+        const auto *matrix=config.opt<Slic3r::ConfigOptionFloats>("flush_volumes_matrix");
+        if(!colours||!matrix)throw std::runtime_error("Project has no editable filament/flush vectors");
+        result["edits"]={{"colours",colours->values},{"flush_volumes",matrix->values}};
+        return json_bytes(env,result.dump());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown project materials error");}
+    return nullptr;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_cloneModelWithPreferences(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
+    jstring job_path,jdoubleArray params,jstring settings_json,jint oi,jint ii,jint copies,jboolean arrange) {
+    try {
+        if(oi<0||ii<0||copies<1)throw std::invalid_argument("Invalid instance clone request");
+        const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),job_name=standard_utf8(env,job_path),settings=standard_utf8(env,settings_json);
+        const auto ext=std::filesystem::path(path).extension().string();
+        if(ext!=".stl"&&ext!=".obj")throw std::invalid_argument("Cloning a configured 3MF requires the project-session export path; original preserved");
+        auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
+        if(ext==".stl")validate_stl_before_import(path);
+        Slic3r::Model original=Slic3r::Model::read_from_file(path);
+        const auto *area=config.opt<Slic3r::ConfigOptionPoints>("printable_area");
+        if(!area)throw std::runtime_error("Missing printer build area");
+        const auto *extruder_areas=config.opt<Slic3r::ConfigOptionPointsGroups>("extruder_printable_area");
+        const auto *extruder_heights=config.opt<Slic3r::ConfigOptionFloatsNullable>("extruder_printable_height");
+        const std::vector<std::vector<Slic3r::Vec2d>> empty_areas;
+        const std::vector<double> empty_heights;
+        Slic3r::BuildVolume volume(area->values,config.opt_float("printable_height"),
+            extruder_areas?extruder_areas->values:empty_areas,extruder_heights?extruder_heights->values:empty_heights);
+        kepler::apply_model_transform(original,volume,transform);
+        auto candidate=kepler::clone_and_arrange(original,config,oi,ii,copies,arrange);
+        const auto job=create_job_directory(job_name,data),output=job/"model.3mf";
+        if(!Slic3r::store_3mf(output.string().c_str(),&candidate,nullptr,false)||!std::filesystem::is_regular_file(output))throw std::runtime_error("Cannot export cloned model");
+        std::ofstream meta(job/"placements.json",std::ios::binary);meta<<kepler::model_placements_json(candidate);meta.close();if(!meta)throw std::runtime_error("Cannot save placement provenance");
+        return env->NewStringUTF(output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown clone/arrange error");}
+    return nullptr;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_setNativeLogLevel(JNIEnv *env,jclass,jstring level) {
+    try {const auto requested=standard_utf8(env,level);std::lock_guard<std::mutex> guard(engine_mutex);return env->NewStringUTF(kepler::set_native_log_level(requested).c_str());}
+    catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}return nullptr;
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_runNativePreferencesSelfTest(JNIEnv *env,jclass,jstring resources_path,jstring data_path) {
+    try {
+        const auto resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path);
+        std::lock_guard<std::mutex> guard(engine_mutex);
+        prepare_settings_context(resources,data);
+        auto result=nlohmann::json::parse(kepler::native_preferences_self_test());
+        const auto project=nlohmann::json::parse(kepler::project_settings_self_test(data));
+        for(const auto &check:project.at("checks")) result["checks"].push_back(check);
+        result["count"]=result["checks"].size();
+        result["project_checks"]=project.at("count");
+        result["passed"]=true;
+        return json_bytes(env,result.dump());
+    }
+    catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+    catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown native self-test error");}return nullptr;
 }

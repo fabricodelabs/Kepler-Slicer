@@ -47,6 +47,9 @@ public final class SliceActivity extends Activity {
     private File shownResult;
     private boolean checkingResult;
     private int resultQueryGeneration;
+    private TextView printerSummary, processSummary, filamentSummary, profileSummaryNote;
+    private int profileQueryGeneration;
+    private Thread profileReader;
     private int dp(int value) { return (int)(value * getResources().getDisplayMetrics().density + .5f); }
 
     @Override public void onCreate(Bundle state) {
@@ -62,12 +65,10 @@ public final class SliceActivity extends Activity {
         TextView back = label("‹   Назад", 15, true); back.setPadding(0, dp(8), 0, dp(12)); back.setOnClickListener(v -> finish()); content.addView(back);
         content.addView(label("Нарезка модели", 28, true)); space(content, 12);
         content.addView(label("Экспериментальный движок OrcaSlicer. Результат сохраняется только на устройстве; соответствие настольной версии и пригодность к печати ещё не подтверждены.", 14, false)); space(content, 24);
-        OrcaProfileCatalog.Profile printer = OrcaProfileCatalog.loadSelection(this);
-        OrcaProcessFilamentCatalog.Profile process = OrcaProcessFilamentCatalog.loadSelection(this, OrcaProcessFilamentCatalog.PROCESS);
-        OrcaProcessFilamentCatalog.Profile filament = OrcaProcessFilamentCatalog.loadSelection(this, OrcaProcessFilamentCatalog.FILAMENT);
-        content.addView(label("ПРИНТЕР", 11, true)); content.addView(label(printer == null ? "Не выбран" : printer.displayName(), 15, false)); space(content, 14);
-        content.addView(label("ПРОЦЕСС", 11, true)); content.addView(label(process == null ? "Не выбран" : process.name, 15, false)); space(content, 14);
-        content.addView(label("МАТЕРИАЛ", 11, true)); content.addView(label(filament == null ? "Не выбран" : filament.name, 15, false)); space(content, 24);
+        content.addView(label("ПРИНТЕР", 11, true)); printerSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(printerSummary);space(content,14);
+        content.addView(label("ПРОЦЕСС", 11, true)); processSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(processSummary);space(content,14);
+        content.addView(label("МАТЕРИАЛ", 11, true)); filamentSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(filamentSummary);space(content,12);
+        profileSummaryNote=label("",12,false);content.addView(profileSummaryNote);space(content,24);
         statusView = label("", 14, false); statusView.setTextIsSelectable(true); content.addView(statusView); space(content, 24);
         startButton = label("Нарезать модель", 15, true); startButton.setTextColor(ui.bg); startButton.setGravity(Gravity.CENTER); startButton.setPadding(dp(16), dp(16), dp(16), dp(16));
         GradientDrawable button = new GradientDrawable(); button.setColor(ui.ink); button.setCornerRadius(dp(100)); startButton.setBackground(button); content.addView(startButton);
@@ -91,8 +92,8 @@ public final class SliceActivity extends Activity {
         }));
         space(content, 8); previewDetails = label("", 12, false); content.addView(previewDetails);
     }
-    @Override protected void onStart() { super.onStart(); synchronized (LOCK) { observer = new WeakReference<>(this); } requestResultRefresh();if(pendingAutoSlice){pendingAutoSlice=false;if(ControlPreferences.currentAutoRequest(this,pendingAutoRequest))startSlice(pendingAutoRequest);} }
-    @Override protected void onStop() { resultQueryGeneration++;shownResult=null;synchronized (LOCK) { if (observer.get() == this) observer.clear(); } super.onStop(); }
+    @Override protected void onStart() { super.onStart(); synchronized (LOCK) { observer = new WeakReference<>(this); } requestResultRefresh();requestProfileSummary();if(pendingAutoSlice){pendingAutoSlice=false;if(ControlPreferences.currentAutoRequest(this,pendingAutoRequest))startSlice(pendingAutoRequest);} }
+    @Override protected void onStop() { resultQueryGeneration++;profileQueryGeneration++;Thread reader=profileReader;profileReader=null;if(reader!=null)reader.interrupt();shownResult=null;synchronized (LOCK) { if (observer.get() == this) observer.clear(); } super.onStop(); }
     private TextView label(String value, int size, boolean bold) { TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(ui.ink); t.setTypeface(Typeface.create("sans-serif", bold ? Typeface.BOLD : Typeface.NORMAL)); t.setLineSpacing(dp(2), 1); return t; }
     private void space(LinearLayout parent, int height) { parent.addView(new View(this), new LinearLayout.LayoutParams(1, dp(height))); }
     private void refresh() {
@@ -113,6 +114,77 @@ public final class SliceActivity extends Activity {
             File current=lastResult(context);
             MAIN.post(()->{if(!isFinishing()&&!isDestroyed()&&generation==resultQueryGeneration){shownResult=current;refresh();}});
         },"orca-result-check").start();
+    }
+    /** Read the same effective project mode as slicing; never label it as a library preset. */
+    private void requestProfileSummary() {
+        final int generation=++profileQueryGeneration;
+        Thread previous=profileReader;if(previous!=null)previous.interrupt();
+        final android.content.Context context=getApplicationContext();
+        String loading=getString(R.string.native_slice_profiles_loading);
+        printerSummary.setText(loading);processSummary.setText(loading);filamentSummary.setText(loading);profileSummaryNote.setText("");
+        profileReader=new Thread(()->{
+            File temporary=null;CurrentModelStore.Snapshot model=null;
+            try {
+                final String expectedModel=CurrentModelStore.selectionKey(context);
+                final EngineProfileSession session=EngineProfileSession.capture(context);
+                String printer=session.id.profileSettings.overlays.get("printer").values().optString("name",session.id.printer.name);
+                String process=session.id.profileSettings.overlays.get("process").values().optString("name",session.id.process.name);
+                String filament=session.id.profileSettings.overlays.get("filament").values().optString("name",session.id.filament.name);
+                String note="";
+                int mode=CurrentModelStore.projectMode(context);
+                if(mode==1||mode==2) {
+                    temporary=new File(context.getCacheDir(),"slice-project-summary-"+UUID.randomUUID());
+                    if(!temporary.mkdir())throw new IOException("Cannot prepare project summary");
+                    model=CurrentModelStore.snapshotToDirectory(context,temporary);
+                    if(model.projectMode!=mode||!expectedModel.equals(model.selectionKey))throw new IOException(context.getString(R.string.native_project_stale_values));
+                    org.json.JSONObject overrides=new org.json.JSONObject(session.selection.overrides);
+                    java.util.Iterator<String> objectKeys=session.id.objectSettings.changes().keys();
+                    while(objectKeys.hasNext())overrides.remove(objectKeys.next());
+                    ProjectSettingsSnapshot snapshot=ProjectSettingsSnapshot.parse(ExperimentalSlicer.projectSettingsSnapshot(
+                        session.id.printer.vendor,session.id.process.vendor,session.id.filament.vendor,
+                        session.id.printer.name,session.id.process.name,session.id.filament.name,
+                        session.resources.getAbsolutePath(),session.data.getAbsolutePath(),overrides.toString(),model.materialEdits,
+                        model.file.getAbsolutePath(),model.plateIndex));
+                    boolean embedded=mode==2;
+                    if(!snapshot.canLoad(embedded))throw new IOException(snapshot.validationError(embedded));
+                    org.json.JSONObject actual=snapshot.effectiveValues(embedded);
+                    printer=actual.optString("printer_settings_id","");
+                    process=actual.optString("print_settings_id","");
+                    if(printer.trim().isEmpty())printer=context.getString(R.string.native_slice_unnamed_printer);
+                    if(process.trim().isEmpty())process=context.getString(R.string.native_slice_unnamed_process);
+                    process+="\n"+layerHeightSummary(context,snapshot.json().getJSONObject(embedded?"effective":"effective_selected_printer"));
+                    org.json.JSONArray materials=actual.optJSONArray("filament_settings_id");StringBuilder materialNames=new StringBuilder();
+                    if(materials!=null)for(int i=0;i<materials.length();i++){if(i>0)materialNames.append("\n");String name=materials.optString(i,"");materialNames.append(name.trim().isEmpty()?context.getString(R.string.native_slice_unnamed_filament,i+1):name);}
+                    filament=materialNames.length()==0?context.getString(R.string.native_slice_profiles_unavailable):materialNames.toString();
+                    note=context.getString(R.string.native_project_slice_detail,context.getString(embedded?R.string.native_project_mode_embedded:R.string.native_project_mode_current))+"\n"+context.getString(R.string.native_slice_project_summary_note);
+                } else {
+                    byte[] bytes=ExperimentalSlicer.resolvedSettingsSnapshot(session.id.printer.vendor,session.id.process.vendor,session.id.filament.vendor,
+                        session.id.printer.name,session.id.process.name,session.id.filament.name,
+                        session.resources.getAbsolutePath(),session.data.getAbsolutePath(),session.selection.overrides);
+                    if(bytes==null)throw new IOException("No resolved settings summary");
+                    String json=java.nio.charset.StandardCharsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+                    process+="\n"+layerHeightSummary(context,new org.json.JSONObject(json));
+                    note=context.getString(R.string.native_slice_selected_summary_note);
+                }
+                if(Thread.currentThread().isInterrupted()||!session.stillCurrent(context)||!expectedModel.equals(CurrentModelStore.selectionKey(context)))
+                    throw new IOException(context.getString(R.string.native_project_stale_values));
+                final String shownPrinter=printer,shownProcess=process,shownFilament=filament,shownNote=note;
+                MAIN.post(()->{if(isFinishing()||isDestroyed()||generation!=profileQueryGeneration)return;printerSummary.setText(shownPrinter);processSummary.setText(shownProcess);filamentSummary.setText(shownFilament);profileSummaryNote.setText(shownNote);});
+            } catch(Exception|LinkageError error) {
+                final String message=context.getString(R.string.native_slice_summary_error,error.getMessage()==null?error.getClass().getSimpleName():error.getMessage());
+                MAIN.post(()->{if(isFinishing()||isDestroyed()||generation!=profileQueryGeneration)return;String unavailable=getString(R.string.native_slice_profiles_unavailable);printerSummary.setText(unavailable);processSummary.setText(unavailable);filamentSummary.setText(unavailable);profileSummaryNote.setText(message);});
+            } finally {if(model!=null)model.file.delete();if(temporary!=null)temporary.delete();}
+        },"orca-slice-profile-summary");
+        profileReader.start();
+    }
+    private static String layerHeightSummary(android.content.Context context,org.json.JSONObject config)throws IOException {
+        try {
+            org.json.JSONObject row=config.getJSONObject("options").getJSONObject("layer_height");Object raw=row.get("value");
+            if(!"coFloat".equals(row.getString("type"))||!(raw instanceof Number))throw new IOException("Invalid effective layer height");
+            double value=((Number)raw).doubleValue();if(!Double.isFinite(value)||value<=0)throw new IOException("Invalid effective layer height");
+            return context.getString(R.string.native_slice_layer_height_value,java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString());
+        }catch(org.json.JSONException error){throw new IOException("Missing effective layer height",error);}
     }
     private void withCurrentResult(java.util.function.Consumer<File> action) {
         if(checkingResult)return;
@@ -141,6 +213,7 @@ public final class SliceActivity extends Activity {
             try {
                 if(autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))throw new IOException("Автонарезка отменена: появился более новый запрос.");
                 final ProcessOverridesStore.Snapshot selection=ProcessOverridesStore.snapshotForSlice(context);
+                final boolean allowMixed=GeneralPreferences.prefs(context).getBoolean("allow_mixed_temperatures",false);
                 final OrcaProfileCatalog.Profile printer=selection.identity.printer;
                 final OrcaProcessFilamentCatalog.Profile process=selection.identity.process;
                 final OrcaProcessFilamentCatalog.Profile filament=selection.identity.filament;
@@ -186,20 +259,28 @@ public final class SliceActivity extends Activity {
                 stage = "загрузка движка и нарезка";
                 update("Проверяем совместимость профилей и нарезаем модель…");
                 File job = new File(data, "job-" + UUID.randomUUID());
-                String result = ExperimentalSlicer.sliceModelWithSettings(printer.vendor, process.vendor, filament.vendor,
-                        printer.name, process.name, filament.name, input.getAbsolutePath(), resources.getAbsolutePath(), data.getAbsolutePath(), job.getAbsolutePath(), model.transform.toNativeArguments(), nativeOverrides.toString(),model.plateIndex);
+                ProjectSettingsSnapshot projectDetails=null;
+                if(model.projectMode==1||model.projectMode==2)projectDetails=ProjectSettingsSnapshot.parse(ExperimentalSlicer.projectSettingsSnapshot(
+                    printer.vendor,process.vendor,filament.vendor,printer.name,process.name,filament.name,
+                    resources.getAbsolutePath(),data.getAbsolutePath(),nativeOverrides.toString(),model.materialEdits,input.getAbsolutePath(),model.plateIndex));
+                if(allowMixed!=GeneralPreferences.prefs(context).getBoolean("allow_mixed_temperatures",false))throw new IOException("Material compatibility policy changed before slicing");
+                String result = ExperimentalSlicer.sliceProjectWithSettings(printer.vendor, process.vendor, filament.vendor,
+                        printer.name, process.name, filament.name, input.getAbsolutePath(), resources.getAbsolutePath(), data.getAbsolutePath(), job.getAbsolutePath(), model.transform.toNativeArguments(), nativeOverrides.toString(),model.materialEdits,model.plateIndex,model.projectMode,allowMixed);
                 File output = result == null ? null : new File(result);
                 if (output == null || !output.isFile() || output.length() == 0 || !output.getCanonicalFile().getParentFile().equals(job.getCanonicalFile())) throw new IOException("G-code не создан или пуст.");
                 if((autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))||!jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context)))
                     throw new IOException("Модель или настройки изменились во время нарезки; устаревший результат не сохранён.");
+                if(allowMixed!=GeneralPreferences.prefs(context).getBoolean("allow_mixed_temperatures",false))throw new IOException("Material compatibility policy changed during slicing; stale result was not saved");
                 success = true;
                 ModelTransform transform = model.transform;
                 String printerDisplay=selection.identity.profileSettings.overlays.get("printer").values().optString("name",printer.name);
                 String processDisplay=selection.identity.profileSettings.overlays.get("process").values().optString("name",process.name);
                 String filamentDisplay=selection.identity.profileSettings.overlays.get("filament").values().optString("name",filament.name);
+                if(projectDetails!=null){org.json.JSONObject actual=projectDetails.effectiveValues(model.projectMode==2);printerDisplay=model.projectMode==2?projectDetails.embeddedPrinterId:projectDetails.selectedPrinterId;processDisplay=actual.optString("print_settings_id",processDisplay);org.json.JSONArray ids=actual.optJSONArray("filament_settings_id");if(ids!=null&&ids.length()>0)filamentDisplay=ids.optString(0,filamentDisplay)+(ids.length()>1?" +"+(ids.length()-1):"");}
                 String details = model.name + "\n" + printerDisplay + "\n" + processDisplay + "\n" + filamentDisplay +
                         String.format(java.util.Locale.getDefault(), "\nПоворот XYZ: %.2f°, %.2f°, %.2f°\nМасштаб XYZ: %.3f × %.3f × %.3f\nСмещение XY: %.2f, %.2f мм",
                                 transform.rx, transform.ry, transform.rz, transform.sx, transform.sy, transform.sz, transform.offsetX, transform.offsetY);
+                if(input.getName().endsWith(".3mf")&&model.projectMode>=0&&model.projectMode<=2)details+="\n"+context.getString(R.string.native_project_slice_detail,context.getString(model.projectMode==2?R.string.native_project_mode_embedded:model.projectMode==1?R.string.native_project_mode_current:R.string.native_project_mode_geometry));
                 SharedPreferences prefs = context.getSharedPreferences(RESULTS, MODE_PRIVATE);
                 String previousPath = prefs.getString(RESULT_PATH, ""), previousDetails = prefs.getString(RESULT_DETAILS, ""), previousModel = prefs.getString(RESULT_MODEL, ""), previousOverrides = prefs.getString(RESULT_OVERRIDES, "{}"), previousFingerprint = prefs.getString(RESULT_FINGERPRINT, "");
                 boolean saved = prefs.edit().putString(RESULT_PATH, output.getCanonicalPath()).putString(RESULT_DETAILS, details).putString(RESULT_MODEL, model.name).putString(RESULT_OVERRIDES, selection.overrides).putString(RESULT_FINGERPRINT, jobFingerprint).commit();
