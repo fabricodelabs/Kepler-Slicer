@@ -47,6 +47,10 @@
                 <data android:mimeType="model/3mf" />
                 <data android:mimeType="application/vnd.ms-3mfdocument" />
                 <data android:mimeType="application/x-3mf" />
+                <data android:mimeType="model/step" />
+                <data android:mimeType="application/step" />
+                <data android:mimeType="application/x-step" />
+                <data android:mimeType="model/x-step" />
                 <!-- Some document providers expose 3D files as generic binary data.
                      The import path validates the display extension and file contents. -->
                 <data android:mimeType="application/octet-stream" />
@@ -66,6 +70,10 @@
                 <data android:mimeType="model/3mf" />
                 <data android:mimeType="application/vnd.ms-3mfdocument" />
                 <data android:mimeType="application/x-3mf" />
+                <data android:mimeType="model/step" />
+                <data android:mimeType="application/step" />
+                <data android:mimeType="application/x-step" />
+                <data android:mimeType="model/x-step" />
                 <data android:mimeType="application/octet-stream" />
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="text/plain" />

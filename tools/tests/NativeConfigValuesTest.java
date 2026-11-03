@@ -80,6 +80,37 @@ public final class NativeConfigValuesTest {
         ExperimentalSlicer.metadata=new byte[]{(byte)0xc3,0x28};
         NativeConfigValues.Result malformed=NativeConfigValues.loadDetailed(context,schema,"process",id);
         check(!malformed.resolvedConfigurationAvailable && malformed.optionalDiagnostic!=null,"bad UTF-8 safely falls back");
+        check(!malformed.projectConfiguration,"legacy values are not project values");
+
+        // The bridge response is an explicit fake. Exercise the real consumer,
+        // immutable model-copy cleanup, scope filtering and fail-closed behavior.
+        CurrentModelStore.source=new File(context.getCacheDir(),"native-config-source.3mf");
+        java.nio.file.Files.write(CurrentModelStore.source.toPath(),new byte[]{1,2,3});
+        CurrentModelStore.mode=2;
+        ExperimentalSlicer.projectMetadata=ProjectSettingsSnapshotTest.fixture().toString().getBytes(StandardCharsets.UTF_8);
+        int previousIniCalls=ExperimentalSlicer.iniCalls,previousMetadataCalls=ExperimentalSlicer.metadataCalls;
+        NativeConfigValues.Result project=NativeConfigValues.loadDetailed(context,schema,"process",id);
+        check(project.projectConfiguration&&project.resolvedConfigurationAvailable,"project effective config distinguished from preset fallback");
+        check(project.values.getString("layer_height").equals("0.234567891234567"),"actual project wire precision retained");
+        check(project.sources.get("layer_height")==NativeConfigValues.Source.PROJECT_CONFIGURATION,"project origin");
+        check(!project.values.has("point")&&!project.values.has("filament_diameter"),"only selected schema scope exposed");
+        check(ExperimentalSlicer.iniCalls==previousIniCalls&&ExperimentalSlicer.metadataCalls==previousMetadataCalls,"project never falls through to INI or selected process metadata");
+        check(!CurrentModelStore.lastCopy.exists()&&!CurrentModelStore.lastCopy.getParentFile().exists(),"immutable project copy removed after success");
+        CurrentModelStore.mode=1;
+        try{NativeConfigValues.loadDetailed(context,schema,"process",id);throw new AssertionError("incompatible current-printer config accepted");}
+        catch(java.io.IOException expected){check(expected.getMessage().contains("Incompatible nozzle"),"native project rejection not masked as defaults");}
+        check(!CurrentModelStore.lastCopy.exists()&&!CurrentModelStore.lastCopy.getParentFile().exists(),"immutable project copy removed after native rejection");
+        CurrentModelStore.mode=2;
+        ExperimentalSlicer.projectHook=()->CurrentModelStore.key="changed-project";
+        try{NativeConfigValues.loadDetailed(context,schema,"process",id);throw new AssertionError("stale project display accepted");}
+        catch(java.io.IOException expected){checks++;}
+        ExperimentalSlicer.projectHook=null;CurrentModelStore.key="captured-project";
+        ExperimentalSlicer.projectMetadata=new byte[]{(byte)0xc3,0x28};
+        try{NativeConfigValues.loadDetailed(context,schema,"process",id);throw new AssertionError("bad project UTF-8 accepted");}
+        catch(java.io.IOException expected){checks++;}
+        check(ExperimentalSlicer.iniCalls==previousIniCalls&&ExperimentalSlicer.metadataCalls==previousMetadataCalls,"project errors never claim saved profile defaults");
+        check(!CurrentModelStore.lastCopy.exists()&&!CurrentModelStore.lastCopy.getParentFile().exists(),"immutable project copy removed after malformed response");
+        CurrentModelStore.mode=0;CurrentModelStore.source.delete();
         System.out.println("Native config values host tests passed: "+checks+" checks (JNI not executed)");
     }
 }

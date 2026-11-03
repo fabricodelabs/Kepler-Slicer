@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="native_project_title">Открыть проект 3MF</string>
+    <string name="native_project_scope_detail">Загрузить глобальные параметры, настройки пластины и объектов из проекта или использовать геометрию с выбранными профилями. Исходный 3MF сохраняется в обоих режимах.</string>
+    <string name="native_project_load_full">Загрузить настройки проекта</string>
+    <string name="native_project_geometry">Только геометрия</string>
+    <string name="native_project_unavailable">Нельзя применить настройки проекта: %1$s</string>
+    <string name="native_project_snapshot_unavailable">Для применения настроек проекта выберите совместимые профили принтера, процесса и материала.</string>
+    <string name="native_project_sync_title">Параметры принтера из 3MF</string>
+    <string name="native_project_sync_detail">Выбранный принтер: %1$s\nПринтер проекта: %2$s\n\nИспользовать параметры принтера из проекта или сохранить выбранный принтер. Применяются только совместимые варианты. Сохранённые профили не перезаписываются.</string>
+    <string name="native_project_keep_printer">Сохранить выбранный принтер</string>
+    <string name="native_project_use_printer">Использовать принтер проекта</string>
+    <string name="native_project_context_changed">Выбранные профили изменились во время проверки проекта. Откройте проект снова, чтобы проверить актуальные варианты.</string>
+    <string name="native_project_loaded_full">Исходный проект и его настройки загружены. Глобальные параметры, настройки пластины и объектов применяются Orca непосредственно при нарезке. Библиотека сохранённых профилей не заменена.</string>
+    <string name="native_project_loaded_geometry">Исходный 3MF сохранён. Нарезается отдельная копия геометрии с выбранными профилями; встроенные конфигурации, покраска, профиль высот слоёв и пользовательский G-code пластины не применяются.</string>
+    <string name="native_project_effective_note">Настройки проекта 3MF · действующие значения для нарезки. Редактирование встроенной конфигурации проекта на этом экране пока недоступно; сохранённые профили библиотеки остаются отдельными.</string>
+    <string name="native_project_slice_detail">Режим настроек 3MF: %1$s</string>
+    <string name="native_project_mode_current">проект с выбранным принтером</string>
+    <string name="native_project_mode_embedded">проект со встроенным принтером</string>
+    <string name="native_project_mode_geometry">геометрия с выбранными профилями</string>
+    <string name="native_project_stale_values">Модель, пластина или режим проекта изменились во время загрузки настроек.</string>
+    <string name="native_project_legacy_mode">Выберите, как использовать сохранённый 3MF: загрузить настройки проекта или только геометрию. Проект был открыт до появления этих режимов.</string>
+    <string name="native_project_review_existing">Выбрать режим настроек 3MF</string>
+    <string name="native_project_open_failed">Не удалось открыть модель</string>
+    <string name="native_import_formats">STL · OBJ · 3MF · STEP/STP · без фиксированного лимита размера STL</string>
+    <string name="native_import_format_description">Импорт модели %1$s</string>
+    <string name="native_slice_profiles_loading">Проверяем действующие настройки…</string>
+    <string name="native_slice_profiles_unavailable">Недоступно</string>
+    <string name="native_slice_summary_error">Не удалось прочитать настройки нарезки: %1$s</string>
+    <string name="native_slice_unnamed_printer">Принтер проекта без названия</string>
+    <string name="native_slice_unnamed_process">Процесс проекта без названия</string>
+    <string name="native_slice_unnamed_filament">Материал %1$d без названия</string>
+    <string name="native_slice_project_summary_note">Действующие глобальные настройки и настройки пластины проекта, только для чтения. Настройки объектов и объёмов сохраняются для нарезки.</string>
+    <string name="native_slice_layer_height_value">Высота слоя: %1$s мм</string>
+    <string name="native_slice_selected_summary_note">Выбранные сохранённые профили с действующими глобальными настройками и изменениями. Локальные настройки объекта применяются отдельно.</string>
+</resources>

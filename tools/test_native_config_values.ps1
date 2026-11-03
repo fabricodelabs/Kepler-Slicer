@@ -12,6 +12,8 @@ $nativeSources=@(
     (Join-Path $nativeJava 'com\orcamobile\app\settings\SettingsSchema.java'),
     (Join-Path $nativeJava 'com\orcamobile\app\OrcaIniCodec.java'),
     (Join-Path $nativeJava 'com\orcamobile\app\NativeConfigValues.java'),
+    (Join-Path $nativeJava 'com\orcamobile\app\ProjectSettingsSnapshot.java'),
+    (Join-Path $PSScriptRoot 'tests\ProjectSettingsSnapshotTest.java'),
     (Join-Path $PSScriptRoot 'tests\NativeConfigValuesTest.java')
 )
 $nativeSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Filter '*.java' -Recurse | ForEach-Object FullName

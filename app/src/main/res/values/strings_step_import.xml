@@ -1,0 +1,15 @@
+<resources>
+    <string name="step_import_title">STEP mesh settings</string>
+    <string name="step_import_detail">Orca converts the CAD surfaces into triangles. Smaller tolerances create a finer mesh and use more memory. The original STEP and these settings are kept with the model.</string>
+    <string name="step_import_linear">Linear deflection · mm</string>
+    <string name="step_import_angular">Angular deflection · radians</string>
+    <string name="step_import_split">Split compound shapes</string>
+    <string name="step_import_continue">Import STEP</string>
+    <string name="step_import_cancel">Cancel</string>
+    <string name="step_import_linear_error">Enter a finite value greater than 0 mm.</string>
+    <string name="step_import_angular_error">Enter a finite value greater than 0 and at most 3.141592653589793 radians.</string>
+    <string name="step_import_save_error">Could not save the STEP mesh settings.</string>
+    <string name="step_import_no_result">Orca did not return a valid STEP mesh.</string>
+    <string name="step_import_source_changed">The STEP source changed during import. The current model was kept.</string>
+    <string name="step_import_engine_failed">Could not import STEP: %1$s</string>
+</resources>

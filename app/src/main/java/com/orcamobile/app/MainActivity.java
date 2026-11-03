@@ -47,6 +47,7 @@ public class MainActivity extends Activity {
     private String meshName;
     private String meshFileName;
     private org.json.JSONObject modelMetadata;
+    private int modelProjectMode=-1;
     private ModelTransform modelTransform = ModelTransform.identity();
     private boolean previewReady;
     private boolean moveMode = true;
@@ -139,23 +140,41 @@ public class MainActivity extends Activity {
                 .setNegativeButton(R.string.general_project_cancel,null).show();
     }
     private void backupThenLoad(Uri uri){new Thread(()->{try{GeneralPreferences.backupNow(this);runOnUiThread(()->{if(!isDestroyed())loadModelUri(uri);});}catch(Exception e){runOnUiThread(()->{if(!isDestroyed())dialog(getString(R.string.general_replace_title),e.getMessage());});}},"backup-before-import").start();}
-    private void loadModelUri(Uri uri) {
+    private void loadModelUri(Uri uri) { loadModelUri(uri,false); }
+    private void loadModelUri(Uri uri,boolean stepReviewed) {loadModelUri(uri,stepReviewed,null);}
+    private void loadModelUri(Uri uri,boolean stepReviewed,String preferredName) {
         final int sequence = ++loadSequence;
         pendingUri = uri; loadingMesh = true; render();
         new Thread(() -> {
             try {
-                String name = null, mime = null;
-                try (android.database.Cursor cursor = getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+                String name = preferredName, mime = null;
+                if(name==null)try (android.database.Cursor cursor = getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
                     if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) name = cursor.getString(0);
                 } catch (RuntimeException ignored) { }
                 try { mime=getContentResolver().getType(uri); } catch(RuntimeException ignored) { }
-                if(name!=null&&(name.toLowerCase(java.util.Locale.ROOT).endsWith(".step")||name.toLowerCase(java.util.Locale.ROOT).endsWith(".stp")))throw new java.io.IOException(getString(R.string.general_step_blocked));
                 name=ModelFilename.normalize(name,uri.getLastPathSegment(),mime);
+                if(!stepReviewed&&(name.endsWith(".step")||name.endsWith(".stp"))&&GeneralPreferences.prefs(this).getBoolean("show_step_import_settings",true)) {
+                    runOnUiThread(()->{if(isDestroyed()||sequence!=loadSequence)return;StepImportPreferences.request(this,()->{if(!isDestroyed()&&sequence==loadSequence)loadModelUri(uri,true,preferredName);},()->{if(!isDestroyed()&&sequence==loadSequence){pendingUri=null;loadingMesh=false;render();if(mesh==null)restoreModel();}});});
+                    return;
+                }
                 CurrentModelStore prepared = CurrentModelStore.prepare(this, uri, name);
                 GeneralProjectPolicy policy=GeneralProjectPolicy.inspect(prepared.metadata);
+                ProjectSettingsSnapshot projectSnapshot=null;EngineProfileSession projectSession=null;String projectProblem="";
+                if(policy.project) {
+                    try {
+                        projectSession=EngineProfileSession.capture(this);
+                        ProcessOverridesStore.Identity id=projectSession.id;
+                        int plate=prepared.metadata.optInt("selected_plate",-1);
+                        projectSnapshot=ProjectSettingsSnapshot.parse(com.keplerslicer.engine.ExperimentalSlicer.projectSettingsSnapshot(
+                            id.printer.vendor,id.process.vendor,id.filament.vendor,id.printerName,id.processName,id.filamentName,
+                            projectSession.resources.getAbsolutePath(),projectSession.data.getAbsolutePath(),projectSession.selection.overrides,"{}",prepared.file.getAbsolutePath(),plate));
+                        prepared.metadata.put("project_settings_snapshot",projectSnapshot.json());
+                    } catch(Exception|LinkageError unavailable) {projectProblem=unavailable.getMessage()==null?getString(R.string.native_project_snapshot_unavailable):unavailable.getMessage();}
+                }
+                final ProjectSettingsSnapshot checkedProject=projectSnapshot;final EngineProfileSession checkedSession=projectSession;final String checkedProblem=projectProblem;
                 runOnUiThread(() -> {
                     if (isDestroyed() || sequence != loadSequence) { prepared.discard(); return; }
-                    reviewPreparedImport(prepared,uri,sequence,policy);
+                    reviewPreparedImport(prepared,uri,sequence,policy,checkedProject,checkedSession,checkedProblem);
                 });
             } catch (Exception e) {
                 final String message = e.getMessage() == null ? "Не удалось прочитать файл." : e.getMessage();
@@ -163,34 +182,81 @@ public class MainActivity extends Activity {
                     if (isDestroyed() || sequence != loadSequence) return;
                     pendingUri = null; loadingMesh = false; render();
                     if (mesh == null) restoreModel();
-                    dialog("Не удалось открыть STL", message);
+                    dialog(getString(R.string.native_project_open_failed), message);
                 });
             }
         }, "stl-loader").start();
     }
 
-    private void reviewPreparedImport(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy){
+    private void reviewPreparedImport(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy,ProjectSettingsSnapshot snapshot,EngineProfileSession session,String problem){
         if(pendingPrepared!=null&&pendingPrepared!=prepared)pendingPrepared.discard();pendingPrepared=prepared;
-        Runnable accept=()->publishPreparedImport(prepared,uri,sequence,policy);
-        Runnable project=()->{String mode=GeneralPreferences.projectLoadBehaviour(this);boolean ask=policy.needsDecision(mode);
-            if(!ask){accept.run();return;}
-            int message=policy.settingsPresent?("load_all".equals(mode)?R.string.general_project_load_all_blocked:R.string.general_project_config_blocked):R.string.general_project_no_config;
-            MdUi.alert(this).setTitle(R.string.general_project_title).setMessage(message).setPositiveButton(R.string.general_project_geometry,(d,w)->accept.run()).setNegativeButton(R.string.general_project_cancel,(d,w)->cancelPreparedImport(prepared,sequence)).setOnCancelListener(d->cancelPreparedImport(prepared,sequence)).show();};
+        Runnable geometry=()->acceptProjectMode(prepared,uri,sequence,policy,snapshot,session,0,null);
+        Runnable project=()->{String mode=GeneralPreferences.projectLoadBehaviour(this);boolean ask=policy.needsDecision(mode)||(snapshot!=null&&snapshot.hasSettings&&!"load_geometry".equals(mode));
+            if(!policy.project){publishPreparedImport(prepared,uri,sequence,policy);return;}
+            if("load_geometry".equals(mode)||(!ask&&!"load_all".equals(mode))){geometry.run();return;}
+            Runnable full=()->chooseProjectPrinter(prepared,uri,sequence,policy,snapshot,session);
+            if("load_all".equals(mode)&&snapshot!=null&&(snapshot.canLoad(true)||snapshot.canLoad(false))){full.run();return;}
+            String reason=problem;if(snapshot!=null&&!snapshot.canLoad(true)&&!snapshot.canLoad(false))reason=snapshot.validationError(true);
+            String message=getString(R.string.native_project_scope_detail)+(reason.isEmpty()?"":"\n\n"+getString(R.string.native_project_unavailable,reason));
+            showProjectSheet(getString(R.string.native_project_title),message,new String[]{getString(R.string.native_project_load_full),getString(R.string.native_project_geometry)},
+                new boolean[]{snapshot!=null&&(snapshot.canLoad(true)||snapshot.canLoad(false)),true},
+                new Runnable[]{full,geometry},()->cancelPreparedImport(prepared,sequence),false,null);
+        };
         if(policy.customCodePresent&&!GeneralPreferences.suppressModifiedGcodeWarning(this)){
             android.widget.CheckBox suppress=new android.widget.CheckBox(this);suppress.setText(R.string.phase2_preferences_gcode_warning);
             MdUi.alert(this).setTitle(R.string.general_modified_gcode_title).setMessage(R.string.general_modified_gcode_detail).setView(suppress).setPositiveButton(R.string.general_continue,(d,w)->{if(suppress.isChecked())GeneralPreferences.prefs(this).edit().putBoolean("no_warn_when_modified_gcodes",true).apply();project.run();}).setNegativeButton(R.string.general_project_cancel,(d,w)->cancelPreparedImport(prepared,sequence)).setOnCancelListener(d->cancelPreparedImport(prepared,sequence)).show();
         }else project.run();
     }
+    private void chooseProjectPrinter(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy,ProjectSettingsSnapshot snapshot,EngineProfileSession session){
+        if(snapshot==null){cancelPreparedImport(prepared,sequence);return;}
+        if(!snapshot.printerDiff){acceptProjectMode(prepared,uri,sequence,policy,snapshot,session,snapshot.canLoad(true)?2:1,null);return;}
+        String remembered=GeneralPreferences.prefs(this).getString(ControlPreferences.SYNC_CHOICE,"");
+        if("selected_printer".equals(remembered)&&snapshot.canLoad(false)){acceptProjectMode(prepared,uri,sequence,policy,snapshot,session,1,null);return;}
+        if("embedded_printer".equals(remembered)&&snapshot.canLoad(true)){acceptProjectMode(prepared,uri,sequence,policy,snapshot,session,2,null);return;}
+        final com.orcamobile.app.glass.GlassSwitch[] remember=new com.orcamobile.app.glass.GlassSwitch[1];
+        Runnable current=()->acceptProjectMode(prepared,uri,sequence,policy,snapshot,session,1,()->{if(remember[0]!=null&&remember[0].isChecked())GeneralPreferences.prefs(this).edit().putString(ControlPreferences.SYNC_CHOICE,"selected_printer").apply();});
+        Runnable embedded=()->acceptProjectMode(prepared,uri,sequence,policy,snapshot,session,2,()->{if(remember[0]!=null&&remember[0].isChecked())GeneralPreferences.prefs(this).edit().putString(ControlPreferences.SYNC_CHOICE,"embedded_printer").apply();});
+        String message=getString(R.string.native_project_sync_detail,snapshot.selectedPrinterId,snapshot.embeddedPrinterId);
+        if(!snapshot.canLoad(false))message+="\n\n"+getString(R.string.native_project_unavailable,snapshot.validationError(false));
+        if(!snapshot.canLoad(true))message+="\n\n"+getString(R.string.native_project_unavailable,snapshot.validationError(true));
+        showProjectSheet(getString(R.string.native_project_sync_title),message,
+            new String[]{getString(R.string.native_project_use_printer),getString(R.string.native_project_keep_printer)},
+            new boolean[]{snapshot.canLoad(true),snapshot.canLoad(false)},new Runnable[]{embedded,current},
+            ()->cancelPreparedImport(prepared,sequence),true,remember);
+    }
+    private void showProjectSheet(String title,String message,String[] captions,boolean[] enabled,Runnable[] actions,Runnable cancel,boolean rememberChoice,com.orcamobile.app.glass.GlassSwitch[] rememberOut){
+        android.app.Dialog dialog=new android.app.Dialog(this);dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        com.orcamobile.app.glass.GlassUi glass=new com.orcamobile.app.glass.GlassUi(this,root,false);
+        LinearLayout body=glass.vertical();glass.pad(body,20,20,20,20);body.addView(glass.heading(title));glass.space(body,12);body.addView(glass.text(message,14,400,glass.tokens.textPrimary));
+        if(rememberChoice){glass.space(body,10);com.orcamobile.app.glass.GlassSwitch toggle=new com.orcamobile.app.glass.GlassSwitch(this);toggle.setContentDescription(getString(R.string.general_remember_choice));rememberOut[0]=toggle;LinearLayout row=glass.horizontal();row.addView(glass.text(getString(R.string.general_remember_choice),14,400,glass.tokens.textPrimary),new LinearLayout.LayoutParams(0,-2,1));row.addView(toggle);body.addView(row);}
+        for(int i=0;i<captions.length;i++){final int index=i;glass.space(body,8);TextView action=glass.action(captions[i],i==0,()->{dialog.dismiss();actions[index].run();});action.setEnabled(enabled[i]);action.setAlpha(enabled[i]?1:.45f);body.addView(action);}
+        glass.space(body,8);body.addView(glass.action(getString(R.string.general_project_cancel),false,()->{dialog.dismiss();cancel.run();}));dialog.setOnCancelListener(d->cancel.run());
+        ScrollView scroll=new ScrollView(this);scroll.addView(body);dialog.setContentView(glass.surface(scroll,glass.tokens.cardRadius));dialog.show();
+        if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));body.measure(View.MeasureSpec.makeMeasureSpec(getResources().getDisplayMetrics().widthPixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setLayout(-1,Math.min(body.getMeasuredHeight(),(int)(getResources().getDisplayMetrics().heightPixels*.85f)));}
+    }
+    private void acceptProjectMode(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy,ProjectSettingsSnapshot snapshot,EngineProfileSession session,int mode,Runnable afterPublished){
+        if(mode>0&&(snapshot==null||session==null||!snapshot.canLoad(mode==2))){cancelPreparedImport(prepared,sequence);return;}
+        if(!policy.project){publishPreparedImport(prepared,uri,sequence,policy);return;}
+        new Thread(()->{
+            try {
+                if(mode>0&&!session.stillCurrent(this))throw new java.io.IOException(getString(R.string.native_project_context_changed));
+                prepared.setProjectMode(mode);
+                if(snapshot!=null)prepared.metadata.put("project_settings_snapshot",snapshot.json());
+                runOnUiThread(()->{if(isDestroyed()||sequence!=loadSequence){prepared.discard();return;}if(publishPreparedImport(prepared,uri,sequence,policy)&&afterPublished!=null)afterPublished.run();});
+            } catch(Exception error){runOnUiThread(()->{if(isDestroyed()||sequence!=loadSequence){prepared.discard();return;}cancelPreparedImport(prepared,sequence);dialog(getString(R.string.native_project_title),error.getMessage());});}
+        },"project-settings-commit").start();
+    }
     private void cancelPreparedImport(CurrentModelStore prepared,int sequence){prepared.discard();if(pendingPrepared==prepared)pendingPrepared=null;if(sequence==loadSequence){pendingUri=null;loadingMesh=false;render();if(mesh==null)restoreModel();}}
-    private void publishPreparedImport(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy){
-        if(isDestroyed()||sequence!=loadSequence){prepared.discard();return;}
-        try{prepared.publish(this);if(pendingPrepared==prepared)pendingPrepared=null;RecentModels.remember(getApplicationContext(),uri,prepared.name,prepared.mesh);mesh=prepared.mesh;meshName=prepared.name;meshFileName=prepared.file.getName();modelTransform=prepared.transform;modelMetadata=prepared.metadata;pendingUri=null;loadingMesh=false;render();
+    private boolean publishPreparedImport(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy){
+        if(isDestroyed()||sequence!=loadSequence){prepared.discard();return false;}
+        try{prepared.publish(this);if(pendingPrepared==prepared)pendingPrepared=null;RecentModels.remember(getApplicationContext(),uri,prepared.name,prepared.mesh);mesh=prepared.mesh;meshName=prepared.name;meshFileName=prepared.file.getName();modelTransform=prepared.transform;modelMetadata=prepared.metadata;modelProjectMode=prepared.projectMode;pendingUri=null;loadingMesh=false;render();
             if(prepared.file.getName().endsWith(".obj"))dialog("Материалы OBJ","Загружена геометрия OBJ. Внешние файлы материалов .mtl и текстуры пока не импортируются; цвета и связанные настройки могут отсутствовать.");
-            else if(policy.settingsPresent)dialog(getString(R.string.general_project_title),getString(R.string.general_project_config_blocked));
+            else if(policy.settingsPresent)dialog(getString(R.string.native_project_title),getString(prepared.projectMode>0?R.string.native_project_loaded_full:R.string.native_project_loaded_geometry));
             else if(prepared.metadata!=null&&prepared.metadata.optBoolean("mapping_unresolved",false))dialog("Пластина не определена","Нельзя определить соответствие объектов пластине. Исходный проект сохранён; нарезка недоступна.");
             else if(prepared.metadata!=null&&prepared.metadata.optInt("non_printable_instances",0)>0)dialog("Объекты на столе","Непечатаемые экземпляры видны в предпросмотре, но не попадут в нарезку.");
-            if(!policy.settingsPresent&&canSliceModel())ControlPreferences.scheduleAutoSlice(this);
-        }catch(java.io.IOException e){prepared.discard();pendingUri=null;loadingMesh=false;render();if(mesh==null)restoreModel();dialog("Не удалось сохранить модель",e.getMessage());}
+            if(canSliceModel())ControlPreferences.scheduleAutoSlice(this);
+            return true;
+        }catch(java.io.IOException e){prepared.discard();pendingUri=null;loadingMesh=false;render();if(mesh==null)restoreModel();dialog("Не удалось сохранить модель",e.getMessage());return false;}
     }
 
     private void restoreModel() {
@@ -201,7 +267,7 @@ public class MainActivity extends Activity {
                 CurrentModelStore saved = CurrentModelStore.load(this);
                 runOnUiThread(() -> {
                     if (isDestroyed() || sequence != loadSequence) return;
-                    if (saved != null) { mesh = saved.mesh; meshName = saved.name; meshFileName = saved.file.getName(); modelTransform = saved.transform; modelMetadata=saved.metadata; }
+                    if (saved != null) { mesh = saved.mesh; meshName = saved.name; meshFileName = saved.file.getName(); modelTransform = saved.transform; modelMetadata=saved.metadata; modelProjectMode=saved.projectMode; }
                     loadingMesh = false; render();
                 });
             } catch (Exception e) {
@@ -280,26 +346,29 @@ public class MainActivity extends Activity {
         View coverFallback = new Icon("printer", MUTED); cover.addView(coverFallback, new FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER));
         ImageView image = new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); pad(image, 3, 3, 3, 3);
         ColorMatrix grey = new ColorMatrix(); grey.setSaturation(0); image.setColorFilter(new ColorMatrixColorFilter(grey)); cover.addView(image, new FrameLayout.LayoutParams(-1, -1));
-        if (printer != null && !printer.imported) loadPrinterCover(image, coverFallback, printer);
-        head.addView(cover, lp(compactLandscape ? 42 : 56, compactLandscape ? 42 : 56)); click(cover, this::openPrinterProfiles);
+        if (printer != null && !printer.imported && modelProjectMode!=2) loadPrinterCover(image, coverFallback, printer);
+        head.addView(cover, lp(compactLandscape ? 42 : 56, compactLandscape ? 42 : 56)); click(cover, modelProjectMode==2?this::openSettingsPanel:this::openPrinterProfiles);
         LinearLayout info = vertical(); pad(info, 12, 0, 0, 0);
         LinearLayout machine = horizontal(); TextView printerName = text(printer == null ? "Выберите принтер" : (printer.model == null || printer.model.isEmpty() ? printer.name : printer.model), 16, INK, true);
+        if(modelProjectMode==2)printerName.setText(projectOptionCaption("printer_settings_id",getString(R.string.native_project_title)));
         printerName.setMaxLines(1); printerName.setEllipsize(android.text.TextUtils.TruncateAt.END); machine.addView(printerName,new LinearLayout.LayoutParams(0,-2,1));
         if (printer != null && printer.variant != null && !printer.variant.isEmpty()) {
-            TextView nozzle = text(printer.variant, 10, INK, true); pad(nozzle, 7, 5, 7, 5); nozzle.setBackground(outline(SURFACE, 10, LINE));
+            TextView nozzle = text(modelProjectMode==2?projectOptionCaption("nozzle_diameter",printer.variant):printer.variant, 10, INK, true); pad(nozzle, 7, 5, 7, 5); nozzle.setBackground(outline(SURFACE, 10, LINE));
             LinearLayout.LayoutParams n = lp(-2, -2); n.leftMargin=dp(6); machine.addView(nozzle,n);
         }
-        TextView arrow = text("⌄", 20, INK, false); pad(arrow,6,0,0,0); machine.addView(arrow); click(machine, this::openPrinterProfiles); info.addView(machine);
+        TextView arrow = text("⌄", 20, INK, false); pad(arrow,6,0,0,0); machine.addView(arrow); click(machine, modelProjectMode==2?this::openSettingsPanel:this::openPrinterProfiles); info.addView(machine);
         gap(info, 5);
         LinearLayout profiles = horizontal(); TextView materialLabel = text(material == null ? "Материал ›" : material.name + " ›", 12, MUTED, false);
+        if(modelProjectMode>0)materialLabel.setText(projectOptionCaption("filament_settings_id",getString(R.string.phase2_settings_filament))+" ›");
         materialLabel.setMinHeight(dp(compactLandscape ? 36 : 40)); materialLabel.setGravity(Gravity.CENTER_VERTICAL);
         materialLabel.setMaxLines(1); materialLabel.setEllipsize(android.text.TextUtils.TruncateAt.END); profiles.addView(materialLabel,new LinearLayout.LayoutParams(0,-2,1));
-        click(materialLabel, () -> openPrintProfile(OrcaProcessFilamentCatalog.FILAMENT, PICK_FILAMENT));
+        click(materialLabel, () -> {if(modelProjectMode>0)openSettingsPanel();else openPrintProfile(OrcaProcessFilamentCatalog.FILAMENT, PICK_FILAMENT);});
         TextView processLabel = text(process == null ? "Процесс ›" : process.name + " ›", 12, MUTED, false); pad(processLabel,8,0,0,0);
+        if(modelProjectMode>0)processLabel.setText(projectOptionCaption("print_settings_id",getString(R.string.phase2_settings_process))+" ›");
         processLabel.setMinHeight(dp(compactLandscape ? 36 : 40)); processLabel.setGravity(Gravity.CENTER_VERTICAL);
         processLabel.setMaxLines(1); processLabel.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        click(processLabel, () -> openPrintProfile(OrcaProcessFilamentCatalog.PROCESS, PICK_PROCESS)); profiles.addView(processLabel,new LinearLayout.LayoutParams(0,-2,1)); info.addView(profiles);
-        loadUserPresetNames(printerName, materialLabel, processLabel);
+        click(processLabel, () -> {if(modelProjectMode>0)openSettingsPanel();else openPrintProfile(OrcaProcessFilamentCatalog.PROCESS, PICK_PROCESS);}); profiles.addView(processLabel,new LinearLayout.LayoutParams(0,-2,1)); info.addView(profiles);
+        if(modelProjectMode<=0)loadUserPresetNames(printerName, materialLabel, processLabel);
         head.addView(info, new LinearLayout.LayoutParams(0,-2,1));
         FrameLayout network=toolButton("wifi","Подключения принтеров",()->{Intent intent=new Intent();intent.setClassName(this,getPackageName()+".NetworkActivity");startActivity(intent);});head.addView(network,lp(44,44));
         LinearLayout wideBody = null, side = null;
@@ -344,6 +413,7 @@ public class MainActivity extends Activity {
             modelIcon.addView(new Icon("cube",INK),new FrameLayout.LayoutParams(dp(24),dp(24),Gravity.CENTER)); card.addView(modelIcon,lp(compactLandscape ? 32 : 44,compactLandscape ? 32 : 44));
             LinearLayout labels = vertical(); pad(labels,12,0,0,0); TextView file = text(meshName,14,INK,true); file.setSingleLine(true); file.setEllipsize(android.text.TextUtils.TruncateAt.END); labels.addView(file);
             if (!compactLandscape) { gap(labels,3); labels.addView(text(String.format(java.util.Locale.getDefault(),"Исходная модель  ·  %.1f × %.1f × %.1f мм",mesh.size[0],mesh.size[1],mesh.size[2]),11,MUTED,false)); }
+            if(needsProjectModeReview()){gap(labels,4);labels.addView(text(getString(R.string.native_project_legacy_mode),11,MUTED,false));TextView review=text(getString(R.string.native_project_review_existing),12,INK,true);review.setMinHeight(dp(44));review.setGravity(Gravity.CENTER_VERTICAL);labels.addView(review);click(review,()->{String expected=meshFileName;if(expected==null||!expected.equals(getSharedPreferences("current_model",0).getString("file",""))){restoreModel();return;}loadModelUri(Uri.fromFile(new java.io.File(new java.io.File(getFilesDir(),"models"),expected)),false,meshName);});}
             card.addView(labels,new LinearLayout.LayoutParams(0,-2,1)); card.addView(text("›",23,INK,false));
             LinearLayout.LayoutParams cardParams=lp(-1,-2); cardParams.setMargins(dp(compactLandscape ? 8 : 16),0,dp(compactLandscape ? 8 : 16),dp(8));
             if (compactLandscape) side.addView(card,cardParams); else root.addView(card,cardParams); click(card,modelMetadata==null?this::editModelTransform:this::openModelDetails);
@@ -410,7 +480,9 @@ public class MainActivity extends Activity {
     }
 
     private void loadSelectedBed(OrcaProfileCatalog.Profile printer, StlView view, TextView hint) {
-        String key = printer == null || printer.imported ? "" : printer.vendor + "\\n" + printer.name + "\\n" + printer.path;
+        final org.json.JSONObject projectConfig=modelProjectMode==2?projectEffectiveConfig():null;
+        final boolean embeddedBed=modelProjectMode==2;
+        final String key = embeddedBed?"project-bed:"+meshFileName+":"+(modelMetadata==null?-1:modelMetadata.optInt("selected_plate",-1)):printer == null || printer.imported ? "" : printer.vendor + "\\n" + printer.name + "\\n" + printer.path;
         if (!key.equals(bedKey)) { bedKey = key; loadedBed = null; bedPending = false; ++bedGeneration; }
         if (key.isEmpty()) {if(pendingLayerPreview&&visibleWorkspace){pendingLayerPreview=false;dialog("Предпросмотр слоёв","Геометрия выбранного стола недоступна.");}return;}
         if (loadedBed != null) {
@@ -426,6 +498,7 @@ public class MainActivity extends Activity {
         final android.content.Context app = getApplicationContext();
         bedWorker.execute(() -> {
             try {
+                if(embeddedBed&&projectConfig==null)throw new java.io.IOException("Embedded project bed settings are unavailable");
                 SettingsState.Snapshot snapshot = SettingsState.capture(app);
                 CompatibilityResources paths = CompatibilityResources.prepareTriple(app, printer.vendor, "", null, snapshot);
                 if (Thread.currentThread().isInterrupted() || !visibleWorkspace || SliceActivity.isSlicing()) {
@@ -436,7 +509,7 @@ public class MainActivity extends Activity {
                             loadSelectedBed(printer, stlView, bedHint);
                     }); return;
                 }
-                double[] raw = com.keplerslicer.engine.ExperimentalSlicer.printerBuildVolume(printer.vendor, printer.name,
+                double[] raw = projectConfig!=null?projectBedPayload(projectConfig):com.keplerslicer.engine.ExperimentalSlicer.printerBuildVolume(printer.vendor, printer.name,
                         paths.resources.getAbsolutePath(), paths.data.getAbsolutePath());
                 if (raw == null) {
                     runOnUiThread(() -> {
@@ -467,6 +540,9 @@ public class MainActivity extends Activity {
             }
         });
     }
+    private org.json.JSONObject projectEffectiveConfig(){org.json.JSONObject snapshot=modelMetadata==null?null:modelMetadata.optJSONObject("project_settings_snapshot");return snapshot==null?null:snapshot.optJSONObject(modelProjectMode==2?"effective":"effective_selected_printer");}
+    private String projectOptionCaption(String key,String fallback){try{org.json.JSONObject config=projectEffectiveConfig();if(config==null)return fallback;Object value=config.getJSONObject("options").getJSONObject(key).get("value");if(value instanceof org.json.JSONArray){org.json.JSONArray array=(org.json.JSONArray)value;if(array.length()==0)return fallback;return array.get(0).toString()+(array.length()>1?" +"+(array.length()-1):"");}return value==org.json.JSONObject.NULL?fallback:value.toString();}catch(Exception ignored){return fallback;}}
+    private static double[] projectBedPayload(org.json.JSONObject config)throws java.io.IOException {try{org.json.JSONObject options=config.getJSONObject("options");org.json.JSONArray area=options.getJSONObject("printable_area").getJSONArray("value");if(area.length()<3||area.length()>512)throw new java.io.IOException("Invalid embedded project bed outline");double[] payload=new double[1+area.length()*2];payload[0]=options.getJSONObject("printable_height").getDouble("value");for(int i=0;i<area.length();i++){org.json.JSONArray p=area.getJSONArray(i);if(p.length()!=2)throw new java.io.IOException("Invalid embedded project bed point");payload[1+i*2]=p.getDouble(0);payload[2+i*2]=p.getDouble(1);}return payload;}catch(org.json.JSONException e){throw new java.io.IOException("Embedded project bed is not available",e);}}
 
     private void loadPrinterCover(ImageView target, View fallback, OrcaProfileCatalog.Profile printer) {
         final String identity = printer.vendor + "\u0000" + printer.model; target.setTag(identity);
@@ -544,13 +620,15 @@ public class MainActivity extends Activity {
     private static double[] projectBounds(org.json.JSONObject metadata){
         if(!isProject(metadata))return null;try{org.json.JSONArray lo=metadata.getJSONArray("bounds_min"),hi=metadata.getJSONArray("bounds_max");if(lo.length()!=3||hi.length()!=3)throw new org.json.JSONException("bounds");double[] v=new double[6];for(int i=0;i<3;i++){v[i]=lo.getDouble(i);v[i+3]=hi.getDouble(i);if(!Double.isFinite(v[i])||!Double.isFinite(v[i+3])||v[i+3]<v[i])throw new org.json.JSONException("bounds");}return v;}catch(Exception e){return new double[0];}
     }
-    private boolean canSliceModel(){return mesh!=null&&mesh.vertices.length>0&&(modelMetadata==null||(!modelMetadata.optBoolean("mapping_unresolved",false)&&(!modelMetadata.has("printable_instances")||modelMetadata.optInt("printable_instances",0)>0)));}
+    private boolean canSliceModel(){if(mesh==null||mesh.vertices.length==0||modelMetadata!=null&&(modelMetadata.optBoolean("mapping_unresolved",false)||modelMetadata.has("printable_instances")&&modelMetadata.optInt("printable_instances",0)==0))return false;if(modelMetadata!=null&&"3mf".equals(modelMetadata.optString("format"))){if(modelProjectMode<0&&GeneralProjectPolicy.inspect(modelMetadata).settingsPresent)return false;if(modelProjectMode>0){org.json.JSONObject snapshot=modelMetadata.optJSONObject("project_settings_snapshot"),validation=snapshot==null?null:snapshot.optJSONObject("validation"),mode=validation==null?null:validation.optJSONObject(modelProjectMode==2?"embedded_printer":"selected_printer");if(mode==null||!mode.optBoolean("can_load",false))return false;}org.json.JSONObject project=modelMetadata.optJSONObject("project_data");if(project!=null&&(project.optBoolean("unknown_unit_requires_validation",false)||project.optBoolean("non_mm_transform_requires_validation",false)||project.optJSONArray("plates")!=null&&project.optJSONArray("plates").length()>1))return false;}return true;}
+    private boolean needsProjectModeReview(){return modelMetadata!=null&&"3mf".equals(modelMetadata.optString("format"))&&modelProjectMode<0&&GeneralProjectPolicy.inspect(modelMetadata).settingsPresent;}
     private String bedDescription(BedGeometry bed){if(mesh!=null&&mesh.vertices.length==0)return "Пластина пуста";if(modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false))return "Пластина не определена · все объекты проекта";if(modelMetadata!=null&&modelMetadata.has("printable_instances")&&modelMetadata.optInt("printable_instances",0)==0)return "Нет объектов для печати";
         double[] b=projectBounds(modelMetadata);if(b!=null&&b.length==6&&bed!=null){double eps=.001;if(b[0]<bed.centerX-bed.width/2-eps||b[3]>bed.centerX+bed.width/2+eps||b[1]<bed.centerY-bed.depth/2-eps||b[4]>bed.centerY+bed.depth/2+eps||b[2]<-eps||b[5]>bed.height+eps)return "Границы 3MF выходят за габариты стола";return "Положение 3MF · совместимость проверяется при нарезке";}return "Стол профиля · исключённые зоны не показаны";
     }
     private boolean transformSupported() {
         if(modelMetadata==null)return true;
         String format=modelMetadata.optString("format");if("3mf".equals(format))return false;
+        if("step".equals(format)){org.json.JSONObject provenance=modelMetadata.optJSONObject("step_import");return provenance!=null&&provenance.optInt("object_count",0)==1&&provenance.optInt("instance_count",0)==1;}
         if("obj".equals(format)){org.json.JSONArray objects=modelMetadata.optJSONArray("objects");if(objects==null||objects.length()!=1)return false;org.json.JSONObject object=objects.optJSONObject(0);org.json.JSONArray instances=object==null?null:object.optJSONArray("instances");return instances!=null&&instances.length()==1;}
         return false;
     }
@@ -558,7 +636,7 @@ public class MainActivity extends Activity {
 
     private void openSlice() {
         if (mesh == null || loadingMesh) { dialog("Нарезка", "Сначала откройте модель."); return; }
-        if(!canSliceModel()){dialog("Нарезка",modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false)?"Нельзя определить соответствие объектов выбранной пластине.":"На выбранной пластине нет объектов для печати.");return;}
+        if(!canSliceModel()){dialog("Нарезка",needsProjectModeReview()?getString(R.string.native_project_legacy_mode):modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false)?"Нельзя определить соответствие объектов выбранной пластине.":"Проверьте режим проекта, выбранную пластину и совместимость настроек.");return;}
         if (!previewReady) { dialog("Модель обновляется", "Дождитесь обновления предварительного просмотра."); return; }
         startActivity(new Intent(this, SliceActivity.class));
     }

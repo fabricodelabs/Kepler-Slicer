@@ -85,10 +85,10 @@ index 56ce42f5..0dd296bd 100644
  
  add_dependencies(gettext_make_pot hintsToPot)
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index c8d882f2..e3c31f54 100644
+index c8d882f2..975464e3 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -13,6 +13,25 @@ find_package(libnoise REQUIRED)
+@@ -13,6 +13,30 @@ find_package(libnoise REQUIRED)
  
  add_subdirectory(libslic3r)
  
@@ -103,7 +103,12 @@ index c8d882f2..e3c31f54 100644
 +        add_library(kepler_slicer_experimental SHARED "${KEPLER_SLICE_JNI}")
 +        get_filename_component(_kepler_jni_dir "${KEPLER_SLICE_JNI}" DIRECTORY)
 +        target_sources(kepler_slicer_experimental PRIVATE
-+            "${_kepler_jni_dir}/nanosvg_impl.cpp" "${_kepler_jni_dir}/system_profile_config.cpp" "${_kepler_jni_dir}/process_settings.cpp")
++            "${_kepler_jni_dir}/nanosvg_impl.cpp"
++            "${_kepler_jni_dir}/system_profile_config.cpp" "${_kepler_jni_dir}/process_settings.cpp"
++            "${_kepler_jni_dir}/model_io.cpp" "${_kepler_jni_dir}/project_inspector.cpp"
++            "${_kepler_jni_dir}/step_import.cpp" "${_kepler_jni_dir}/color_space_headless.cpp"
++            "${_kepler_jni_dir}/project_settings.cpp" "${_kepler_jni_dir}/project_settings_tests.cpp"
++            "${_kepler_jni_dir}/native_preferences.cpp")
 +        target_include_directories(kepler_slicer_experimental PRIVATE
 +            "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/deps_src/nanosvg")
 +        target_link_libraries(kepler_slicer_experimental PRIVATE libslic3r)
