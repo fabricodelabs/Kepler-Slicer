@@ -17,8 +17,49 @@ public final class CloudPresetRepositoryTest {
     }
     private static JSONObject content(String name,String parent,String height)throws Exception{return new JSONObject().put("type","process").put("name",name).put("from","user").put("instantiation","true").put("inherits",parent).put("layer_height",height).put("unknown",new JSONArray("[null,true,{\"nested\":\"preserved\"}]"));}
     private static JSONObject remote(String id,JSONObject c,long time)throws Exception{return new JSONObject().put("id",id).put("content",c).put("updated_time",time);}
+    private static void cloudNameFallbacks(File root,String account)throws Exception{
+        String top="51111111-1111-4111-8111-111111111111",preferred="52222222-2222-4222-8222-222222222222",unnamed="53333333-3333-4333-8333-333333333333",empty="54444444-4444-4444-8444-444444444444";
+        JSONObject topContent=content("unused","Fine","0.24");topContent.remove("name");
+        JSONObject unnamedContent=content("unused","Fine","0.26");unnamedContent.remove("name");
+        JSONArray snapshot=new JSONArray().put(remote(top,topContent,10).put("name","Cloud process")).put(remote(preferred,content("Content wins","Fine","0.25"),10).put("name","Ignored envelope name")).put(remote(unnamed,unnamedContent,10)).put(remote(empty,content("","Fine","0.27"),10).put("name","Empty content fallback"));
+        String original=snapshot.toString();File directory=new File(root,"cloud-name-fallbacks");
+        try(PresetRepository repo=new PresetRepository(directory,new Source())){
+            check(repo.mergeCloud(account,snapshot)==4,"Top-level and UUID fallback names import through the actual repository transaction");
+            check(repo.load("user:"+top).name.equals("Cloud process"),"Missing content name uses the top-level cloud name");
+            check(repo.load("user:"+preferred).name.equals("Content wins"),"A present content name takes precedence over the envelope name");
+            check(repo.load("user:"+unnamed).name.equals(unnamed),"A profile with neither name uses its cloud UUID");
+            check(repo.load("user:"+empty).name.equals("Empty content fallback"),"An empty content name also uses the top-level name");
+            check(repo.load("user:"+top).source.getString("inherits").equals("Fine")&&repo.load("user:"+top).source.getJSONArray("unknown").isNull(0),"Name normalization preserves inheritance and unknown structured options");
+            check(repo.cloudPending(account).length()==0,"Imported fallback names establish a clean source baseline");
+            check(snapshot.toString().equals(original),"Inbound name normalization never mutates caller-owned cloud JSON");
+            PresetRepository.Draft draft=repo.beginDraft("user:"+top);draft.set("layer_height","0.28");repo.save(draft);
+            JSONObject remoteEdit=content("unused","Fine","0.30");remoteEdit.remove("name");snapshot.put(0,remote(top,remoteEdit,11).put("name","Cloud process"));String conflictInput=snapshot.toString();
+            rejects(()->repo.mergeCloud(account,snapshot),"A fallback name does not bypass a real local/server content conflict");
+            check(repo.load("user:"+top).source.getString("layer_height").equals("0.28"),"Rejected cloud merge preserves the local dirty source");
+            JSONObject review=repo.cloudReviews(account,snapshot).getJSONObject(0);
+            check(review.getJSONObject("server_source").getString("name").equals("Cloud process"),"Conflict review carries the same normalized server name as initial import");
+            check(snapshot.toString().equals(conflictInput),"Conflict review does not add a name to caller-owned source JSON");
+            String reviewInput=review.toString();repo.acceptCloudReview(account,review,null);
+            check(repo.load("user:"+top).source.getString("layer_height").equals("0.30")&&repo.cloudPending(account).length()==0,"Explicit server acceptance applies the fallback name and marks only its accepted source clean");
+            check(review.toString().equals(reviewInput),"Server acceptance does not mutate the reviewed snapshot");
+            PresetRepository.Draft again=repo.beginDraft("user:"+top);again.set("layer_height","0.31");repo.save(again);remoteEdit.put("layer_height","0.40");snapshot.put(0,remote(top,remoteEdit,12).put("name","Cloud process"));
+            JSONObject duplicateReview=repo.cloudReviews(account,snapshot).getJSONObject(0);String copy=repo.acceptCloudReview(account,duplicateReview,"Fallback preserved local");
+            check(repo.load(copy).source.getString("layer_height").equals("0.31")&&repo.load("user:"+top).source.getString("layer_height").equals("0.40"),"Duplicate resolution preserves local values while accepting the named server source");repo.deleteUser(copy);
+            byte[] before=Files.readAllBytes(new File(directory,"presets.json").toPath());JSONObject invalidContent=content("unused","Fine","0.5");invalidContent.remove("name");JSONArray invalid=new JSONArray(snapshot.toString()).put(remote("55555555-5555-4555-8555-555555555555",invalidContent,13).put("name","../invalid"));
+            rejects(()->repo.mergeCloud(account,invalid),"Fallback names still pass the existing preset-name validation");
+            check(Arrays.equals(before,Files.readAllBytes(new File(directory,"presets.json").toPath())),"An invalid fallback name leaves all persisted profiles and baselines unchanged");
+        }
+        try(PresetRepository repo=new PresetRepository(directory,new Source())){check(repo.load("user:"+top).name.equals("Cloud process")&&repo.cloudPending(account).length()==0,"Normalized names and clean baselines survive a repository restart");}
+        try(PresetRepository repo=new PresetRepository(new File(root,"cloud-name-family"),new Source())){
+            String parent="56666666-6666-4666-8666-666666666666",child="57777777-7777-4777-8777-777777777777";JSONObject p=content("unused","Fine","0.16"),c=content("unused","Envelope parent","0.15");p.remove("name");c.remove("name");JSONArray family=new JSONArray().put(remote(child,c,20).put("name","Envelope child")).put(remote(parent,p,20).put("name","Envelope parent"));String familyInput=family.toString();
+            check(repo.mergeCloud(account,family)==2&&repo.load("user:"+child).parentId.equals("user:"+parent),"Out-of-order parent/child profiles link through their top-level fallback names");
+            check(repo.load("user:"+child).source.getString("inherits").equals("Envelope parent")&&repo.cloudPending(account).length()==0,"Fallback family preserves native inheritance and both clean baselines");
+            check(family.toString().equals(familyInput),"Linking a named cloud family leaves original envelope/content JSON unchanged");
+        }
+    }
     public static void main(String[] args)throws Exception{
         File root=new File(args[0]);root.mkdirs();String account="account-A",other="account-B";
+        cloudNameFallbacks(root,account);
         File inFlight=new File(root,"first-upload-delete");String uploadedId,uploadedCloud;JSONObject sent;
         try(PresetRepository repo=new PresetRepository(inFlight,new Source())){String system=PresetRepository.systemId("process","Vendor","Fine");PresetRepository.Preset p=repo.saveAs(repo.beginDraft(system),"Deleted during first POST");uploadedId=p.id;sent=repo.cloudPending(account).getJSONObject(0);uploadedCloud=sent.getString("id");repo.deleteUser(uploadedId);check(repo.cloudDeletes(account).length()==0,"Never-uploaded deletion initially needs no remote action");rejects(()->repo.cloudPushed(account,uploadedId,sent.getString("source_hash"),44),"Accepted first POST after local deletion must not recreate local profile");check(repo.cloudDeletes(account).length()==1,"Accepted in-flight POST creates a durable tombstone before reporting failure");}
         try(PresetRepository repo=new PresetRepository(inFlight,new Source())){check(repo.cloudDeletes(account).getJSONObject(0).getString("id").equals(uploadedCloud),"First-upload deletion queue survives repository restart");repo.mergeCloud(account,new JSONArray().put(remote(uploadedCloud,sent.getJSONObject("content"),44)));rejects(()->repo.load(uploadedId),"The later server pull cannot resurrect the locally deleted first upload");repo.cloudDeleted(account,uploadedCloud);check(repo.cloudDeletes(account).length()==0,"Confirmed server cleanup consumes the durable reservation");}
