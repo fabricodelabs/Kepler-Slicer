@@ -50,7 +50,23 @@ then runs the explicit assignment with file tools only. Shell/MCP automation is
 not supplied to this first UI assignment. Claude login is personal; the user must
 complete browser sign-in. No credentials are committed or requested in chat.
 The launcher is deliberately bounded, not an unattended polling daemon.
+Owner-requested consumption controls: Sonnet, medium reasoning, 12 agentic turns
+and USD 1.00 estimated API spend per print-mode run. No automatic restart or
+interactive mode that bypasses these print-only limits. The CLI cost estimate is
+not an account-wide billing cap and may overshoot on the final request. Each new
+run gets its own budget; do not chain retries to bypass a reached limit.
 
-Read the existing docs/handoff/SPEC.md and design/index.md, design/tokens.json.
+Read docs/handoff/SPEC.md, docs/handoff/design/index.md and
+docs/handoff/design/tokens.json.
 HTML in design/source is reference material, not the application frontend.
-Read PHASE2-STATUS.md and PREFERENCES-39-STATUS.md for actual feature limitations.
+Read docs/PHASE2-STATUS.md and docs/PREFERENCES-39-STATUS.md for actual feature limitations.
+
+## Required visual acceptance
+Codex must run the changed UI in the actual APK with computer-use before merging
+it into master. Capture phone screenshots, record screen/orientation/font scale,
+and inspect navigation labels, text/icon overlap and clipping, card joins and
+spacing, dialogs, scrolling, keyboard and system-bar insets. Include portrait,
+landscape, default font and enlarged system font. Compare against handoff
+references. Send numbered defects and screenshots back to Claude for correction,
+then repeat affected checks. An untested candidate remains on claude/ui; build
+success and static review do not constitute visual acceptance.

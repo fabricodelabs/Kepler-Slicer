@@ -2,7 +2,7 @@
 
 Preserve the existing Android app and functionality. Java/Android Views is the
 current stack; do not replace it with a new project, Compose, or a web frontend.
-Read docs/collaboration/WORKFLOW.md and ownership.json before editing.
+Read docs/collaboration/WORKFLOW.md and docs/collaboration/ownership.json before editing.
 
 ## Roles
 - Codex: architecture, state/storage, native/JNI, geometry, protocols/security,
@@ -26,6 +26,12 @@ Phase 2 is the current product scope. Later product phases remain gated by the
 owner. Team setup does not mark incomplete features complete.
 Use computer-use for Android UI debugging, as requested by the owner.
 
-Before handoff run tools/check_team_scope.ps1 and git diff --check. No reset,
+Before integration Codex runs tools/check_team_scope.ps1 and git diff --check;
+Claude lists those as awaiting integrator execution, because its shell is disabled. No reset,
 clean, force push, history rewrite, or automatic conflict resolution by replacement.
 Git hooks are review aids, not a security sandbox.
+
+UI acceptance requires computer-use visual QA of the actual APK: inspect text and
+icon overlap/clipping, spacing, card joins, system-bar/keyboard insets, portrait,
+landscape and enlarged system font. Attach screenshots and record device/font/
+orientation and defects. Compilation alone never proves visual correctness.

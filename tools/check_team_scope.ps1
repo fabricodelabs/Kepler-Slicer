@@ -10,8 +10,8 @@ if($Role -eq 'Auto'){
 }
 $policy=Get-Content -LiteralPath (Join-Path $root 'docs/collaboration/ownership.json') -Raw | ConvertFrom-Json
 if(!$Paths){
-    if($Staged){$Paths=@(& git -c core.quotepath=false diff --cached --name-only --diff-filter=ACDMRTUXB)}
-    else{$Paths=@(& git -c core.quotepath=false diff HEAD --name-only)+@(& git -c core.quotepath=false ls-files --others --exclude-standard)}
+    if($Staged){$Paths=@(& git -c core.quotepath=false diff --cached --no-renames --name-only --diff-filter=ACDMRTUXB)}
+    else{$Paths=@(& git -c core.quotepath=false diff HEAD --no-renames --name-only)+@(& git -c core.quotepath=false ls-files --others --exclude-standard)}
     if($LASTEXITCODE -ne 0){throw 'Cannot enumerate changes'}
 }
 $violations=@(foreach($path in @($Paths | Sort-Object -Unique)){

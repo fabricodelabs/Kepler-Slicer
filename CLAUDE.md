@@ -1,6 +1,6 @@
 # Claude Code: Kepler native Android UI
 
-Read AGENTS.md, docs/collaboration/WORKFLOW.md, ownership.json and
+Read AGENTS.md, docs/collaboration/WORKFLOW.md, docs/collaboration/ownership.json and
 docs/collaboration/CLAUDE-TASK.md. You own the existing native UI, not a new app.
 Java/Views, programmatic layouts, existing glass components and Android themes
 are intentional. Preserve functional behavior and current user data.
@@ -20,3 +20,8 @@ Do not run Git mutations, build/install apps, start printers, or access account
 secrets. Codex reviews diffs, performs builds and computer-use verification, and
 commits/integrates your work. End each assignment with changed paths, behavior
 impact, validation performed and open integration requests.
+
+Visual QA is mandatory before integration. Codex runs the APK through computer-use
+in portrait/landscape and enlarged fonts, checking text/icon overlap, clipping,
+spacing, card joins and keyboard/system-bar insets. Request those screenshots;
+do not claim a visual pass from code inspection or a successful build.
