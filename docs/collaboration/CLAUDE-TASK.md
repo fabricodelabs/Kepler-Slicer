@@ -38,3 +38,5 @@ impact, static checks and required integrator QA. Do not claim build/visual pass
 Codex will run scope/diff checks, compile, then computer-use hub/editor no-results,
 clear recovery, search->jump highlight, numeric/bool/read-only regression checks,
 portrait/landscape, default/enlarged font and keyboard/card-join inspections.
+
+Run stopped at its turn limit. Claude must not restart/edit; see UI-006-INTEGRATION-LEASE.md for sequential Codex repair and required acceptance.
