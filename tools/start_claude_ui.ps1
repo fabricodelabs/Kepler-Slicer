@@ -14,5 +14,5 @@ if($LASTEXITCODE -ne 0){throw 'Claude is not signed in. Run claude auth login an
 $prompt=Get-Content -LiteralPath (Join-Path $projectRoot 'docs/collaboration/CLAUDE-TASK.md') -Raw
 $arguments=@('--permission-mode','acceptEdits','--tools','Read,Glob,Grep,Edit,Write','--disallowedTools','Bash,PowerShell,mcp__*')
 if(!$Interactive){$arguments+=@('-p','--output-format','json')}
-& $cli @arguments $prompt
+& $cli @arguments '--' $prompt
 if($LASTEXITCODE -ne 0){throw "Claude exited with code $LASTEXITCODE"}
