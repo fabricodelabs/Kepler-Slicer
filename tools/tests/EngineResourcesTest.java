@@ -56,6 +56,8 @@ public final class EngineResourcesTest {
         check(Arrays.equals(Files.readAllBytes(target(first).resolve("flush/flush_data_standard.txt")),expected.get("flush/flush_data_standard.txt")),"Wrong cached size rebuilds");
         Files.delete(target(first).resolve("images/preview.svg"));Files.delete(target(first).resolve("images"));EngineResourceArchive.prepare(first.toFile(),source(valid),null);
         check(Files.isRegularFile(target(first).resolve("images/preview.svg")),"Missing entire cached directory is repaired from ZIP");cleanStaging(first,"Missing directory repair staging removed");
+        corruptCacheRecovery(valid);
+        orphanRecovery(valid);
 
         keepsOld(fresh("truncated"),Arrays.copyOf(valid,valid.length-22),"Truncated central directory rejected");
         byte[] crc=valid.clone(),needle=bytes("CRC_DATA_MARKER_123");int at=indexOf(crc,needle,0);check(at>=0,"CRC fixture payload found");crc[at]^=1;keepsOld(fresh("crc"),crc,"Stored payload CRC mismatch rejected");
@@ -104,6 +106,40 @@ public final class EngineResourcesTest {
         Path files=fresh("symlink"),outside=fresh("outside-directory"),link=files.resolve("slicer-engine");Files.write(outside.resolve("keep.txt"),bytes("safe"));
         try{Files.createSymbolicLink(link,outside);}catch(UnsupportedOperationException|IOException|SecurityException unavailable){System.out.println("SKIP symlink fixture: OS does not permit creating symbolic links");return;}
         rejects(()->EngineResourceArchive.prepare(files.toFile(),source(valid),null),"Symlink private engine root rejected");check(Files.readString(outside.resolve("keep.txt")).equals("safe"),"Rejected symlink target remains unchanged");check(!Files.exists(outside.resolve(EngineResourceArchive.DIRECTORY)),"No resource output follows private-root symlink");
+        Path cached=fresh("symlink-cache");EngineResourceArchive.prepare(cached.toFile(),source(valid),null);Path image=target(cached).resolve("images/preview.svg");Files.delete(image);Files.createSymbolicLink(image,outside.resolve("keep.txt"));AtomicInteger opened=new AtomicInteger();
+        rejects(()->EngineResourceArchive.prepare(cached.toFile(),()->{opened.incrementAndGet();return new ByteArrayInputStream(valid);},null),"Cached leaf symlink fails closed rather than rebuilding");check(opened.get()==0&&Files.isSymbolicLink(image),"Symlink cache failure neither opens asset nor replaces target");
+        Files.delete(image);Files.delete(image.getParent());Files.createSymbolicLink(image.getParent(),outside);
+        rejects(()->EngineResourceArchive.prepare(cached.toFile(),source(valid),null),"Cached intermediate symlink fails closed");
+        Path orphanFiles=fresh("symlink-orphan");EngineResourceArchive.prepare(orphanFiles.toFile(),source(valid),null);Path orphanLink=target(orphanFiles).getParent().resolve("resources-staging-67890");Files.createSymbolicLink(orphanLink,outside);
+        EngineResourceArchive.prepare(orphanFiles.toFile(),()->{throw new IOException("Expected cache hit");},null);
+        check(!Files.exists(orphanLink,LinkOption.NOFOLLOW_LINKS),"Orphan staging symlink itself is removed");check(Files.readString(outside.resolve("keep.txt")).equals("safe"),"Orphan cleanup never follows symlink target");
+    }
+    private static void corruptCacheRecovery(byte[] valid)throws Exception {
+        Path files=fresh("corrupt-manifest");EngineResourceArchive.prepare(files.toFile(),source(valid),null);Path tree=target(files),marker=tree.resolve(".complete"),outside=tree.getParent().resolve("outside.txt");Files.write(outside,bytes("untouched"));
+        replaceManifestPath(marker,bytes("../outside.txt"));EngineResourceArchive.prepare(files.toFile(),source(valid),null);
+        check(Files.readString(outside).equals("untouched"),"Unsafe decoded manifest path is a cache miss without outside changes");check(Files.isRegularFile(tree.resolve("images/preview.svg")),"Unsafe manifest path rebuilds from packaged asset");
+        replaceManifestPath(marker,new byte[]{(byte)0xc3,0x28});EngineResourceArchive.prepare(files.toFile(),source(valid),null);
+        check(Files.readAllLines(marker).get(0).equals("kepler-engine-resources-v1"),"Invalid UTF-8 in base64 manifest path rebuilds");
+        byte[] malformed=Files.readAllBytes(marker);malformed[0]=(byte)0xff;Files.write(marker,malformed);EngineResourceArchive.prepare(files.toFile(),source(valid),null);
+        check(Files.readAllLines(marker).get(0).equals("kepler-engine-resources-v1"),"Invalid UTF-8 in manifest text rebuilds");
+        Path directory=tree.resolve("images");Files.delete(directory.resolve("preview.svg"));Files.delete(directory);Files.write(directory,bytes("ordinary file"));EngineResourceArchive.prepare(files.toFile(),source(valid),null);
+        check(Files.isDirectory(directory)&&Files.isRegularFile(directory.resolve("preview.svg")),"Ordinary file in place of intermediate cached directory rebuilds");cleanStaging(files,"Corrupt-cache repair staging removed");
+    }
+    private static void replaceManifestPath(Path marker,byte[] rawPath)throws IOException {
+        List<String> lines=Files.readAllLines(marker);int last=lines.size()-1;String[] fields=lines.get(last).split("\t",-1);lines.set(last,Base64.getUrlEncoder().withoutPadding().encodeToString(rawPath)+"\t"+fields[1]+"\t"+fields[2]);Files.write(marker,lines,StandardCharsets.UTF_8);
+    }
+    private static void orphanRecovery(byte[] valid)throws Exception {
+        Path files=fresh("orphan-cache-hit");EngineResourceArchive.prepare(files.toFile(),source(valid),null);Path parent=target(files).getParent();
+        Path orphan=Files.createDirectories(parent.resolve("resources-staging-1234567890").resolve("tree/partial"));Files.write(orphan.resolve("bytes.bin"),bytes("partial"));
+        String[] preserve={"resources-staging-manual","resources-staging-123-extra","resources-staging-00000000-0000-0000-0000-000000000001","resources-replaced-00000000-0000-0000-0000-000000000002","unrelated"};
+        for(String name:preserve){Path keep=Files.createDirectories(parent.resolve(name));Files.write(keep.resolve("keep.txt"),bytes("safe"));}
+        Path nested=Files.createDirectories(parent.resolve("unrelated/resources-staging-123"));Files.write(nested.resolve("keep.txt"),bytes("nested"));
+        EngineResourceArchive.prepare(files.toFile(),()->{throw new IOException("Orphan cleanup must still use valid cache");},null);
+        check(!Files.exists(parent.resolve("resources-staging-1234567890")),"Old numeric staging orphan is removed before cache hit");
+        for(String name:preserve)check(Files.readString(parent.resolve(name).resolve("keep.txt")).equals("safe"),"Unrelated/recovery path is preserved: "+name);
+        check(Files.readString(nested.resolve("keep.txt")).equals("nested"),"Staging-like nested child is preserved");
+        Path failed=fresh("orphan-before-failure"),failedParent=Files.createDirectories(failed.resolve("slicer-engine")),stale=Files.createDirectories(failedParent.resolve("resources-staging-987654321")),recovery=Files.createDirectories(failedParent.resolve("resources-replaced-00000000-0000-0000-0000-000000000003"));Files.write(stale.resolve("partial"),bytes("partial"));Files.write(recovery.resolve("keep"),bytes("recover"));
+        rejects(()->EngineResourceArchive.prepare(failed.toFile(),source(bytes("broken ZIP")),null),"Failed rebuild still performs orphan cleanup");check(!Files.exists(stale),"Staging orphan removed before failed extraction");check(Files.readString(recovery.resolve("keep")).equals("recover"),"Replaced recovery tree retained when target is absent");
     }
     private static int indexOf(byte[] data,byte[] needle,int from){outer:for(int i=from;i<=data.length-needle.length;i++){for(int j=0;j<needle.length;j++)if(data[i+j]!=needle[j])continue outer;return i;}return -1;}
     private static void replaceAll(byte[] data,byte[] from,byte[] to){for(int at=0;(at=indexOf(data,from,at))>=0;at+=to.length)System.arraycopy(to,0,data,at,to.length);}

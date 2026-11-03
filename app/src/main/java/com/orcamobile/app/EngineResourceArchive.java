@@ -1,6 +1,9 @@
 package com.orcamobile.app;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -30,6 +33,7 @@ final class EngineResourceArchive {
             noLinks(files);if(!Files.isDirectory(files,LinkOption.NOFOLLOW_LINKS))throw new IOException("Private files directory is unavailable");
             Path parent=files.resolve("slicer-engine");directory(parent);
             Path target=parent.resolve(DIRECTORY);noLinks(target);
+            cleanOrphanStaging(parent);
             if(valid(target)){interrupted();return target.toFile();}
             Path staging=Files.createTempDirectory(parent,"resources-staging-");
             Path previous=null;boolean published=false;IOException failure=null;
@@ -101,7 +105,14 @@ final class EngineResourceArchive {
     /** Fast path validates version, all recorded paths/sizes and required files, not content hashes. */
     private static boolean valid(Path tree)throws IOException {
         noLinks(tree);Path marker=tree.resolve(".complete");
-        if(!Files.isDirectory(tree,LinkOption.NOFOLLOW_LINKS)||!Files.isRegularFile(marker,LinkOption.NOFOLLOW_LINKS)||Files.size(marker)>8L*1024*1024)return false;
+        // readAttributes distinguishes missing/corrupt cache state from denied access;
+        // Files.isRegularFile would silently turn permission errors into cache misses.
+        BasicFileAttributes treeAttributes,markerAttributes;
+        try{treeAttributes=Files.readAttributes(tree,BasicFileAttributes.class,LinkOption.NOFOLLOW_LINKS);if(!treeAttributes.isDirectory())return false;
+            markerAttributes=Files.readAttributes(marker,BasicFileAttributes.class,LinkOption.NOFOLLOW_LINKS);
+        }catch(NoSuchFileException e){return false;}
+        if(markerAttributes.isSymbolicLink())throw new IOException("Symbolic link in engine resource manifest");
+        if(!markerAttributes.isRegularFile()||markerAttributes.size()>8L*1024*1024)return false;
         noLinks(marker);
         try(BufferedReader reader=Files.newBufferedReader(marker,StandardCharsets.UTF_8)){
             if(!HEADER.equals(reader.readLine())||!REVISION.equals(reader.readLine()))return false;
@@ -109,22 +120,25 @@ final class EngineResourceArchive {
             Set<String> names=new HashSet<>(),nonempty=new HashSet<>();Set<Path> directories=new HashSet<>();directories.add(tree);long total=0;
             for(int i=0;i<count;i++){
                 interrupted();String line=reader.readLine();if(line==null||line.length()>16384)return false;String[] fields=line.split("\t",-1);if(fields.length!=3)return false;
-                String name=new String(Base64.getUrlDecoder().decode(fields[0]),StandardCharsets.UTF_8);long size=Long.parseLong(fields[1]),crc=Long.parseLong(fields[2]);
+                String name=StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(Base64.getUrlDecoder().decode(fields[0]))).toString();long size=Long.parseLong(fields[1]),crc=Long.parseLong(fields[2]);
                 if(size<0||size>LIMIT-total||crc<0||crc>0xffffffffL||!names.add(name))return false;total+=size;
                 Path file=entryPath(tree,name);ownedDirectory(file.getParent(),tree,directories,false);
                 BasicFileAttributes attributes;
                 try{attributes=Files.readAttributes(file,BasicFileAttributes.class,LinkOption.NOFOLLOW_LINKS);}catch(NoSuchFileException e){return false;}
-                if(!attributes.isRegularFile()||attributes.isSymbolicLink()||attributes.size()!=size)return false;if(size>0)nonempty.add(name);
+                if(attributes.isSymbolicLink())throw new IOException("Symbolic link in cached engine resources");
+                if(!attributes.isRegularFile()||attributes.size()!=size)return false;if(size>0)nonempty.add(name);
             }
             return reader.readLine()==null&&nonempty.containsAll(REQUIRED);
-        }catch(InterruptedIOException e){throw e;}catch(NoSuchFileException|IllegalArgumentException|NullPointerException e){return false;}
+        }catch(InterruptedIOException e){throw e;}
+        catch(NoSuchFileException|CharacterCodingException|CorruptCacheException|ResourcePathException|IllegalArgumentException e){return false;}
     }
 
     private static Path entryPath(Path root,String name)throws IOException {
-        if(name==null||name.isEmpty()||name.length()>4096||name.indexOf('\\')>=0||name.indexOf(':')>=0||name.startsWith("/")||name.equals(".complete"))throw new IOException("Invalid resource path");
-        for(int i=0;i<name.length();i++)if(name.charAt(i)<32||name.charAt(i)==127)throw new IOException("Invalid resource path");
-        for(String part:name.split("/",-1))if(part.isEmpty()||part.equals(".")||part.equals(".."))throw new IOException("Invalid resource path");
-        Path path=root.resolve(name).normalize();if(!path.startsWith(root)||path.equals(root))throw new IOException("Resource path escaped the private directory");return path;
+        if(name==null||name.isEmpty()||name.length()>4096||name.indexOf('\\')>=0||name.indexOf(':')>=0||name.startsWith("/")||name.equals(".complete"))throw new ResourcePathException();
+        for(int i=0;i<name.length();i++)if(name.charAt(i)<32||name.charAt(i)==127)throw new ResourcePathException();
+        for(String part:name.split("/",-1))if(part.isEmpty()||part.equals(".")||part.equals(".."))throw new ResourcePathException();
+        Path path=root.resolve(name).normalize();if(!path.startsWith(root)||path.equals(root))throw new ResourcePathException();return path;
     }
     private static void directory(Path path)throws IOException {noLinks(path);Files.createDirectories(path);noLinks(path);if(!Files.isDirectory(path,LinkOption.NOFOLLOW_LINKS))throw new IOException("Resource directory is unavailable");}
     /** Cache only directory metadata within this call, never across preparations. */
@@ -133,19 +147,32 @@ final class EngineResourceArchive {
         ownedDirectory(path.getParent(),root,checked,create);
         if(create&&!Files.exists(path,LinkOption.NOFOLLOW_LINKS))Files.createDirectory(path);
         BasicFileAttributes attributes=Files.readAttributes(path,BasicFileAttributes.class,LinkOption.NOFOLLOW_LINKS);
-        if(!attributes.isDirectory()||attributes.isSymbolicLink())throw new IOException("Invalid directory in engine resources");checked.add(path);
+        if(attributes.isSymbolicLink())throw new IOException("Symbolic link in engine resource directory");
+        if(!attributes.isDirectory()){if(!create)throw new CorruptCacheException();throw new IOException("Invalid directory in engine resources");}checked.add(path);
     }
     private static void noLinks(Path path)throws IOException {for(Path at=path;at!=null;at=at.getParent())if(Files.isSymbolicLink(at))throw new IOException("Symbolic links are not allowed in engine resources");}
     private static void move(Path from,Path to)throws IOException {try{Files.move(from,to,StandardCopyOption.ATOMIC_MOVE);}catch(AtomicMoveNotSupportedException e){Files.move(from,to);}}
+    /** Same lock as extraction: no live preparation can own these stale direct children. */
+    private static void cleanOrphanStaging(Path parent)throws IOException {
+        try(DirectoryStream<Path> children=Files.newDirectoryStream(parent,"resources-staging-*")){
+            for(Path child:children){interrupted();if(child.getFileName().toString().matches("resources-staging-[0-9]+"))deleteOwned(child,parent,"resources-staging-",true);}
+        }
+    }
     private static void deleteOwned(Path root,Path parent,String prefix)throws IOException {
+        deleteOwned(root,parent,prefix,false);
+    }
+    private static void deleteOwned(Path root,Path parent,String prefix,boolean interruptible)throws IOException {
         if(!root.toAbsolutePath().normalize().getParent().equals(parent)||!root.getFileName().toString().startsWith(prefix))throw new IOException("Refusing to clean an unowned resource path");
         noLinks(parent);if(!Files.exists(root,LinkOption.NOFOLLOW_LINKS))return;
         Files.walkFileTree(root,new SimpleFileVisitor<Path>(){
-            @Override public FileVisitResult visitFile(Path file,BasicFileAttributes attributes)throws IOException {Files.delete(file);return FileVisitResult.CONTINUE;}
-            @Override public FileVisitResult postVisitDirectory(Path directory,IOException error)throws IOException {if(error!=null)throw error;Files.delete(directory);return FileVisitResult.CONTINUE;}
+            @Override public FileVisitResult preVisitDirectory(Path directory,BasicFileAttributes attributes)throws IOException {if(interruptible)interrupted();return FileVisitResult.CONTINUE;}
+            @Override public FileVisitResult visitFile(Path file,BasicFileAttributes attributes)throws IOException {if(interruptible)interrupted();Files.delete(file);return FileVisitResult.CONTINUE;}
+            @Override public FileVisitResult postVisitDirectory(Path directory,IOException error)throws IOException {if(interruptible)interrupted();if(error!=null)throw error;Files.delete(directory);return FileVisitResult.CONTINUE;}
         });
     }
     private static void interrupted()throws InterruptedIOException {if(Thread.currentThread().isInterrupted())throw canceled();}
     private static InterruptedIOException canceled(){return new InterruptedIOException("Engine resource preparation canceled");}
+    private static final class CorruptCacheException extends IOException {CorruptCacheException(){super("Ordinary file used as a cached resource directory");}}
+    private static final class ResourcePathException extends IOException {ResourcePathException(){super("Invalid resource path");}}
     private static final class Record {final String name;final long size,crc;Record(String n,long s,long c){name=n;size=s;crc=c;}}
 }
