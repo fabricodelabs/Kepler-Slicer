@@ -180,6 +180,29 @@ final class CurrentModelStore {
         Snapshot(String name, ModelTransform transform, String selectionKey,File file,int plateIndex,int projectMode,String edits) { this.name = name; this.transform = transform; this.selectionKey = selectionKey;this.file=file;this.plateIndex=plateIndex;this.projectMode=projectMode;materialEdits=edits; }
     }
 
+    /** Settings can resolve presets without a model, but must still reject a changed/broken workspace. */
+    static String settingsSelectionKey(Context context) throws IOException {
+      synchronized (LOCK) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        try {
+            String fileName = prefs.getString(FILE, "");
+            if (fileName != null && fileName.isEmpty()) {
+                // Validate stored metadata explicitly; an IOException is never interpreted as "empty".
+                readTransform(prefs);
+                int plate=readPlate(prefs),mode=readProjectMode(prefs);
+                String materials=readMaterialEdits(prefs);
+                if (plate!=-1 || mode>0 || new org.json.JSONObject(materials).length()!=0)
+                    throw new IOException("Saved project metadata has no selected model");
+                return "\0kepler-no-model-v1";
+            }
+            return selectionKey(context);
+        } catch (Exception invalid) {
+            if (invalid instanceof IOException) throw (IOException)invalid;
+            throw new IOException("Invalid saved model selection",invalid);
+        }
+      }
+    }
+
     /** Model identity and transform are read under the same publication lock. */
     static String selectionKey(Context context) throws IOException {
       synchronized (LOCK) {
