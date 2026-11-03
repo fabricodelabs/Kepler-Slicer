@@ -1,4 +1,20 @@
-# Team setup status — 2026-11-03
+# Current increment — 2026-11-03
+
+Technical resource-service work and Claude UI-001..UI-004 were integrated through
+tested code checkpoint `b70d4e8`. Actual Claude Code used Sonnet/medium and the
+existing bounded launcher. Final APK SHA-256 begins `49513915505BE47D`.
+See [the increment report](INCREMENT-2026-11-03.md) for the full hash, tests,
+computer-use evidence, acceptance scope and remaining defects.
+
+VIS-001/002/003 are fixed within the checked Settings/Preferences scope. The older
+workspace navigation still has an enlarged-font caption wrap (VIS-004); it needs
+a separate scoped Claude handoff. Phase 2 and all 39 Preferences are not declared
+complete. No printer or real cloud action was performed.
+
+# Historical team setup checkpoint — 2026-11-03
+
+The observations below predate UI-002 through UI-004; their then-open defects were
+subsequently checked and fixed as recorded in the current increment report.
 
 - Preserved 85 existing modified/new source files in dddf664 and a separately
   hash-verified backup. Original native library is unchanged across worktrees.
