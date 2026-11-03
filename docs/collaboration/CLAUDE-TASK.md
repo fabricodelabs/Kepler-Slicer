@@ -1,5 +1,10 @@
 # UI-006: settings search states and target highlight
 
+Status: bounded increment integrated at `b44b9ef` after actual APK visual QA.
+Sequential repair lease is closed. Claude remains stopped; this file is the
+completed assignment record, not an instruction to restart the capped run.
+See [acceptance and remaining limits](INCREMENT-2026-11-03-UI006.md).
+
 Continue Phase 2 of the existing Java/Views app from 258ebf2. Read AGENTS.md,
 CLAUDE.md, WORKFLOW.md, ownership.json and handoff SPEC sections 5.4 and 9.
 Sonnet, medium, USD1 estimated cap, 12 turns. No shell/Git/build/device work.

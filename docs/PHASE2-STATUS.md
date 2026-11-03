@@ -1,5 +1,19 @@
 # Kepler Slicer — статус Фазы 2 (Android)
 
+> Обновление 2026-11-03: интегрированы точные типизированные значения Process /
+> Filament / Printer и UI-006, code checkpoint `b44b9ef`, APK `251F9F26…`.
+> Offline build/lint прошли: 0 ошибок, 120 предупреждений. Host-проверки:
+> 72 parser + 78 consumer, 52 project, 82 preferences + 70 model store; схема и
+> INI codec прошли. JNI в этих host-тестах заменён явными заглушками. На реальном
+> APK через computer use проверены выбранные профили, поиск/очистка/подсветка,
+> обычный и увеличенный шрифт, поворот и IME; исправлен VIS-006. Шесть PNG,
+> хеши и границы проверки — в [отчёте UI-006](collaboration/INCREMENT-2026-11-03-UI006.md).
+> Новая библиотека не собиралась: native hash `8C146C74…` сохранён. **Фаза 2
+> остаётся открытой**: реальные editable project drafts/3MF export, полное
+> runtime-покрытие, desktop parity и 8 provider-dependent Preferences не закрыты.
+> Отдельная проверка точности фактических JNI payloads запланирована; прежние 52
+> native assertions не выданы за проверку нового APK. Фазы 3–7 остаются закрыты.
+
 > Обновление 2026-11-02 после согласования native-плана: **52 реальные native-проверки прошли на установленном APK 9FD3374C… / native 8C146C74… через computer use.** Фаза 2 не завершена; повторные UI-сценарии финального APK продолжаются. Текущий инвентарь потребителей и **8 полностью заблокированных пунктов** — в [PREFERENCES-39-STATUS.md](PREFERENCES-39-STATUS.md), новый срез — в разделе [«Native Preferences: реализация после согласования»](#native-preferences-реализация-после-согласования) в конце этого файла. [PREFERENCES39-VERIFICATION.md](PREFERENCES39-VERIFICATION.md) описывает историческую сборку D48B…, 373 host checks и прежние 13 блокировок до native-изменений. Ни её CU/hashes, ни отчёт 61C9… ниже не переобозначены как доказательства новой сборки.
 
 ## Исторический отчёт до согласованных native-изменений
