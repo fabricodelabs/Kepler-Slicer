@@ -20,12 +20,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.Collections;
 import java.util.List;
+import java.util.Iterator;
 
-/** Background-only fallback from Orca's resolved, checked INI. See precision caveat below. */
+/** Background-only resolved native values, with explicitly classified older-ABI fallback. */
 final class NativeConfigValues {
     private static final String TAG = "NativeConfigValues";
     private NativeConfigValues() {}
-    enum Source { PROCESS_METADATA, PROCESS_METADATA_SERIALIZED, VALIDATED_INI, DEFINITION_DEFAULT, PROJECT_CONFIGURATION }
+    enum Source { RESOLVED_TYPED, PROCESS_METADATA, PROCESS_METADATA_SERIALIZED, VALIDATED_INI, DEFINITION_DEFAULT, PROJECT_CONFIGURATION }
     static final class Result {
         final JSONObject values;
         final Map<String, Source> sources;
@@ -46,11 +47,11 @@ final class NativeConfigValues {
     }
 
     /**
-     * Resolves precisely the captured profile selection (no pending unsaved edits).
-     * ConfigBase::save uses stream formatting; numeric serialization can round,
-     * even though the native bridge rejects configurations that fail its round-trip
-     * comparison. Do not write these display fallbacks back as unchanged overrides.
-     * Unknown metadata, unsupported encodings and malformed individual values are omitted.
+     * Resolves the captured saved profile selection and overrides through the current
+     * typed JNI contract. Direct values retain their precision. Only a missing older
+     * JNI symbol permits the legacy display path: its stream-serialized values may
+     * round and retain their approximation provenance. Invalid available typed data
+     * is rejected. Display fallbacks never become unchanged persisted overrides.
      */
     static JSONObject load(Context context, SettingsSchema schema, String kind,
                            ProcessOverridesStore.Identity id) throws IOException {
@@ -62,6 +63,46 @@ final class NativeConfigValues {
                                ProcessOverridesStore.Identity id) throws IOException {
         if (context == null || schema == null || id == null) throw new IOException("Не выбраны профили для чтения настроек.");
         if(CurrentModelStore.projectMode(context)>0)return projectValues(context,schema,kind,id);
+        List<SettingsSchema.Option> options = schema.options(kind);
+        if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException("Загрузка отменена.");
+        String modelKey = CurrentModelStore.settingsSelectionKey(context), overrides = ProcessOverridesStore.load(context,id);
+        CompatibilityResources prepared = CompatibilityResources.prepareTriple(context,id.printer.vendor,
+                id.process.vendor,id.filament.vendor,id.profileSettings);
+        byte[] bytes;
+        try {
+            bytes = ExperimentalSlicer.resolvedSettingsSnapshot(id.printer.vendor,id.process.vendor,id.filament.vendor,
+                    id.printerName,id.processName,id.filamentName,prepared.resources.getAbsolutePath(),
+                    prepared.data.getAbsolutePath(),overrides);
+        } catch (UnsatisfiedLinkError unavailable) {
+            // Only a missing older JNI entry point permits the old, explicitly marked display path.
+            requireCurrent(context,id,modelKey,overrides);
+            Result legacy = legacyValues(context,schema,kind,id);
+            requireCurrent(context,id,modelKey,overrides);
+            String diagnostic = "Native typed settings API is unavailable";
+            if (legacy.optionalDiagnostic != null) diagnostic += ": " + legacy.optionalDiagnostic;
+            return new Result(legacy.values,legacy.sources,legacy.resolvedConfigurationAvailable,diagnostic);
+        } catch (RuntimeException | LinkageError failure) {
+            requireCurrent(context,id,modelKey,overrides);
+            throw new IOException("Could not resolve native typed settings: " +
+                    (failure.getMessage()==null?failure.getClass().getSimpleName():failure.getMessage()),failure);
+        }
+        JSONObject result = NativeTypedConfigSnapshot.read(bytes,options);
+        requireCurrent(context,id,modelKey,overrides);
+        if (result.length()==0) throw new IOException("Native typed settings contain no recognized options for " + kind);
+        Map<String,Source> sources = new HashMap<>();
+        for (Iterator<String> keys=result.keys();keys.hasNext();) sources.put(keys.next(),Source.RESOLVED_TYPED);
+        addDefinitionDefaults(result,sources,options);
+        return new Result(result,sources,true,null);
+    }
+
+    private static void requireCurrent(Context context,ProcessOverridesStore.Identity id,String modelKey,String overrides)throws IOException {
+        if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException("Загрузка отменена.");
+        if (!modelKey.equals(CurrentModelStore.settingsSelectionKey(context)) || !overrides.equals(ProcessOverridesStore.load(context,id)))
+            throw new IOException(context.getString(R.string.native_project_stale_values));
+    }
+
+    private static Result legacyValues(Context context, SettingsSchema schema, String kind,
+                                       ProcessOverridesStore.Identity id) throws IOException {
         // Validate the section before treating errors in the optional native fallback as non-fatal.
         List<SettingsSchema.Option> options = schema.options(kind);
         JSONObject result = new JSONObject(); Map<String,Source> sources = new HashMap<>();
@@ -93,6 +134,11 @@ final class NativeConfigValues {
             diagnostic = e.getMessage()==null ? e.getClass().getSimpleName() : e.getMessage();
             Log.i(TAG, "Optional resolved defaults unavailable; using known definition defaults");
         }
+        addDefinitionDefaults(result,sources,options);
+        return new Result(result,sources,resolved,diagnostic);
+    }
+
+    private static void addDefinitionDefaults(JSONObject result,Map<String,Source> sources,List<SettingsSchema.Option> options)throws IOException {
         for (SettingsSchema.Option option:options) {
             if (result.has(option.key) || !option.defaultResolved) continue;
             Object value = definitionValue(option);
@@ -100,7 +146,6 @@ final class NativeConfigValues {
             try { result.put(option.key,value); sources.put(option.key,Source.DEFINITION_DEFAULT); }
             catch (JSONException e) { throw new IOException("Некорректное значение определения Orca.",e); }
         }
-        return new Result(result,sources,resolved,diagnostic);
     }
 
     private static Result projectValues(Context context,SettingsSchema schema,String kind,ProcessOverridesStore.Identity id)throws IOException {
@@ -111,12 +156,13 @@ final class NativeConfigValues {
             model=CurrentModelStore.snapshotToDirectory(context,working);
             if(model.projectMode<=0||!model.file.getName().endsWith(".3mf"))throw new IOException(context.getString(R.string.native_project_stale_values));
             CompatibilityResources prepared=CompatibilityResources.prepareTriple(context,id.printer.vendor,id.process.vendor,id.filament.vendor,id.profileSettings);
+            String overrides=ProcessOverridesStore.load(context,id);
             ProjectSettingsSnapshot snapshot=ProjectSettingsSnapshot.parse(ExperimentalSlicer.projectSettingsSnapshot(
                 id.printer.vendor,id.process.vendor,id.filament.vendor,id.printerName,id.processName,id.filamentName,
-                prepared.resources.getAbsolutePath(),prepared.data.getAbsolutePath(),ProcessOverridesStore.load(context,id),model.materialEdits,model.file.getAbsolutePath(),model.plateIndex));
+                prepared.resources.getAbsolutePath(),prepared.data.getAbsolutePath(),overrides,model.materialEdits,model.file.getAbsolutePath(),model.plateIndex));
             boolean embedded=model.projectMode==2;
             if(!snapshot.canLoad(embedded))throw new IOException(snapshot.validationError(embedded));
-            if(!model.selectionKey.equals(CurrentModelStore.selectionKey(context)))throw new IOException(context.getString(R.string.native_project_stale_values));
+            requireCurrent(context,id,model.selectionKey,overrides);
             JSONObject all=snapshot.effectiveValues(embedded),filtered=new JSONObject();Map<String,Source> origins=new HashMap<>();
             for(SettingsSchema.Option option:schema.options(kind))if(all.has(option.key)){filtered.put(option.key,all.get(option.key));origins.put(option.key,Source.PROJECT_CONFIGURATION);}
             return new Result(filtered,origins,true,context.getString(R.string.native_project_effective_note),true);
