@@ -1,5 +1,14 @@
 # Current increment — 2026-11-03
 
+Latest increment: UI-005 and the cloud-profile name fallback are accepted at
+combined code checkpoint 9cab5b2. See
+[UI-005 increment report](INCREMENT-2026-11-03-UI005.md) for APK hash, tests,
+four workspace screenshots, acceptance limits and next work. MainActivity's
+sequential presentation lease is closed and the file is frozen again.
+VIS-004 is fixed in the checked workspace/default-large/portrait-landscape scope.
+
+The following paragraphs describe the earlier UI-001..UI-004 increment.
+
 Technical resource-service work and Claude UI-001..UI-004 were integrated through
 tested code checkpoint `b70d4e8`. Actual Claude Code used Sonnet/medium and the
 existing bounded launcher. Final APK SHA-256 begins `49513915505BE47D`.
@@ -8,7 +17,7 @@ computer-use evidence, acceptance scope and remaining defects.
 
 VIS-001/002/003 are fixed within the checked Settings/Preferences scope. The older
 workspace navigation still has an enlarged-font caption wrap (VIS-004); it needs
-a separate scoped Claude handoff. Phase 2 and all 39 Preferences are not declared
+a separate scoped Claude handoff (subsequently resolved by UI-005 above). Phase 2 and all 39 Preferences are not declared
 complete. No printer or real cloud action was performed.
 
 # Historical team setup checkpoint — 2026-11-03

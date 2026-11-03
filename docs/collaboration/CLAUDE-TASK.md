@@ -1,5 +1,9 @@
 # UI-005: workspace navigation and bed-caption spacing
 
+Completed and lease closed on 2026-11-03. Do not rerun this assignment or edit
+MainActivity under it. Await the next bounded presentation task. Historical
+assignment follows; integrator acceptance is in INCREMENT-2026-11-03-UI005.md.
+
 Continue existing UI from f4d2e6f; do not audit/rewrite the app. Read the small
 UI-005-LEASE.md and shared ownership contract. Sonnet/medium, estimated USD1,
 12 agentic turns, no shell/Git/build/device work.
