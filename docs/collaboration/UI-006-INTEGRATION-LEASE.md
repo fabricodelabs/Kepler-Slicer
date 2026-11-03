@@ -1,7 +1,7 @@
 # UI-006 sequential integration repair lease
 
 The bounded Claude Code run ended at the configured 12-turn limit, USD0.3363753.
-Candidate d9d (use Git history for exact commit) contains SettingsActivity and
+Candidate 32e59cd contains SettingsActivity and
 SettingsOptionAdapter edits, but resources/handoff were not written. It is not
 accepted or merged to master. No automatic Claude restart is authorized by this
 lease; keep its consumption cap intact.
@@ -15,3 +15,10 @@ sequential review/repair handoff, not a competing UI author. The task remains
 Phase 2, with original UI-006 visual acceptance required before master merge.
 Record Codex repair authorship and all test/visual limitations. Close this lease
 when the reviewed increment is integrated; Claude must not edit during it.
+
+CU defect VIS-006: on combined APK 155AE7D49F3FBA28, API37, font stop5/7,
+portrait+IME, the clear button is partly covered and the list cannot scroll to
+it. The root consumes system-bar/cutout insets but omits IME bounds. The same
+sequential QA correction includes SettingsActivity.shell keyboard sizing only:
+union IME in API35+ safe insets and request adjustResize on older versions.
+Keep list headers, search callbacks, state/config and read-only semantics intact.
