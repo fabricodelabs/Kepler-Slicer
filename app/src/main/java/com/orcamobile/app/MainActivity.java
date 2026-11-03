@@ -401,7 +401,7 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams plus = new FrameLayout.LayoutParams(dp(56),dp(56),Gravity.RIGHT|Gravity.BOTTOM); plus.setMargins(0,0,dp(16),dp(14)); viewport.addView(add,plus);
         TextView hint = text(loadingMesh ? "Читаем модель…" : mesh == null ? "Добавьте модель" : mesh.vertices.length==0 ? "Пластина пуста" : modelMetadata!=null && modelMetadata.optBoolean("mapping_unresolved",false) ? "Пластина не определена · все объекты проекта" : "Условная сетка · стол загружается",11,MUTED,false);
         bedHint = hint;
-        FrameLayout.LayoutParams hintPosition = new FrameLayout.LayoutParams(-2,-2,Gravity.LEFT|Gravity.BOTTOM); hintPosition.setMargins(dp(18),0,0,dp(18)); viewport.addView(hint,hintPosition);
+        FrameLayout.LayoutParams hintPosition = new FrameLayout.LayoutParams(-2,-2,Gravity.LEFT|Gravity.BOTTOM); hintPosition.setMargins(dp(18),0,dp(88),dp(18)); viewport.addView(hint,hintPosition);
         layerPanel=vertical();pad(layerPanel,12,8,12,8);layerPanel.setBackground(outline(SURFACE,16,LINE));layerPanel.setVisibility(View.GONE);
         layerCaption=text("",12,INK,true);layerPanel.addView(layerCaption);click(layerCaption,()->{if(layerAnalysis!=null)dialog("О просмотре слоёв","Приблизительный просмотр линий экструзии и поддерживаемых дуг на высоте слоя. Холостые перемещения, толщина линий и изменение Z внутри сегмента не воспроизводятся. Пропущенных движений с неизвестной позицией: "+layerAnalysis.skippedUnknown+"; неподдерживаемых движений: "+layerAnalysis.unsupportedMoves+"; неотображённых дуг: "+layerAnalysis.arcMoves+".");});layerSlider=new SeekBar(this);layerSlider.setContentDescription("Количество видимых слоёв");layerPanel.addView(layerSlider,lp(-1,40));
         FrameLayout.LayoutParams sliderPos=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);sliderPos.setMargins(dp(16),0,dp(88),dp(12));viewport.addView(layerPanel,sliderPos);
@@ -709,9 +709,10 @@ public class MainActivity extends Activity {
             pill.addView(new Icon(icons[i], selected == i ? INK : MUTED), new FrameLayout.LayoutParams(dp(iconSize), dp(iconSize), Gravity.CENTER));
             item.addView(pill, lp(compactLandscape ? 50 : 56, compactLandscape ? 26 : 32)); gap(item, compactLandscape ? 2 : 4);
             TextView label = text(names[i], compactLandscape ? 10 : 12, selected == i ? INK : MUTED, selected == i);
-            label.setGravity(Gravity.CENTER); label.setMaxLines(2); label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            label.setGravity(Gravity.CENTER); label.setMaxLines(1); label.setEllipsize(android.text.TextUtils.TruncateAt.END);
             label.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
             item.addView(label, lp(-1, -2));
+            item.setMinimumHeight(dp(44));
             item.setContentDescription(names[i] + (i == 0 ? ", выбран" : "")); item.setSelected(i == 0);
             click(item, () -> { if(index==1) openSettingsPanel(); else if(index==2) openExport(); else if(index==3) startActivity(new Intent(this,PreferencesActivity.class)); });
             bottom.addView(item, new LinearLayout.LayoutParams(0, -2, 1));
