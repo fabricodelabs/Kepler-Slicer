@@ -1,6 +1,7 @@
 {
   "schema": 1,
   "claude": [
+    "app/src/main/java/com/orcamobile/app/MainActivity.java",
     "app/src/main/java/com/orcamobile/app/SettingsActivity.java",
     "app/src/main/java/com/orcamobile/app/PreferencesActivity.java",
     "app/src/main/java/com/orcamobile/app/glass/*",
@@ -15,7 +16,6 @@
     "docs/ui/*"
   ],
   "mixedFrozen": [
-    "MainActivity.java",
     "SliceActivity.java", "ModelDetailsActivity.java", "ImportActivity.java",
     "NetworkActivity.java", "CloudSyncActivity.java", "CloudPrintLoginActivity.java",
     "SettingsTransferActivity.java", "PrinterPickerActivity.java",
