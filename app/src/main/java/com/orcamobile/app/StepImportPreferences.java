@@ -108,7 +108,7 @@ final class StepImportPreferences {
         boolean complete=false;
         try{
             File engineRoot=new File(app.getFilesDir(),"slicer-engine");mkdir(engineRoot);
-            File resources=new File(engineRoot,"resources-6d2869c4");SliceActivity.prepareResources(app,resources);
+            File resources=EngineResources.prepare(app);
             interrupted();
             String returned=ExperimentalSlicer.prepareStep(immutableSource.getAbsolutePath(),resources.getAbsolutePath(),data.getAbsolutePath(),job.getAbsolutePath(),options.linearMm,options.angularRad,options.split);
             if(returned==null)throw new IOException(app.getString(R.string.step_import_no_result));
