@@ -1,5 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="glass_open_gallery">Glass UI gallery</string>
-    <string name="glass_open_gallery_detail">Phase 1 · New interface components</string>
+  <string name="glass_open_gallery">Glass UI gallery</string>
+  <string name="glass_open_gallery_detail">Phase 1 · New interface components</string>
+  <string name="glass_search_empty_title">No settings found</string>
+  <string name="glass_search_empty_hub">No settings match “%1$s”. Try a name or an Orca key.</string>
+  <string name="glass_search_empty_editor">No settings match “%1$s” in this section.</string>
+  <string name="glass_search_empty_editor_simple">No basic settings match “%1$s”. Try Advanced or clear the search.</string>
+  <string name="glass_search_clear">Clear search</string>
+  <plurals name="glass_search_count">
+    <item quantity="one">%d setting found</item>
+    <item quantity="other">%d settings found</item>
+  </plurals>
 </resources>
