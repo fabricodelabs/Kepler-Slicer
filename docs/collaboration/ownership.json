@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "claude": [
+    "app/src/main/java/com/orcamobile/app/glass/*",
+    "app/src/main/java/com/orcamobile/app/settings/SettingsOptionAdapter.java",
+    "app/src/main/java/com/orcamobile/app/settings/SettingsEditorDialog.java",
+    "app/src/main/assets/design/*",
+    "app/src/main/res/font/*",
+    "app/src/main/res/drawable/*",
+    "app/src/main/res/values*/glass_strings.xml",
+    "app/src/main/res/values*/glass_entry_strings.xml",
+    "app/src/main/res/values*/styles.xml",
+    "docs/ui/*"
+  ],
+  "mixedFrozen": [
+    "MainActivity.java", "SettingsActivity.java", "PreferencesActivity.java",
+    "SliceActivity.java", "ModelDetailsActivity.java", "ImportActivity.java",
+    "NetworkActivity.java", "CloudSyncActivity.java", "CloudPrintLoginActivity.java",
+    "SettingsTransferActivity.java", "PrinterPickerActivity.java",
+    "ProfilePickerActivity.java", "SettingsPresetPickerActivity.java",
+    "ProcessSettingsActivity.java", "GcodeExportActivity.java",
+    "GcodePreviewActivity.java", "LaunchActivity.java", "MdUi.java",
+    "ProcessSettingsPanel.java", "ProjectMaterialEditor.java", "StepImportPreferences.java"
+  ],
+  "codex": "Everything outside the Claude allowlist; mixed files require a sequential scoped handoff. Integration policy belongs to Codex."
+}
