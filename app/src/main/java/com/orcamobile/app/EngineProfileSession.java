@@ -14,7 +14,7 @@ final class EngineProfileSession {
     static EngineProfileSession capture(Context c)throws IOException {
         ProcessOverridesStore.Snapshot s=ProcessOverridesStore.snapshotForSlice(c);
         ProcessOverridesStore.Identity id=s.identity;
-        File fullResources=new File(c.getFilesDir(),"slicer-engine/resources-6d2869c4");SliceActivity.prepareResources(c,fullResources);
+        File fullResources=EngineResources.prepare(c);
         return new EngineProfileSession(s,CompatibilityResources.prepareTriple(c,id.printer.vendor,id.process.vendor,id.filament.vendor,id.profileSettings),fullResources);
     }
     File newJob(String purpose){return new File(data,purpose+"-"+UUID.randomUUID());}

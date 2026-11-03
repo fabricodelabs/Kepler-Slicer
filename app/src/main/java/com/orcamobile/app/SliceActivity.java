@@ -26,8 +26,6 @@ import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.LinkedHashSet;
 import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 /** Experimental integration of upstream libslic3r. No printer connection or export. */
 public final class SliceActivity extends Activity {
@@ -233,7 +231,7 @@ public final class SliceActivity extends Activity {
                         &&jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context))){
                     update("Результат для текущей модели и настроек уже сохранён; повторная автонарезка не нужна.");return;
                 }
-                File resources = new File(root, "resources-6d2869c4"); prepareResources(context, resources);
+                File resources = EngineResources.prepare(context, count -> update("Подготавливаем ресурсы OrcaSlicer: " + count + " файлов…"));
                 File system = new File(data, "system"); ensureDirectory(system);
                 LinkedHashSet<String> vendors = new LinkedHashSet<>();
                 vendors.add(printer.vendor); vendors.add(process.vendor); vendors.add(filament.vendor); vendors.add("OrcaFilamentLibrary");
@@ -354,24 +352,5 @@ public final class SliceActivity extends Activity {
         if (from.isDirectory()) { ensureDirectory(to); File[] children = from.listFiles(); if (children == null) throw new IOException("Не удалось прочитать профили."); for (File child : children) copyTree(child, new File(to, child.getName())); }
         else if (from.isFile()) { try (InputStream in = new FileInputStream(from); FileOutputStream out = new FileOutputStream(to)) { copy(in, out); } }
         else throw new IOException("Ресурс профиля не найден: " + from.getName());
-    }
-    static synchronized void prepareResources(android.content.Context context, File resources) throws IOException {
-        File marker = new File(resources, ".complete"); if (marker.isFile()) return;
-        ensureDirectory(resources);
-        if (resources.getUsableSpace() < 350L * 1024 * 1024) throw new IOException("Для подготовки ресурсов требуется 350 МБ свободного места.");
-        String base = resources.getCanonicalPath() + File.separator; long total = 0; int count = 0;
-        try (ZipInputStream zip = new ZipInputStream(context.getAssets().open("upstream_resources.zip"))) {
-            ZipEntry entry; byte[] bytes = new byte[8192];
-            while ((entry = zip.getNextEntry()) != null) {
-                if (++count > 50000) throw new IOException("Слишком много файлов ресурсов.");
-                File dest = new File(resources, entry.getName()); if (!dest.getCanonicalPath().startsWith(base)) throw new IOException("Недопустимый путь ресурса.");
-                if (entry.isDirectory()) { ensureDirectory(dest); continue; }
-                ensureDirectory(dest.getParentFile());
-                try (FileOutputStream out = new FileOutputStream(dest)) { int n; while ((n = zip.read(bytes)) != -1) { total += n; if (total > 512L * 1024 * 1024) throw new IOException("Ресурсы слишком велики."); out.write(bytes, 0, n); } }
-                if (count % 500 == 0) update("Подготавливаем ресурсы OrcaSlicer: " + count + " файлов…");
-                zip.closeEntry();
-            }
-        }
-        if (!marker.createNewFile() && !marker.isFile()) throw new IOException("Не удалось завершить подготовку ресурсов.");
     }
 }
