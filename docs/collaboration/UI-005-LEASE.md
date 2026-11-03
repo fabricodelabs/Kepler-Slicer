@@ -1,5 +1,11 @@
 # Sequential presentation handoff: UI-005
 
+Closed after scoped visual acceptance on 2026-11-03. UI commit 2f3e91c and
+combined checkpoint 9cab5b2 were reviewed and checked in the installed APK.
+MainActivity has returned to mixedFrozen; the historical scope below grants no
+further editing permission. See INCREMENT-2026-11-03-UI005.md for evidence and
+the explicitly untested cases.
+
 Starting checkpoint f4d2e6f. Claude alone may edit MainActivity.java presentation
 within navigation() and the bedHint/hintPosition layout in workspace(). Codex
 must not edit MainActivity concurrently. Every callback, model/project state,
