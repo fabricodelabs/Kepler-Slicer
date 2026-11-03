@@ -18,10 +18,77 @@ public final class NativeConfigValuesTest {
                 .toString().getBytes(StandardCharsets.UTF_8);
     }
     static void noJob() {check(ExperimentalSlicer.lastJob!=null&&!ExperimentalSlicer.lastJob.exists(),"private job was removed");}
+    interface Action {void run()throws Exception;}
+    static void rejects(Action action,String message)throws Exception {
+        try{action.run();throw new AssertionError(message);}catch(java.io.IOException expected){checks++;}
+    }
     public static void main(String[] args)throws Exception {
         Context context=new Context(new File(args[1]),new File(args[0]));
         SettingsSchema schema=SettingsSchema.load(context);
         ProcessOverridesStore.Identity id=new ProcessOverridesStore.Identity();
+        JSONObject typed=NativeTypedConfigSnapshotTest.fixture();
+        ExperimentalSlicer.resolvedMetadata=typed.toString().getBytes(StandardCharsets.UTF_8);
+        CurrentModelStore.hasModel=false;
+        rejects(()->CurrentModelStore.selectionKey(context),"Model-required API should reject empty workspace in the production-like stub");
+        for(String kind:new String[]{"process","filament","printer"}) {
+            NativeConfigValues.Result emptyWorkspace=NativeConfigValues.loadDetailed(context,schema,kind,id);
+            check(emptyWorkspace.resolvedConfigurationAvailable&&emptyWorkspace.count(NativeConfigValues.Source.RESOLVED_TYPED)>0,"Preset settings resolve without an opened model: "+kind);
+        }
+        ExperimentalSlicer.resolvedHook=()->CurrentModelStore.hasModel=true;
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Empty-to-model transition must invalidate the pending settings result");
+        CurrentModelStore.hasModel=false;
+        ExperimentalSlicer.resolvedHook=()->{CurrentModelStore.hasModel=true;CurrentModelStore.mode=2;CurrentModelStore.key="new-project";};
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Empty-to-project transition must invalidate the pending settings result");
+        CurrentModelStore.hasModel=false;CurrentModelStore.mode=0;CurrentModelStore.key="captured-project";ExperimentalSlicer.resolvedHook=null;
+        CurrentModelStore.corruptSelection=true;
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Malformed saved metadata must not be treated as an empty workspace");
+        CurrentModelStore.corruptSelection=false;CurrentModelStore.hasModel=true;
+        ExperimentalSlicer.resolvedCalls=0;
+        ProcessOverridesStore.overrides="{\"layer_height\":\"0.31\"}";
+        NativeConfigValues.Result precise=NativeConfigValues.loadDetailed(context,schema,"process",id);
+        check(precise.resolvedConfigurationAvailable&&!precise.projectConfiguration,"Resolved typed config is a selected-profile value source");
+        check(precise.values.getString("layer_height").equals("0.234567891234567"),"High precision uses direct typed data instead of rounded preset JSON");
+        check(precise.sources.get("layer_height")==NativeConfigValues.Source.RESOLVED_TYPED,"Typed values have a distinct exact origin");
+        check(precise.sources.get("initial_layer_print_height")==NativeConfigValues.Source.DEFINITION_DEFAULT,"Absent native options retain explicit definition provenance");
+        check(precise.optionalDiagnostic==null,"Successful typed config has no legacy unavailable diagnostic");
+        check(ExperimentalSlicer.lastResolvedSettings.equals(ProcessOverridesStore.overrides),"Captured process overrides reach the typed native entry point");
+        check(ExperimentalSlicer.iniCalls==0&&ExperimentalSlicer.metadataCalls==0,"Resolved typed config invokes neither old metadata nor INI");
+        NativeConfigValues.Result preciseFilament=NativeConfigValues.loadDetailed(context,schema,"filament",id);
+        NativeConfigValues.Result precisePrinter=NativeConfigValues.loadDetailed(context,schema,"printer",id);
+        check(preciseFilament.values.getJSONArray("filament_diameter").getString(0).equals("1.750000000000017")&&preciseFilament.sources.get("filament_diameter")==NativeConfigValues.Source.RESOLVED_TYPED,"Filament uses precise direct vector values");
+        check(precisePrinter.values.getJSONArray("nozzle_diameter").getString(0).equals("0.600000000000017")&&precisePrinter.sources.get("nozzle_diameter")==NativeConfigValues.Source.RESOLVED_TYPED,"Printer uses precise direct vector values");
+        check(!precise.values.has("filament_diameter")&&!preciseFilament.values.has("layer_height")&&!precisePrinter.values.has("layer_height"),"Each editor only receives its own schema scope");
+        check(ExperimentalSlicer.resolvedCalls==3&&ExperimentalSlicer.iniCalls==0,"All three kinds use the same existing typed JNI contract");
+        try{precise.sources.clear();throw new AssertionError("Typed provenance map is mutable");}catch(UnsupportedOperationException expected){checks++;}
+
+        ExperimentalSlicer.resolvedHook=()->ProcessOverridesStore.stale=true;
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Published typed values for a changed profile selection");
+        ProcessOverridesStore.stale=false;ExperimentalSlicer.resolvedHook=()->CurrentModelStore.key="different-model";
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Published values after model scope changed");
+        CurrentModelStore.key="captured-project";
+        ExperimentalSlicer.resolvedHook=()->ProcessOverridesStore.overrides="{\"layer_height\":\"0.32\"}";
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Published values after saved overrides changed");
+        ProcessOverridesStore.overrides="{}";
+        ExperimentalSlicer.resolvedHook=()->Thread.currentThread().interrupt();
+        try{NativeConfigValues.loadDetailed(context,schema,"process",id);throw new AssertionError("Ignored typed read cancellation");}
+        catch(java.io.InterruptedIOException expected){check(Thread.currentThread().isInterrupted(),"Typed native cancellation preserves the interrupt state");}
+        finally{Thread.interrupted();}
+        ExperimentalSlicer.resolvedHook=null;
+        ExperimentalSlicer.resolvedMetadata=new byte[]{(byte)0xc3,0x28};
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Malformed available typed data was masked by defaults");
+        ExperimentalSlicer.resolvedMetadata=null;
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Null available typed data was masked by defaults");
+        ExperimentalSlicer.resolvedMetadata=typed.toString().getBytes(StandardCharsets.UTF_8);
+        ExperimentalSlicer.typedFailure=new IllegalStateException("Invalid selected native config");
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Native config rejection was masked by legacy defaults");
+        ExperimentalSlicer.typedFailure=null;
+        JSONObject wrongType=NativeTypedConfigSnapshotTest.fixture();ProjectSettingsSnapshotTest.option(wrongType,"layer_height","coInt",3,false,"3");
+        ExperimentalSlicer.resolvedMetadata=wrongType.toString().getBytes(StandardCharsets.UTF_8);
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Native/schema type mismatch was masked by legacy defaults");
+        check(ExperimentalSlicer.iniCalls==0&&ExperimentalSlicer.metadataCalls==0,"Invalid available typed responses never invoke an older decoder");
+
+        // Preserve and separately classify the old display path only for an absent JNI symbol.
+        ExperimentalSlicer.typedUnavailable=true;
         JSONArray rows=new JSONArray();
         row(rows,"layer_height",0.3);row(rows,"sparse_infill_density",15.5);
         row(rows,"enable_support",true);row(rows,"filename_format","prefix\nname");
@@ -29,6 +96,7 @@ public final class NativeConfigValuesTest {
         ExperimentalSlicer.metadata=metadata(rows);
         NativeConfigValues.Result process=NativeConfigValues.loadDetailed(context,schema,"process",id);
         check(process.resolvedConfigurationAvailable,"process metadata available");
+        check(process.optionalDiagnostic.contains("API is unavailable"),"Missing typed JNI is distinguished from malformed available typed data");
         check(process.values.getString("layer_height").equals("0.3"),"float is an Orca JSON string");
         check(process.values.getString("sparse_infill_density").equals("15.5%"),"percent retains %");
         check(process.values.getString("enable_support").equals("1"),"bool uses Orca 1/0");
@@ -88,14 +156,21 @@ public final class NativeConfigValuesTest {
         java.nio.file.Files.write(CurrentModelStore.source.toPath(),new byte[]{1,2,3});
         CurrentModelStore.mode=2;
         ExperimentalSlicer.projectMetadata=ProjectSettingsSnapshotTest.fixture().toString().getBytes(StandardCharsets.UTF_8);
-        int previousIniCalls=ExperimentalSlicer.iniCalls,previousMetadataCalls=ExperimentalSlicer.metadataCalls;
+        int previousIniCalls=ExperimentalSlicer.iniCalls,previousMetadataCalls=ExperimentalSlicer.metadataCalls,previousResolvedCalls=ExperimentalSlicer.resolvedCalls;
         NativeConfigValues.Result project=NativeConfigValues.loadDetailed(context,schema,"process",id);
         check(project.projectConfiguration&&project.resolvedConfigurationAvailable,"project effective config distinguished from preset fallback");
         check(project.values.getString("layer_height").equals("0.234567891234567"),"actual project wire precision retained");
         check(project.sources.get("layer_height")==NativeConfigValues.Source.PROJECT_CONFIGURATION,"project origin");
         check(!project.values.has("point")&&!project.values.has("filament_diameter"),"only selected schema scope exposed");
         check(ExperimentalSlicer.iniCalls==previousIniCalls&&ExperimentalSlicer.metadataCalls==previousMetadataCalls,"project never falls through to INI or selected process metadata");
+        check(ExperimentalSlicer.resolvedCalls==previousResolvedCalls,"Project mode never substitutes a selected-preset typed snapshot");
         check(!CurrentModelStore.lastCopy.exists()&&!CurrentModelStore.lastCopy.getParentFile().exists(),"immutable project copy removed after success");
+        ExperimentalSlicer.projectHook=()->ProcessOverridesStore.stale=true;
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Project values published after captured profile changed");
+        ProcessOverridesStore.stale=false;ExperimentalSlicer.projectHook=()->ProcessOverridesStore.overrides="{\"layer_height\":\"0.42\"}";
+        rejects(()->NativeConfigValues.loadDetailed(context,schema,"process",id),"Project values published after overrides changed");
+        ProcessOverridesStore.overrides="{}";ExperimentalSlicer.projectHook=null;
+        check(!CurrentModelStore.lastCopy.exists()&&!CurrentModelStore.lastCopy.getParentFile().exists(),"immutable project copy removed after profile or override rejection");
         CurrentModelStore.mode=1;
         try{NativeConfigValues.loadDetailed(context,schema,"process",id);throw new AssertionError("incompatible current-printer config accepted");}
         catch(java.io.IOException expected){check(expected.getMessage().contains("Incompatible nozzle"),"native project rejection not masked as defaults");}

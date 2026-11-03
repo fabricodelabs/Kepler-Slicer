@@ -14,7 +14,28 @@ public final class ModelRestoreTest {
     static File input(File root,String name,int marker)throws Exception{File file=new File(root,name);byte[] data=new byte[65537];Arrays.fill(data,(byte)marker);Files.write(file.toPath(),data);return file;}
     public static void main(String[] args)throws Exception{
         File root=new File(args[0]);root.mkdirs();Context c=new Context(new File(root,"active"),new File(root,"assets"));
+        Context settingsEmpty=new Context(new File(root,"settings-empty"),new File(root,"assets"));
+        String noModel=CurrentModelStore.settingsSelectionKey(settingsEmpty);
+        check(noModel.equals("\0kepler-no-model-v1"),"Settings has an explicit empty-model token without requiring geometry");
+        rejects(()->CurrentModelStore.selectionKey(settingsEmpty),"Ordinary result fingerprints still require a saved model");
+        android.content.SharedPreferences emptyPrefs=settingsEmpty.getSharedPreferences("current_model",0);
+        emptyPrefs.edit().putString("transform","broken").commit();
+        rejects(()->CurrentModelStore.settingsSelectionKey(settingsEmpty),"Malformed empty-workspace transform is not masked");emptyPrefs.edit().clear().commit();
+        emptyPrefs.edit().putString("plate","invalid").commit();
+        rejects(()->CurrentModelStore.settingsSelectionKey(settingsEmpty),"Malformed empty-workspace plate is not masked");emptyPrefs.edit().clear().commit();
+        emptyPrefs.edit().putInt("project_mode",3).commit();
+        rejects(()->CurrentModelStore.settingsSelectionKey(settingsEmpty),"Malformed empty-workspace project mode is not masked");emptyPrefs.edit().clear().commit();
+        emptyPrefs.edit().putString("material_edits","not-json").commit();
+        rejects(()->CurrentModelStore.settingsSelectionKey(settingsEmpty),"Malformed empty-workspace material metadata is not masked");emptyPrefs.edit().clear().commit();
+        emptyPrefs.edit().putInt("file",4).commit();
+        rejects(()->CurrentModelStore.settingsSelectionKey(settingsEmpty),"Wrong saved file type is not treated as an empty selection");emptyPrefs.edit().clear().commit();
+        emptyPrefs.edit().putInt("project_mode",2).commit();
+        rejects(()->CurrentModelStore.settingsSelectionKey(settingsEmpty),"Project metadata without a selected model is not treated as normal empty state");emptyPrefs.edit().clear().commit();
+        emptyPrefs.edit().putString("file","model-missing.stl").commit();
+        rejects(()->CurrentModelStore.settingsSelectionKey(settingsEmpty),"Missing nonempty model path is still an error");emptyPrefs.edit().clear().commit();
         File first=input(root,"first.stl",1),next=input(root,"next.stl",2),backup=input(root,"backup.3mf",3),project=input(root,"project.3mf",4);
+        CurrentModelStore.prepare(settingsEmpty,Uri.fromFile(first),"First.stl").publish(settingsEmpty);
+        check(!noModel.equals(CurrentModelStore.settingsSelectionKey(settingsEmpty))&&CurrentModelStore.settingsSelectionKey(settingsEmpty).equals(CurrentModelStore.selectionKey(settingsEmpty)),"Publishing a model replaces the empty token with its exact validated result fingerprint");
         CurrentModelStore.prepare(c,Uri.fromFile(first),"First.stl").publish(c);
         CurrentModelStore.RestoreSelection expected=CurrentModelStore.captureRestoreSelection(c);
         ImportedModelPreview.nextRead=()->CurrentModelStore.prepare(c,Uri.fromFile(next),"Newer.stl").publish(c);
