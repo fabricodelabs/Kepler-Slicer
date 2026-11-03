@@ -18,7 +18,7 @@ final class ImportedModelPreview {
     static ImportedModelPreview read(Context context,File file,int plate) throws IOException {
         File root=new File(context.getFilesDir(),"slicer-engine");
         if(!root.isDirectory() && !root.mkdirs()) throw new IOException("Не удалось подготовить каталог движка.");
-        File resources=new File(root,"resources-6d2869c4"); SliceActivity.prepareResources(context,resources);
+        File resources=EngineResources.prepare(context);
         try {
             byte[] data=NativeModelIO.inspect(file.getAbsolutePath(),resources.getAbsolutePath(),root.getAbsolutePath(),plate,200000);
             if(data==null||data.length<4)throw new IOException("Движок не вернул геометрию модели.");

@@ -1,0 +1,67 @@
+# Engine resource preparation
+
+`EngineResources.prepare(Context[, Progress])` is the worker-only Android entry
+point. It returns `files/slicer-engine/resources-6d2869c4`; callers cannot choose
+another destination. The trusted Context files directory is first resolved with
+`toRealPath`, accepting Android platform aliases such as `/data/user/0`; the
+engine-owned subtree is then checked without following symlinks.
+`Progress.update(int)` reports extracted file count, including
+the final count. It runs synchronously on the requesting worker. UI adapters must
+post updates to the UI thread. Non-UI consumers should omit the callback.
+
+`EngineResourceArchive` contains the production transaction and has no Android
+dependency. A process-wide interruptible lock serializes first preparation and
+cache checks. An interrupted lock waiter, extraction/copy worker or prepublication
+worker receives `InterruptedIOException`, retaining its interrupt flag. Progress
+callbacks must not call the service recursively or change resource files.
+
+The packaged trusted `upstream_resources.zip` is copied to a private staging
+directory so `ZipFile` can validate its central directory. Every extracted file
+is checked against its declared byte length and CRC32 and flushed with `fsync`.
+Absolute paths, traversal, backslashes, duplicates and root `.complete` entries
+are rejected. The compatibility JSON and all three Orca flush datasets must be
+present and nonempty. The asset has independent 512 MiB compressed/expanded and
+50,000-entry bounds. These are resource-asset bounds; they do not limit STL, OBJ,
+3MF or STEP imports.
+
+The `.complete` manifest records a format version, pinned upstream revision and
+each file's path, length and CRC32. Cache hits verify the version, every recorded
+file's presence/length and the required files. They do **not** reread every file
+to recalculate CRC32 or SHA-256. Same-length local corruption therefore is outside
+the fast-path check. This is not a cryptographic asset audit.
+
+Old empty markers are rebuilt once from the packaged asset. Until the staging
+tree is fully validated, an existing incomplete target is left untouched. At
+publication the old tree is renamed aside, the new tree is moved into place, and
+an I/O or cancellation failure between those moves attempts to restore the old
+tree. A failed rollback retains the old tree under `resources-replaced-*` and
+attaches the rollback error; it must not be deleted as generic temporary data.
+Owned staging trees are cleaned on ordinary success/failure. Cleanup verifies
+the direct private parent and never follows symbolic links. Existing symlink
+ancestors are rejected. This does not claim protection against a compromised
+process racing its own filesystem, or power-loss/crash durability for directory
+renames; a process crash may leave an orphan staging/replaced directory.
+
+Native consumers retain their current resource path, JNI contracts, selected
+profile snapshots and fingerprint/publication guards. The service does not take
+profile/model locks, publish workspace state, invoke JNI, or modify credentials.
+
+Run from the project root:
+
+```powershell
+.\tools\test_engine_resources.ps1
+.\tools\test_engine_resources.ps1 -PackagedAsset
+```
+
+These compile and exercise the real production archive helper with actual ZIP
+bytes. They cover CRC/central-directory failures, invalid/duplicate paths, cache
+repair, legacy markers, failed source reads, cancellation and lock waiting,
+preservation of old incomplete bytes, and staging cleanup. The optional command
+also extracts the actual packaged Orca asset and reuses its generated manifest.
+The symlink case reports an explicit skip when Windows denies symlink creation.
+Measured on the Windows development host: the actual packaged archive extracted
+17,706 files in 19.328 seconds, and the subsequent manifest cache check took
+0.507 seconds. This includes per-file `fsync` and is not an Android-device timing.
+
+The suite does not simulate a failed OS rename/rollback, process death, or ENOSPC;
+those remain filesystem fault-injection checks rather than claimed coverage.
