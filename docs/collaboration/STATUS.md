@@ -1,5 +1,16 @@
 # Current increment — 2026-11-03
 
+Latest increment: typed preset values and UI-006 search presentation are accepted
+at combined code checkpoint `b44b9ef`. See [UI-006 report](INCREMENT-2026-11-03-UI006.md)
+for APK `251F9F26…`, tests, six screenshots and exact acceptance limits.
+VIS-006 keyboard clipping is fixed in the checked API37/default-large scope.
+Sequential UI-006 repair lease is closed, Claude stopped, consumption cap intact.
+Phase 2 remains incomplete; later phases remain gated. Next technical task is
+actual-JNI precision conformance, followed by the remaining project settings and
+Preferences work. Target highlight persistence after rotation remains open.
+
+## Previous UI-005 increment
+
 Latest increment: UI-005 and the cloud-profile name fallback are accepted at
 combined code checkpoint 9cab5b2. See
 [UI-005 increment report](INCREMENT-2026-11-03-UI005.md) for APK hash, tests,

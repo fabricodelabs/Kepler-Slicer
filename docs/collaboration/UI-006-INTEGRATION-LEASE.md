@@ -1,5 +1,10 @@
 # UI-006 sequential integration repair lease
 
+**Closed after bounded visual acceptance**, 2026-11-03. Repairs `7639705` and
+`5fcd61f` integrated at `b44b9ef`. Normal UI ownership resumes; Claude remains
+stopped. See [the final evidence and limits](INCREMENT-2026-11-03-UI006.md).
+The following text records the scope while the lease was active.
+
 The bounded Claude Code run ended at the configured 12-turn limit, USD0.3363753.
 Candidate 32e59cd contains SettingsActivity and
 SettingsOptionAdapter edits, but resources/handoff were not written. It is not
