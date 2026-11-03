@@ -1,5 +1,13 @@
 # Current increment — 2026-11-03
 
+Owner's new primary visual target: [Kepler Glass UI v3 in Figma](https://www.figma.com/design/OBNMhh3YDB0kRzvPnSERYW).
+Library/Settings/Preferences browser inspection found concrete icon/navigation/
+switch/control differences. See [Figma source audit](FIGMA-SOURCE-AUDIT.md).
+Precise Figma tool context/assets are unavailable in this session despite the
+installed plugin and owner's @Figma mention. No speculative UI edits or new
+Claude run were made. The APK below remains the tested prior increment and is
+not claimed to match this new visual target 1:1.
+
 Latest increment: typed preset values and UI-006 search presentation are accepted
 at combined code checkpoint `b44b9ef`. See [UI-006 report](INCREMENT-2026-11-03-UI006.md)
 for APK `251F9F26…`, tests, six screenshots and exact acceptance limits.

@@ -5,6 +5,14 @@ docs/collaboration/CLAUDE-TASK.md. You own the existing native UI, not a new app
 Java/Views, programmatic layouts, existing glass components and Android themes
 are intentional. Preserve functional behavior and current user data.
 
+Owner's primary visual source is Kepler Slicer — Glass UI v3:
+https://www.figma.com/design/OBNMhh3YDB0kRzvPnSERYW . Target 1:1 correspondence,
+including original icons and component states. Read
+docs/collaboration/FIGMA-SOURCE-AUDIT.md. Figma takes precedence over the older
+local visual references where they differ. Await a bounded task with precise
+node context/assets; do not infer exact sizes, redraw icons or restart a capped
+run from browser thumbnails. Preserve real data and behavior.
+
 Work only in the Kepler-Claude worktree on claude/ui. Initially change only the
 Claude allowlist in ownership.json. Other sources may be read to understand the
 contracts. Do not edit engine, JNI, stores, geometry, networking, build files,

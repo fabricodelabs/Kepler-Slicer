@@ -26,6 +26,17 @@ Phase 2 is the current product scope. Later product phases remain gated by the
 owner. Team setup does not mark incomplete features complete.
 Use computer-use for Android UI debugging, as requested by the owner.
 
+## Primary visual source — owner update 2026-11-03
+The owner requires 1:1 correspondence with Kepler Slicer — Glass UI v3 in Figma:
+https://www.figma.com/design/OBNMhh3YDB0kRzvPnSERYW . It takes visual precedence
+over older handoff PNG/HTML/tokens and earlier monochrome assumptions where they
+differ. Read docs/collaboration/FIGMA-SOURCE-AUDIT.md for verified nodes, initial
+mismatches and remaining context gaps. Use the design's actual icons/components
+and exact inspected properties; obtain high-fidelity context and assets before
+implementation. Existing component names or Material glyphs do not prove a match.
+Preserve functionality and phase gates. Existing UI acceptance is not proof of
+parity with this newly supplied Figma source.
+
 Before integration Codex runs tools/check_team_scope.ps1 and git diff --check;
 Claude lists those as awaiting integrator execution, because its shell is disabled. No reset,
 clean, force push, history rewrite, or automatic conflict resolution by replacement.
