@@ -1,18 +1,30 @@
-# UI-004: stable navigation caption at enlarged system font
+# UI-005: workspace navigation and bed-caption spacing
 
-Continue existing UI; do not audit/rewrite the app. Sonnet/medium, USD1 estimated
-and 12 agentic turns remain. Previous UI tasks completed successfully.
+Continue existing UI from f4d2e6f; do not audit/rewrite the app. Read the small
+UI-005-LEASE.md and shared ownership contract. Sonnet/medium, estimated USD1,
+12 agentic turns, no shell/Git/build/device work.
 
-Actual computer-use on UI-003 candidate 5F772D73 at enlarged Android system font
-(slider fourth of seven stops, original second) confirmed editor scrolling and
-footer separation. One remaining visual defect VIS-003: portrait active caption
-"Параметры" breaks mid-word into "Парамет" / "ры". It fits the pill but looks poor.
-Screenshot: docs/collaboration/screenshots/UI003-editor-large-font.png.
+Confirmed CU defect VIS-004 on previous APK 495139... at enlarged Android font
+(final stop5/7; original2/7): workspace navigation label Parameters/Параметры
+wraps mid-word. Its bed warning caption also enters the import + FAB area.
+Correction: actual source is MainActivity.java, not SliceActivity mentioned in
+previous report. See MainActivity.navigation() and hintPosition in workspace().
 
-Fix only GlassNavigation active title presentation: keep one line and ellipsize
-at END when space is insufficient; preserve system font scaling, full content
-description, selected state, icon size, touch targets, weights and callbacks.
-No token/font-size reductions or behavior changes. Existing UI-002/003 fixes stay.
-Allowed edits: app/src/main/java/com/orcamobile/app/glass/GlassNavigation.java
-and docs/ui/UI-004-HANDOFF.md only. No shell, Git, build or device actions.
-Document static changes; visual QA is Codex's responsibility. Finish the small fix.
+Allowed edits only:
+- MainActivity.java: navigation() label presentation/touch sizing, and only
+  bedHint/hintPosition layout statements within workspace().
+- docs/ui/UI-005-HANDOFF.md.
+
+Use one line + END ellipsis for nav labels, preserving the full contentDescription,
+selected state, icon sizes, callbacks and system font scaling. Keep item touch
+height >=44dp including compact landscape. Reserve horizontal space to the right
+of bedHint for the 56dp import FAB plus existing margins (layerPanel uses88dp).
+Constrain bedHint width, allow legible wrapping if needed and keep async setText
+working. Do not change bedDescription(), its warnings, or add stale descriptions.
+No gesture, renderer, state, threading, persistence, import, layer or slicing edits.
+No font shrinking or token changes. Existing Settings/Preferences fixes remain.
+
+Finish the small fix and write changed paths, behavior impact, static validation,
+open requests in docs/ui/UI-005-HANDOFF.md. Codex will perform visual QA on actual
+APK: default/large font, portrait/landscape, model+empty workspace, warning/+FAB
+separation, nav destinations, gestures and slice action availability.
