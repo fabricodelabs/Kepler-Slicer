@@ -1,34 +1,40 @@
-# UI-005: workspace navigation and bed-caption spacing
+# UI-006: settings search states and target highlight
 
-Completed and lease closed on 2026-11-03. Do not rerun this assignment or edit
-MainActivity under it. Await the next bounded presentation task. Historical
-assignment follows; integrator acceptance is in INCREMENT-2026-11-03-UI005.md.
+Continue Phase 2 of the existing Java/Views app from 258ebf2. Read AGENTS.md,
+CLAUDE.md, WORKFLOW.md, ownership.json and handoff SPEC sections 5.4 and 9.
+Sonnet, medium, USD1 estimated cap, 12 turns. No shell/Git/build/device work.
+UI-005 is completed; its MainActivity lease is closed.
 
-Continue existing UI from f4d2e6f; do not audit/rewrite the app. Read the small
-UI-005-LEASE.md and shared ownership contract. Sonnet/medium, estimated USD1,
-12 agentic turns, no shell/Git/build/device work.
+Named presentation assignment to Claude Code, confined to:
+- SettingsActivity.java: hub/editor search presentation and empty/count UI only.
+- settings/SettingsOptionAdapter.java: visible search-target highlight only.
+- res/values*/glass_entry_strings.xml: localized new display strings.
+- docs/ui/UI-006-HANDOFF.md.
 
-Confirmed CU defect VIS-004 on previous APK 495139... at enlarged Android font
-(final stop5/7; original2/7): workspace navigation label Parameters/Параметры
-wraps mid-word. Its bed warning caption also enters the import + FAB area.
-Correction: actual source is MainActivity.java, not SliceActivity mentioned in
-previous report. See MainActivity.navigation() and hintPosition in workspace().
+Current defects found by source inspection (await actual APK visual testing):
+hub search with zero matches hides cards and leaves a blank list; editor has
+only a zero count. The jumped-to row changes bold text only, because its drawable
+ignores activation. SPEC requires understandable empty states and visible highlight.
 
-Allowed edits only:
-- MainActivity.java: navigation() label presentation/touch sizing, and only
-  bedHint/hintPosition layout statements within workspace().
-- docs/ui/UI-005-HANDOFF.md.
+Implement concise native empty states with a clear-search action in hub AND
+editor; show a result count for active hub search. Keep count/empty message
+accessible (polite live region), labels in English/default and Russian resources.
+Preserve the scrolling header strategy for landscape, short height and large font;
+never use an overlay obscuring controls/results/IME. Empty state must not hide
+ListView header/search in scrollHeader mode. Give actions >=44dp targets.
+Use existing tokens, typography and glass design. Add restrained tonal/border
+highlight for the target option, preserving rounded group joins and dynamic row
+height. Keep full accessibility descriptions and the existing default,
+approximate, override and project read-only value markers.
 
-Use one line + END ellipsis for nav labels, preserving the full contentDescription,
-selected state, icon sizes, callbacks and system font scaling. Keep item touch
-height >=44dp including compact landscape. Reserve horizontal space to the right
-of bedHint for the 56dp import FAB plus existing margins (layerPanel uses88dp).
-Constrain bedHint width, allow legible wrapping if needed and keep async setText
-working. Do not change bedDescription(), its warnings, or add stale descriptions.
-No gesture, renderer, state, threading, persistence, import, layer or slicing edits.
-No font shrinking or token changes. Existing Settings/Preferences fixes remain.
+Do not change query matching, filter semantics, advanced/developer visibility,
+schema/value handling, row callbacks, worker lifecycle/generation guards, draft
+restore/save, preset selection, config origins or read-only behavior. No new API,
+native, state, network, MainActivity or frozen Activity edits. Technical agent is
+updating NativeConfigValues independently; no dependency on its new enum is needed.
 
-Finish the small fix and write changed paths, behavior impact, static validation,
-open requests in docs/ui/UI-005-HANDOFF.md. Codex will perform visual QA on actual
-APK: default/large font, portrait/landscape, model+empty workspace, warning/+FAB
-separation, nav destinations, gestures and slice action availability.
+Deliver implementation and docs/ui/UI-006-HANDOFF.md with changed files, behavior
+impact, static checks and required integrator QA. Do not claim build/visual pass.
+Codex will run scope/diff checks, compile, then computer-use hub/editor no-results,
+clear recovery, search->jump highlight, numeric/bool/read-only regression checks,
+portrait/landscape, default/enlarged font and keyboard/card-join inspections.
