@@ -23,7 +23,7 @@
     <string name="general_replace">Заменить</string>
     <string name="general_remember_choice">Запомнить выбор</string>
     <string name="general_modified_gcode_title">В проекте есть пользовательский G-code</string>
-    <string name="general_modified_gcode_detail">В проекте есть поля или вставки G-code. Этот интерфейс Android не может проверить их эквивалентность настольной Orca. При открытии предпросмотра команды не выполняются. Проверьте проект перед нарезкой.</string>
+    <string name="general_modified_gcode_detail">В проекте есть поля или вставки G-code. Этот интерфейс Android не может проверить их эквивалентность настольному слайсеру. При открытии предпросмотра команды не выполняются. Проверьте проект перед нарезкой.</string>
     <string name="general_continue">Продолжить</string>
     <string name="general_step_blocked">В текущем JNI нет импорта STEP и параметров его триангуляции. Чтобы эти настройки влияли на импорт, необходимо согласовать изменение нативного интерфейса.</string>
     <string name="general_associations_info">Kepler принимает STL, OBJ и 3MF через «Открыть с помощью» и «Поделиться» Android. Ниже можно выбрать файл для открытия. Приложения по умолчанию назначает Android; этот экран не меняет чужие ассоциации.</string>

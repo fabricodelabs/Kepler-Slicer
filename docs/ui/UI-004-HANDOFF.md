@@ -1,7 +1,7 @@
 # UI-004 handoff: stable navigation caption at enlarged font
 
 ## Changed paths
-- `app/src/main/java/com/orcamobile/app/glass/GlassNavigation.java`
+- `app/src/main/java/com/keplerslicer/app/glass/GlassNavigation.java`
 - `docs/ui/UI-004-HANDOFF.md`
 
 ## Change

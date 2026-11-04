@@ -1,6 +1,6 @@
 <resources>
     <string name="step_import_title">Параметры сетки STEP</string>
-    <string name="step_import_detail">Orca преобразует поверхности CAD в треугольники. Меньшие допуски дают более точную сетку и требуют больше памяти. Исходный STEP и эти настройки сохраняются вместе с моделью.</string>
+    <string name="step_import_detail">Движок преобразует поверхности CAD в треугольники. Меньшие допуски дают более точную сетку и требуют больше памяти. Исходный STEP и эти настройки сохраняются вместе с моделью.</string>
     <string name="step_import_linear">Линейное отклонение · мм</string>
     <string name="step_import_angular">Угловое отклонение · радианы</string>
     <string name="step_import_split">Разделять составные формы</string>
@@ -9,7 +9,7 @@
     <string name="step_import_linear_error">Введите конечное значение больше 0 мм.</string>
     <string name="step_import_angular_error">Введите конечное значение больше 0 и не больше 3,141592653589793 радиан.</string>
     <string name="step_import_save_error">Не удалось сохранить параметры сетки STEP.</string>
-    <string name="step_import_no_result">Orca не вернула корректную сетку STEP.</string>
+    <string name="step_import_no_result">Движок не вернул корректную сетку STEP.</string>
     <string name="step_import_source_changed">Исходный STEP изменился во время импорта. Текущая модель сохранена.</string>
     <string name="step_import_engine_failed">Не удалось импортировать STEP: %1$s</string>
 </resources>

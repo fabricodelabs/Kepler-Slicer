@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independently audit Orca Tab.cpp source references, inventory and UI keys.
+"""Independently audit upstream Tab.cpp source references, inventory and UI keys.
 
 This is a static *lower bound*, not a runtime coverage proof. Dynamic expressions,
 conditional visibility and get_option attachment are reported as unknown. Pass a
@@ -231,8 +231,8 @@ def check(checkout,schema_path,ui_path,audit_path=None):
                         'A separate UI-key export demonstrates declared availability only, not working editors or desktop parity.']}
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--orca',type=Path,default=WORKSPACE/'work'/'OrcaSlicer');parser.add_argument('--schema',type=Path,default=PROJECT/'app'/'src'/'main'/'assets'/'orca_settings_schema.json');parser.add_argument('--ui-keys',type=Path);parser.add_argument('--audit',type=Path,default=PROJECT/'tools'/'settings_dynamic_audit.json');parser.add_argument('--json',action='store_true');args=parser.parse_args()
-    try:report=check(args.orca,args.schema,args.ui_keys,args.audit)
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--upstream',type=Path,default=WORKSPACE/'work'/'OrcaSlicer');parser.add_argument('--schema',type=Path,default=PROJECT/'app'/'src'/'main'/'assets'/'kepler_settings_schema.json');parser.add_argument('--ui-keys',type=Path);parser.add_argument('--audit',type=Path,default=PROJECT/'tools'/'settings_dynamic_audit.json');parser.add_argument('--json',action='store_true');args=parser.parse_args()
+    try:report=check(args.upstream,args.schema,args.ui_keys,args.audit)
     except (OSError,ValueError,KeyError,json.JSONDecodeError) as e:print('Cannot audit coverage:',e,file=sys.stderr);return 2
     if args.json:print(json.dumps(report,ensure_ascii=False,indent=2))
     else:

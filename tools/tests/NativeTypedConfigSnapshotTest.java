@@ -1,7 +1,7 @@
-package com.orcamobile.app;
+package com.keplerslicer.app;
 
 import android.content.Context;
-import com.orcamobile.app.settings.SettingsSchema;
+import com.keplerslicer.app.settings.SettingsSchema;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
@@ -50,10 +50,10 @@ public final class NativeTypedConfigSnapshotTest {
         check(values.getJSONArray("filament_diameter").toString().equals("[\"1.750000000000017\",\"1.234567891234567\"]"),"Direct vector precision is retained");
         check(values.getString("sparse_infill_density").equals("15.12345678912345%"),"Precise percent retains its percent marker");
         check(values.getString("line_width").equals("120.23456789123456%"),"Float-or-percent object becomes precise editor text");
-        check(values.getString("wall_loops").equals("3")&&values.getString("enable_support").equals("1"),"Integer and bool match existing Orca string representation");
+        check(values.getString("wall_loops").equals("3")&&values.getString("enable_support").equals("1"),"Integer and bool match existing upstream string representation");
         check(values.getString("point").equals("1.5,2.5"),"Scalar point uses commas");
         check(values.getString("point3").equals("1,2,3"),"Scalar point3 uses three comma-separated coordinates");
-        check(values.getJSONArray("area").toString().equals("[\"0x0\",\"200x0\",\"200x200\"]"),"Point vector uses x-separated coordinates per Orca vserialize");
+        check(values.getJSONArray("area").toString().equals("[\"0x0\",\"200x0\",\"200x200\"]"),"Point vector uses x-separated coordinates per upstream vserialize");
         check(values.getJSONArray("areas").toString().equals("[\"0x0,2x2\",\"\"]"),"Point groups retain separate string entries and empty groups");
         check(values.getJSONArray("groups").toString().equals("[\"1,2\",\"3\"]"),"Integer groups retain separate comma-separated entries");
         check(values.getJSONArray("temperatures").toString().equals("[\"210\",\"220\"]"),"Integer vector values remain string entries");

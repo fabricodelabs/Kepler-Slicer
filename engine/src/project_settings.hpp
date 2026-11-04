@@ -16,12 +16,12 @@ struct PreparedProject {
     int selected_plate = -1;
 };
 
-// Authoritative typed native values plus Orca's own JSON-preset representation.
+// Authoritative typed native values plus upstream's own JSON-preset representation.
 // This is a settings snapshot, never a replacement for the original 3MF bytes.
 std::string typed_config_snapshot_json(const Slic3r::ConfigBase &config);
 
 // path must be an immutable app-private original 3MF. Both calls reopen it via
-// Orca and validate all parsed settings before returning. Snapshot reports a
+// Upstream and validate all parsed settings before returning. Snapshot reports a
 // validation error as data so the UI can explain unavailable import choices.
 std::string project_settings_snapshot_json(const std::string &path, int plate_index,
     const Slic3r::DynamicPrintConfig &selected, const std::string &material_edits_json = "{}");

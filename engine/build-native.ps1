@@ -28,7 +28,7 @@ if ((Resolve-Path -LiteralPath $nativeJni).Path -ne (Resolve-Path -LiteralPath (
     throw 'The configured JNI bridge is not this source tree'
 }
 if ((& git -C $nativeSourceRoot rev-parse HEAD) -ne '6d2869c430284714f0a22570c38d3b359965a802') {
-    throw 'The configured source is not the pinned OrcaSlicer revision'
+    throw 'The configured source is not the pinned upstream revision'
 }
 $nativeTools = Join-Path $nativeNdk 'toolchains/llvm/prebuilt/windows-x86_64/bin'
 $nativeReadelf = Join-Path $nativeTools 'llvm-readelf.exe'

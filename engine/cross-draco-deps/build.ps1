@@ -1,5 +1,5 @@
 param(
-    [Parameter(Mandatory=$true)][string]$OrcaSource,
+    [Parameter(Mandatory=$true)][string]$UpstreamSource,
     [Parameter(Mandatory=$true)][string]$AndroidNdk,
     [Parameter(Mandatory=$true)][string]$BuildRoot,
     [string]$CMake = 'cmake',
@@ -9,10 +9,10 @@ param(
 $ErrorActionPreference = 'Stop'
 if ($Jobs -lt 1) { throw 'Jobs must be positive.' }
 $expectedRevision = '6d2869c430284714f0a22570c38d3b359965a802'
-$source = (Resolve-Path -LiteralPath $OrcaSource).Path.Replace('\', '/')
+$source = (Resolve-Path -LiteralPath $UpstreamSource).Path.Replace('\', '/')
 $ndk = (Resolve-Path -LiteralPath $AndroidNdk).Path.Replace('\', '/')
 $revision = (& git -C $source rev-parse HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $revision -ne $expectedRevision) { throw 'Official OrcaSlicer revision mismatch.' }
+if ($LASTEXITCODE -ne 0 -or $revision -ne $expectedRevision) { throw 'Official upstream revision mismatch.' }
 $toolchain = "$ndk/build/cmake/android.toolchain.cmake"
 if (-not (Test-Path -LiteralPath $toolchain -PathType Leaf)) { throw 'Android NDK toolchain file not found.' }
 $cmakeExecutable = (Get-Command $CMake -ErrorAction Stop).Source

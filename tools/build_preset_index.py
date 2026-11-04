@@ -1,4 +1,4 @@
-"""Index original Orca preset JSON without changing it or resolving defaults."""
+"""Index original upstream preset JSON without changing it or resolving defaults."""
 import argparse
 import hashlib
 import json
@@ -44,7 +44,7 @@ def build(archive: pathlib.Path, output: pathlib.Path):
 if __name__ == '__main__':
     base = pathlib.Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--archive', type=pathlib.Path, default=base/'app/src/main/assets/orca_profiles.zip')
-    parser.add_argument('--output', type=pathlib.Path, default=base/'app/src/main/assets/orca_preset_index.json')
+    parser.add_argument('--archive', type=pathlib.Path, default=base/'app/src/main/assets/kepler_profiles.zip')
+    parser.add_argument('--output', type=pathlib.Path, default=base/'app/src/main/assets/kepler_preset_index.json')
     args = parser.parse_args()
     build(args.archive, args.output)

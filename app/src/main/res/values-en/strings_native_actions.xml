@@ -16,10 +16,10 @@
     <string name="native_preferences_three_copies">3 new copies</string>
     <string name="native_preferences_test">Test native preferences</string>
     <string name="native_preferences_actual_log">Actual native log level</string>
-    <string name="native_preferences_log_detail">The requested level filters Java events and is applied to the native Orca logger. Orca may enforce a more verbose minimum for prerelease builds; the actual native level is shown separately.</string>
-    <string name="native_preferences_log_applied">Java: %1$s\nNative Orca: %2$s</string>
+    <string name="native_preferences_log_detail">The requested level filters Java events and is applied to the native engine logger. The engine may enforce a more verbose minimum for prerelease builds; the actual native level is shown separately.</string>
+    <string name="native_preferences_log_applied">Java: %1$s\nNative engine: %2$s</string>
     <string name="native_preferences_log_save_failed">The log preference could not be saved. The previous level was restored.</string>
-    <string name="native_preferences_mixed_warning">This disables Orca’s check that each material’s print temperature lies within every other material’s recommended range. Incompatible temperatures can cause failed prints. Only enable it for a combination you have checked. Invalid temperature ranges remain errors.</string>
+    <string name="native_preferences_mixed_warning">This disables the engine’s check that each material’s print temperature lies within every other material’s recommended range. Incompatible temperatures can cause failed prints. Only enable it for a combination you have checked. Invalid temperature ranges remain errors.</string>
     <string name="native_preferences_enable_mixed">Allow mixed temperatures</string>
     <string name="native_materials_title">Project materials</string>
     <string name="native_materials_detail">Edit native project-slot colours. Flushing volumes follow the automatic recalculation preference; the original 3MF stays unchanged.</string>
@@ -27,11 +27,11 @@
     <string name="native_material_virtual">virtual mix</string>
     <string name="native_material_virtual_detail">This is a virtual mixed slot. Edit the colours of its physical component slots.</string>
     <string name="native_material_colour_title">Material %1$d colour</string>
-    <string name="native_material_colour_detail">Use #RRGGBB or #RRGGBBAA. With automatic flushing enabled, Orca recalculates this slot’s row and column. Other manual matrix cells stay unchanged.</string>
+    <string name="native_material_colour_detail">Use #RRGGBB or #RRGGBBAA. With automatic flushing enabled, the engine recalculates this slot’s row and column. Other manual matrix cells stay unchanged.</string>
     <string name="native_material_colour_invalid">Enter a colour as #RRGGBB or #RRGGBBAA.</string>
     <string name="native_material_full_project_required">Load a configured 3MF with project settings before editing material slots.</string>
     <string name="native_material_changed">The model, profiles or material preference changed. Reopen the material editor.</string>
-    <string name="native_material_saved_recalculated">Colour saved in the current workspace. Orca recalculated the affected flushing volumes. The original 3MF is unchanged.</string>
+    <string name="native_material_saved_recalculated">Colour saved in the current workspace. The engine recalculated the affected flushing volumes. The original 3MF is unchanged.</string>
     <string name="native_material_saved_manual">Colour saved in the current workspace. Manual flushing volumes were kept. The original 3MF is unchanged.</string>
     <string name="native_material_monochrome_presets">Monochrome colours</string>
     <string name="native_material_black">Black</string>

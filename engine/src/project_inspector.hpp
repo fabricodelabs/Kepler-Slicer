@@ -8,10 +8,10 @@
 namespace Slic3r { class Model; class DynamicPrintConfig; class Preset; class BBLProject; struct PlateData; struct ConfigSubstitutionContext; }
 namespace kepler {
 
-// Live inspection retains Orca's parsed Model/config/plate/preset objects.
+// Live inspection retains upstream's parsed Model/config/plate/preset objects.
 // Exact source bytes remain in the caller-owned private immutable snapshot.
 // JSON is a descriptive index, not a lossless project serializer. Destroy
-// while the process-wide Orca engine lock is held.
+// while the process-wide upstream engine lock is held.
 class ProjectInspection {
 public:
     ~ProjectInspection();
@@ -37,7 +37,7 @@ private:
 };
 
 // Caller supplies a private immutable snapshot and holds the common engine
-// mutex; Orca resource/data/temp dirs must already be private and configured.
+// mutex; upstream resource/data/temp dirs must already be private and configured.
 // File bytes are checked before and after loading. This is not a print-ready
 // project importer, persistence implementation, or sanitizer.
 ProjectInspection inspect_project_3mf(const std::string &path);

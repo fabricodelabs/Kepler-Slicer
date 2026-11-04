@@ -37,11 +37,26 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 - Build: `export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"; ./gradlew --offline assembleDebug -q`.
 - Emulator `Medium_Phone_API_37.0` (emulator-5554). Install `app/build/outputs/apk/debug/app-debug.apk`;
-  launch `com.orcamobile.app/.LaunchActivity` (use `MSYS_NO_PATHCONV=1` in Git Bash). Most activities are not
+  launch `com.orcamobile.app/com.keplerslicer.app.LaunchActivity` (use `MSYS_NO_PATHCONV=1` in Git Bash). Most activities are not
   exported — navigate through the UI. The STEP sample model takes ~30–40 s to load after launch; taps on the
   workspace are ignored meanwhile. 1 screenshot px = 1.2 × displayed px.
 - Commit hook needs pwsh: `export PATH="/c/Users/tails/AppData/Local/Microsoft/WindowsApps:$PATH"`.
 - Figma MCP is flaky ("connection lost"); retry, or request child nodes when a frame is too large.
+
+## Naming (2026-11-04, owner: "убери отовсюду упоминание орки")
+
+- Code package `com.keplerslicer.app` (applicationId stays `com.orcamobile.app` — owner decision pending),
+  assets `kepler_*`, classes `PrintProfileCatalog`, `PrinterProfileCatalog`, `ProfileIniCodec`, `CloudProfile*`.
+- Stored names live in `StorageNames`; `StorageMigration.run` (first call in `KeplerApplication`) moves the old
+  prefs / cloud secret / cloud folder once and deletes old caches. Verified on the emulator.
+- Engine text (native messages, tooltips, vendor `OrcaFilamentLibrary`) is reworded for display only by
+  `EngineText.clean` (MdUi alerts, GlassBottomSheet, schema labels, error helpers, vendor captions).
+- Remaining old names and why: [../NAMING.md](../NAMING.md).
+- **Never run text replacement over binaries.** The earlier repo-wide rename corrupted
+  `libkepler_slicer_experimental.so` (dlopen ".dynamic section header was not found"); it was restored from git.
+  Limit replacements to `git ls-files` text paths and check `git diff --numstat` for `-` (binary) rows.
+- Python 3.12 is installed per-user (`%LOCALAPPDATA%\Programs\Python\Python312`); open a new shell for PATH.
+- Many files in the index are CRLF while edits produce LF; restore CRLF before committing to keep diffs small.
 
 ## Open items
 
@@ -58,6 +73,6 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 3. Phase 2 open items from docs/PHASE2-STATUS.md: editable project drafts / full 3MF project export with settings,
    runtime option coverage (auditor `incomplete`), desktop parity, multi-object overrides, target highlight after rotation.
 4. Preferences: 8 blocked entries (#23, #28–31, #36, #37, #39 — Bambu provider/region/profile update).
-5. UI-010 leftovers: Cut / Text / Assembly (engine), AMS sync, backdrop blur, Russian labels for Orca enum choices
-   (assets/orca_ui_ru.json), TalkBack pass, live Device/camera on a real host.
+5. UI-010 leftovers: Cut / Text / Assembly (engine), AMS sync, backdrop blur, Russian labels for upstream enum choices
+   (assets/kepler_ui_ru.json), TalkBack pass, live Device/camera on a real host.
 Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-github-com-orcaslicer-orcaslicer-https\work\json-test.jar`.

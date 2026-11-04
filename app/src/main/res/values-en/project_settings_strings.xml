@@ -11,7 +11,7 @@
     <string name="native_project_keep_printer">Keep selected printer</string>
     <string name="native_project_use_printer">Use project printer settings</string>
     <string name="native_project_context_changed">The selected profiles changed while the project was being checked. Open the project again to review the current choices.</string>
-    <string name="native_project_loaded_full">The original project and its settings are loaded. Global, plate and object settings are applied directly by Orca during slicing. The saved profile library was not replaced.</string>
+    <string name="native_project_loaded_full">The original project and its settings are loaded. Global, plate and object settings are applied directly by the slicing engine. The saved profile library was not replaced.</string>
     <string name="native_project_loaded_geometry">The original 3MF was retained. Slicing uses a detached geometry copy with the selected profiles; embedded configurations, paint, layer profiles and custom plate G-code are not applied.</string>
     <string name="native_project_effective_note">3MF project settings · effective values for slicing. Editing the embedded project configuration is not available on this screen; saved library presets remain separate.</string>
     <string name="native_project_slice_detail">3MF settings mode: %1$s</string>

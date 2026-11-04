@@ -1,4 +1,4 @@
-package com.orcamobile.app;
+package com.keplerslicer.app;
 import android.content.Context;import android.content.SharedPreferences;import java.io.*;import java.nio.ByteBuffer;import java.nio.charset.StandardCharsets;import java.security.MessageDigest;import org.json.JSONObject;
 public final class ProcessOverridesStoreTest {
  private static int assertions;private interface Run{void call()throws Exception;}private static void check(boolean value,String message){assertions++;if(!value)throw new AssertionError(message);}private static void rejects(Run run,String message)throws Exception{try{run.call();throw new AssertionError(message);}catch(IOException expected){assertions++;}}
@@ -15,7 +15,7 @@ public final class ProcessOverridesStoreTest {
   String afterProfile=ProcessOverridesStore.currentResultFingerprint(c);ObjectSettingsStore.fingerprint="objects-b";check(new JSONObject(ProcessOverridesStore.snapshotForSlice(c).overrides).getDouble("layer_height")==0.19,"object edit retains legacy");check(!afterProfile.equals(ProcessOverridesStore.currentResultFingerprint(c)),"object edit invalidates result");
   ObjectSettingsStore.file="model-other.stl";rejects(()->ProcessOverridesStore.currentResultFingerprint(c),"different model scope rejected");ObjectSettingsStore.file="model-one.stl";ObjectSettingsStore.plate=2;rejects(()->ProcessOverridesStore.currentResultFingerprint(c),"different plate scope rejected");ObjectSettingsStore.plate=-1;
   SettingsState.mismatch=true;rejects(()->ProcessOverridesStore.snapshotForSlice(c),"overlay identity mismatch rejected");SettingsState.mismatch=false;
-  OrcaProcessFilamentCatalog.process=new OrcaProcessFilamentCatalog.Profile("VQ","Other","VQ/process/other.json");check(ProcessOverridesStore.snapshotForSlice(c).overrides.equals("{}"),"different system triple cannot apply legacy values");check(pref.getString("identity","").equals(legacy),"mismatched read does not destroy old record");
+  PrintProfileCatalog.process=new PrintProfileCatalog.Profile("VQ","Other","VQ/process/other.json");check(ProcessOverridesStore.snapshotForSlice(c).overrides.equals("{}"),"different system triple cannot apply legacy values");check(pref.getString("identity","").equals(legacy),"mismatched read does not destroy old record");
   ProcessOverridesStore.changeSelection(c,false,()->{});check(pref.getString("identity","").equals(legacy),"same-base selection preserves legacy");ProcessOverridesStore.changeSelection(c,true,()->{});check(pref.getAll().isEmpty(),"different-base selection clears legacy");
   System.out.println("Process overrides: "+assertions+" assertions passed");
  }

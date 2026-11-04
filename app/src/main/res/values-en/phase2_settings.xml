@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 <string name="phase2_settings_title">Settings</string>
-<string name="phase2_settings_loading">Loading Orca settings…</string>
+<string name="phase2_settings_loading">Loading slicer settings…</string>
 <string name="phase2_settings_loading_label">Loading</string>
 <string name="phase2_settings_draft_restore_error">Draft could not be restored: %1$s</string>
 <string name="phase2_settings_back">Back</string><string name="phase2_settings_menu">Settings menu</string>
 <string name="phase2_settings_printer">Printer</string><string name="phase2_settings_filament">Filament</string><string name="phase2_settings_process">Process</string>
-<string name="phase2_settings_search_all">Search every Orca setting</string>
+<string name="phase2_settings_search_all">Search every slicer setting</string>
 <string name="phase2_settings_network">Network connections</string><string name="phase2_settings_category_settings">%1$s settings</string>
 <string name="phase2_settings_choose">Choose %1$s  ▾</string><string name="phase2_settings_selected">%1$s  ▾</string>
 <string name="phase2_settings_first_slot">1</string><string name="phase2_settings_slot_description">Filament slot 1</string><string name="phase2_settings_nozzle">Nozzle</string>
@@ -14,7 +14,7 @@
 <string name="phase2_settings_calibration">Calibration</string><string name="phase2_settings_calibration_unavailable">Calibration tools are not available yet.</string>
 <string name="phase2_settings_search_result">%1$s\n%2$s · %3$s · %4$s</string>
 <string name="phase2_settings_load_profile">Loading profile and native defaults…</string><string name="phase2_settings_defaults_unavailable">Core defaults not available: %1$s</string>
-<string name="phase2_settings_choose_bundled">Choose a bundled Orca preset to begin.</string><string name="phase2_settings_choose_preset_kind">Choose %1$s preset</string>
+<string name="phase2_settings_choose_bundled">Choose a bundled preset to begin.</string><string name="phase2_settings_choose_preset_kind">Choose %1$s preset</string>
 <string name="phase2_settings_save">Save</string><string name="phase2_settings_advanced">Advanced</string><string name="phase2_settings_advanced_description">Advanced settings</string>
 <string name="phase2_settings_search_key">Search label or key</string>
 <string name="phase2_settings_object_title">Object settings</string><string name="phase2_settings_object_unavailable">Open a model with exactly one native object. Multiple-object override assignment requires further native integration.</string>
@@ -22,7 +22,7 @@
 <string name="phase2_settings_menu_search">Search all settings</string><string name="phase2_settings_menu_transfer">Import / export</string><string name="phase2_settings_menu_inventory">Export settings UI inventory</string><string name="phase2_settings_menu_choose">Choose preset</string><string name="phase2_settings_menu_use">Use this preset</string><string name="phase2_settings_menu_save_as">Save as…</string><string name="phase2_settings_menu_reset">Reset unsaved changes</string><string name="phase2_settings_menu_delete">Delete user preset</string>
 <string name="phase2_settings_global_title">Global settings</string><string name="phase2_settings_global_first">Save the global draft before saving object overrides.</string><string name="phase2_settings_object_saved">Object settings saved</string>
 <string name="phase2_settings_save_user">Save user preset</string><string name="phase2_settings_user_suffix">%1$s — Kepler</string><string name="phase2_settings_enter_name">Enter a name</string><string name="phase2_settings_cancel">Cancel</string>
-<string name="phase2_settings_checking">Checking configuration with Orca…</string><string name="phase2_settings_saved">Saved %1$s</string><string name="phase2_settings_unsaved_title">Unsaved changes</string><string name="phase2_settings_save_or_reset">Save or reset the draft before selecting this preset.</string><string name="phase2_settings_active_preset">Active preset: %1$s</string><string name="phase2_settings_preset_selected">Preset selected</string>
+<string name="phase2_settings_checking">Checking configuration with the engine…</string><string name="phase2_settings_saved">Saved %1$s</string><string name="phase2_settings_unsaved_title">Unsaved changes</string><string name="phase2_settings_save_or_reset">Save or reset the draft before selecting this preset.</string><string name="phase2_settings_active_preset">Active preset: %1$s</string><string name="phase2_settings_preset_selected">Preset selected</string>
 <string name="phase2_settings_reset_question">Reset unsaved changes?</string><string name="phase2_settings_keep_editing">Keep editing</string><string name="phase2_settings_discard">Discard changes</string><string name="phase2_settings_discard_continue">Discard and continue</string><string name="phase2_settings_system_read_only">System presets are read-only</string><string name="phase2_settings_delete_question">Delete %1$s?</string><string name="phase2_settings_delete_user">Delete user preset</string>
 <string name="phase2_settings_inventory_title">UI inventory</string><string name="phase2_settings_inventory_detail">%1$s\nIncludes all runtime adapter rows in Advanced mode; conditional desktop visibility requires a separate audit.</string><string name="phase2_settings_wait">Please wait for the current operation</string>
 <string name="phase2_settings_page_quality">Quality</string><string name="phase2_settings_page_strength">Strength</string><string name="phase2_settings_page_speed">Speed</string><string name="phase2_settings_page_support">Support</string><string name="phase2_settings_page_multimaterial">Multimaterial</string><string name="phase2_settings_page_others">Others</string><string name="phase2_settings_page_notes">Notes</string>
@@ -33,6 +33,6 @@
 <string name="phase2_settings_scope_object_no_plate">Object 1</string>
 <string name="phase2_settings_detached_draft">The preset or model changed. Its earlier draft remains in private storage as %1$s and has not been applied to this selection.</string>
 <string name="phase2_settings_origin_legend">† Definition default · ≈ Serialized value · Hold for details</string>
-<string name="phase2_settings_definition_detail">This is the default in the Orca option definition. Its effective value for this printer is not confirmed. It is displayed for reference and is saved as an override only after you explicitly edit it.</string>
-<string name="phase2_settings_serialized_detail">Orca returned this value through text serialization, which may round numeric values. It is displayed for reference and is saved as an override only after you explicitly edit it.</string>
+<string name="phase2_settings_definition_detail">This is the default in the engine option definition. Its effective value for this printer is not confirmed. It is displayed for reference and is saved as an override only after you explicitly edit it.</string>
+<string name="phase2_settings_serialized_detail">The engine returned this value through text serialization, which may round numeric values. It is displayed for reference and is saved as an override only after you explicitly edit it.</string>
 </resources>

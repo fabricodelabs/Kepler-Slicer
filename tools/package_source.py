@@ -85,8 +85,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path,
                         default=PROJECT.parent / 'Kepler-Slicer-Glass-Phase2-source.zip')
-    parser.add_argument('--orca', type=Path, default=PROJECT.parent.parent / 'work' / 'OrcaSlicer',
-                        help='Clean local OrcaSlicer Git checkout at the pinned revision')
+    parser.add_argument('--upstream', type=Path, default=PROJECT.parent.parent / 'work' / 'OrcaSlicer',
+                        help='Clean local upstream Git checkout at the pinned revision')
     args = parser.parse_args()
     target = args.output.resolve()
     if target == PROJECT or PROJECT in target.parents:
@@ -96,11 +96,11 @@ def main() -> int:
     target.parent.mkdir(parents=True, exist_ok=True)
     files = collect()
     signatures = {f: (f.stat().st_size, f.stat().st_mtime_ns) for f in files}
-    checkout=args.orca.resolve()
+    checkout=args.upstream.resolve()
     if git(checkout,'rev-parse','HEAD').decode('ascii').strip()!=UPSTREAM_REVISION:
-        raise ValueError('OrcaSlicer checkout is not at the pinned revision')
+        raise ValueError('upstream checkout is not at the pinned revision')
     if git(checkout,'status','--porcelain=v1','--untracked-files=all').strip():
-        raise ValueError('OrcaSlicer checkout is not clean; refusing to omit local changes')
+        raise ValueError('upstream checkout is not clean; refusing to omit local changes')
     fd, temp_name = tempfile.mkstemp(prefix='.kepler-source-', suffix='.zip', dir=target.parent)
     os.close(fd)
     temporary = Path(temp_name)

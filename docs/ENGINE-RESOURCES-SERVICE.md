@@ -25,7 +25,7 @@ Android. Killing the app does not discard the OS page cache. Power loss or an OS
 crash can still lose extracted file data; the manifest is not a durability proof,
 and same-length damage is outside the structural cache check described below.
 Absolute paths, traversal, backslashes, duplicates and root `.complete` entries
-are rejected. The compatibility JSON and all three Orca flush datasets must be
+are rejected. The compatibility JSON and all three upstream flush datasets must be
 present and nonempty. The asset has independent 512 MiB compressed/expanded and
 50,000-entry bounds. These are resource-asset bounds; they do not limit STL, OBJ,
 3MF or STEP imports.
@@ -77,7 +77,7 @@ repair, legacy markers, failed source reads, cancellation and lock waiting,
 preservation of old incomplete bytes, staging cleanup, malformed cache manifest
 recovery and cleanup of old numeric staging orphans on cache hits while preserving
 unrelated/recovery paths. The optional command
-also extracts the actual packaged Orca asset and reuses its generated manifest.
+also extracts the actual packaged upstream asset and reuses its generated manifest.
 The symlink case reports an explicit skip when Windows denies symlink creation.
 Earlier Windows-host measurements with per-file `fsync` were 19.298 seconds for
 17,706 extracted files and 0.554 seconds for the manifest cache check. Those

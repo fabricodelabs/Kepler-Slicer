@@ -27,7 +27,7 @@ using json = nlohmann::json;
 struct Rgba { unsigned char red, green, blue, alpha; };
 Rgba parse_colour(const std::string &value)
 {
-    // Orca preset colours use #RRGGBB. Preserve alpha for imported spool data
+    // Upstream preset colours use #RRGGBB. Preserve alpha for imported spool data
     // using the explicit CSS #RRGGBBAA form; never guess Android #AARRGGBB.
     if ((value.size() != 7 && value.size() != 9) || value.front() != '#')
         throw std::invalid_argument("Filament colour must be #RRGGBB or #RRGGBBAA");
@@ -82,7 +82,7 @@ void require_flush_dataset(int dataset)
 }
 
 // The arithmetic follows get_min_flush_volumes in desktop GUI/Plater.cpp.
-// get_at has Orca's broadcast-first semantics for singleton option vectors.
+// get_at has upstream's broadcast-first semantics for singleton option vectors.
 std::vector<int> minimum_flush_volumes(const DynamicPrintConfig &cfg, std::size_t nozzle, std::size_t slots)
 {
     const auto *nozzle_volume = cfg.option<ConfigOptionFloatsNullable>("nozzle_volume");

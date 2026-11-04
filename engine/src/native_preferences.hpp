@@ -54,7 +54,7 @@ std::string native_log_level();
 // Meaningful in-process native smoke checks: original FlushVolCalculator,
 // matrix preservation/rollback, material compatibility, real instance cloning,
 // upstream arrangement, collision/bed-exclusion failure and log restoration.
-// Caller must initialize Orca resources/data and hold the engine mutex.
+// Caller must initialize upstream resources/data and hold the engine mutex.
 std::string native_preferences_self_test();
 
 }

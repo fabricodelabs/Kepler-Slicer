@@ -1,4 +1,4 @@
-package com.orcamobile.app;
+package com.keplerslicer.app;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -62,7 +62,7 @@ public final class EngineResourcesTest {
         keepsOld(fresh("truncated"),Arrays.copyOf(valid,valid.length-22),"Truncated central directory rejected");
         byte[] crc=valid.clone(),needle=bytes("CRC_DATA_MARKER_123");int at=indexOf(crc,needle,0);check(at>=0,"CRC fixture payload found");crc[at]^=1;keepsOld(fresh("crc"),crc,"Stored payload CRC mismatch rejected");
         Path invalid=fresh("invalid-zip");rejects(()->EngineResourceArchive.prepare(invalid.toFile(),source(bytes("not a ZIP")),null),"Non-ZIP rejected");check(!Files.exists(target(invalid)),"Invalid archive never publishes final directory");cleanStaging(invalid,"Invalid ZIP staging removed");
-        Path empty=fresh("missing-required");rejects(()->EngineResourceArchive.prepare(empty.toFile(),source(zip(Collections.singletonMap("images/a.svg",bytes("x")))),null),"ZIP without required Orca datasets rejected");check(!Files.exists(target(empty)),"Missing required resources never publish");
+        Path empty=fresh("missing-required");rejects(()->EngineResourceArchive.prepare(empty.toFile(),source(zip(Collections.singletonMap("images/a.svg",bytes("x")))),null),"ZIP without required upstream datasets rejected");check(!Files.exists(target(empty)),"Missing required resources never publish");
 
         String[] badNames={"../outside.txt","/absolute.txt","C:/absolute.txt","C:relative.txt","nested\\escape.txt","nested/../escape.txt","nested//escape.txt",".complete"};
         for(int i=0;i<badNames.length;i++){Map<String,byte[]> bad=entries();bad.put(badNames[i],bytes("escape"));Path files=fresh("bad-path-"+i);rejects(()->EngineResourceArchive.prepare(files.toFile(),source(zip(bad)),null),"Unsafe resource path rejected: "+badNames[i]);check(!Files.exists(target(files)),"Unsafe path not published: "+i);cleanStaging(files,"Unsafe path staging removed: "+i);}
@@ -88,7 +88,7 @@ public final class EngineResourcesTest {
             Path packaged=Paths.get(args[1]),files=fresh("packaged-asset");AtomicInteger count=new AtomicInteger();
             long extractStart=System.nanoTime();EngineResourceArchive.prepare(files.toFile(),()->Files.newInputStream(packaged),count::set);
             long extractNs=System.nanoTime()-extractStart;
-            check(count.get()>10000,"Actual packaged Orca resource tree extracted with CRC and required datasets");
+            check(count.get()>10000,"Actual packaged upstream resource tree extracted with CRC and required datasets");
             long cacheStart=System.nanoTime();EngineResourceArchive.prepare(files.toFile(),()->{throw new IOException("Packaged cache must not reopen asset");},null);long cacheNs=System.nanoTime()-cacheStart;
             check(true,"Actual packaged resource manifest takes the cache fast path");cleanStaging(files,"Actual packaged staging removed");
             System.out.printf(Locale.ROOT,"PACKAGED files=%d extract=%.3fs cache=%.3fs%n",count.get(),extractNs/1e9,cacheNs/1e9);

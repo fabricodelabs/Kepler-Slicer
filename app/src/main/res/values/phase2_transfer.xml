@@ -5,17 +5,17 @@
     <string name="transfer_presets">Presets</string>
     <string name="transfer_no_preset">Open this screen from a preset to export it, or import a preset below.</string>
     <string name="transfer_selected_preset">%1$s · %2$s</string>
-    <string name="transfer_import_profiles">Import JSON / Orca ZIP</string>
+    <string name="transfer_import_profiles">Import JSON / profile ZIP</string>
     <string name="transfer_export_json">Export preset JSON</string>
-    <string name="transfer_export_zip">Export Orca ZIP</string>
-    <string name="transfer_preset_note">Imported presets are stored as user profiles. The active slicing selection stays unchanged. Orca ZIP export includes user ancestors as separate JSON files.</string>
+    <string name="transfer_export_zip">Export profile ZIP</string>
+    <string name="transfer_preset_note">Imported presets are stored as user profiles. The active slicing selection stays unchanged. Profile ZIP export includes user ancestors as separate JSON files.</string>
     <string name="transfer_project">3MF configuration</string>
     <string name="transfer_open_project">Open existing 3MF</string>
-    <string name="transfer_project_empty">Choose an Orca project containing Metadata/project_settings.config.</string>
+    <string name="transfer_project_empty">Choose a 3MF project containing Metadata/project_settings.config.</string>
     <string name="transfer_project_file">%1$s · %2$s</string>
     <string name="transfer_project_note">Edit the project configuration JSON, then save a new 3MF. Other archive entry payloads, including geometry and thumbnails, are preserved. Embedded project settings are not applied to the current native slicing path.</string>
     <string name="transfer_json_label">Project configuration JSON</string>
-    <string name="transfer_json_description">Editable Orca project configuration JSON</string>
+    <string name="transfer_json_description">Editable project configuration JSON</string>
     <string name="transfer_embedded_count">Embedded presets: %1$d</string>
     <string name="transfer_preview_embedded">Preview embedded preset JSON</string>
     <string name="transfer_import_embedded">Import embedded presets</string>
@@ -46,9 +46,9 @@
     <string name="transfer_destination_unavailable">The selected output document is unavailable.</string>
     <string name="transfer_missing_export">The prepared export is unavailable. Prepare it again.</string>
     <string name="transfer_no_embedded">This project has no embedded preset JSON files.</string>
-    <string name="transfer_unknown_embedded">An embedded configuration is not an Orca machine, process or filament preset.</string>
+    <string name="transfer_unknown_embedded">An embedded configuration is not a printer, process or filament preset.</string>
     <string name="transfer_new_destination">Choose a new document. The original 3MF cannot be used as the destination.</string>
     <string name="transfer_previous_interrupted">The previous operation was interrupted. Review any output document before using it.</string>
     <string name="transfer_draft_error">Could not retain the JSON draft: %1$s</string>
-    <string name="transfer_missing_project">Open an existing Orca 3MF project first.</string>
+    <string name="transfer_missing_project">Open an existing 3MF project first.</string>
 </resources>

@@ -1,7 +1,7 @@
 # UI-003 handoff: editor space on short screens (UI-003B correction)
 
 ## Changed paths
-- `app/src/main/java/com/orcamobile/app/SettingsActivity.java` (`renderEditor` only)
+- `app/src/main/java/com/keplerslicer/app/SettingsActivity.java` (`renderEditor` only)
 - `docs/ui/UI-003-HANDOFF.md`
 
 ## Change

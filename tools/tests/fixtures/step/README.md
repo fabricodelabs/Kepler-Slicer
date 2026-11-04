@@ -1,6 +1,6 @@
 # STEP native integration fixtures
 
-Copied without modification from OrcaSlicer commit
+Copied without modification from upstream commit
 `6d2869c430284714f0a22570c38d3b359965a802`, `tests/data/`.
 The upstream AGPL-3.0 license is included at the project root and with the pinned
 upstream source in the source archive.

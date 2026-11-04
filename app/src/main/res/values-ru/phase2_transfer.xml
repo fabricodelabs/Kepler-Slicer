@@ -5,17 +5,17 @@
     <string name="transfer_presets">Профили</string>
     <string name="transfer_no_preset">Откройте этот экран из профиля, чтобы экспортировать его, или импортируйте профиль ниже.</string>
     <string name="transfer_selected_preset">%1$s · %2$s</string>
-    <string name="transfer_import_profiles">Импорт JSON / Orca ZIP</string>
+    <string name="transfer_import_profiles">Импорт JSON / profile ZIP</string>
     <string name="transfer_export_json">Экспорт профиля в JSON</string>
-    <string name="transfer_export_zip">Экспорт Orca ZIP</string>
-    <string name="transfer_preset_note">Импортированные профили сохраняются как пользовательские. Текущие профили для нарезки не изменяются. Экспорт Orca ZIP включает родительские пользовательские профили в отдельных JSON-файлах.</string>
+    <string name="transfer_export_zip">Экспорт ZIP профилей</string>
+    <string name="transfer_preset_note">Импортированные профили сохраняются как пользовательские. Текущие профили для нарезки не изменяются. Экспорт ZIP профилей включает родительские пользовательские профили в отдельных JSON-файлах.</string>
     <string name="transfer_project">Конфигурация 3MF</string>
     <string name="transfer_open_project">Открыть существующую 3MF</string>
-    <string name="transfer_project_empty">Выберите проект Orca, содержащий Metadata/project_settings.config.</string>
+    <string name="transfer_project_empty">Выберите проект 3MF, содержащий Metadata/project_settings.config.</string>
     <string name="transfer_project_file">%1$s · %2$s</string>
     <string name="transfer_project_note">Отредактируйте JSON-конфигурацию проекта, затем сохраните новую 3MF. Содержимое остальных записей архива, включая геометрию и миниатюры, сохраняется. Встроенные настройки проекта не применяются текущим нативным движком нарезки.</string>
     <string name="transfer_json_label">JSON-конфигурация проекта</string>
-    <string name="transfer_json_description">Редактируемая конфигурация проекта Orca в JSON</string>
+    <string name="transfer_json_description">Редактируемая конфигурация проекта в JSON</string>
     <string name="transfer_embedded_count">Встроенных профилей: %1$d</string>
     <string name="transfer_preview_embedded">Просмотреть JSON встроенных профилей</string>
     <string name="transfer_import_embedded">Импорт встроенных профилей</string>
@@ -48,9 +48,9 @@
     <string name="transfer_destination_unavailable">Выбранный файл назначения недоступен.</string>
     <string name="transfer_missing_export">Подготовленная копия для экспорта недоступна. Создайте её заново.</string>
     <string name="transfer_no_embedded">В этом проекте нет JSON-файлов встроенных профилей.</string>
-    <string name="transfer_unknown_embedded">Встроенная конфигурация не является профилем принтера, процесса или филамента Orca.</string>
+    <string name="transfer_unknown_embedded">Встроенная конфигурация не является профилем принтера, процесса или филамента.</string>
     <string name="transfer_new_destination">Выберите новый файл. Исходную 3MF нельзя использовать для сохранения результата.</string>
     <string name="transfer_previous_interrupted">Предыдущая операция была прервана. Проверьте созданный файл перед использованием.</string>
     <string name="transfer_draft_error">Не удалось сохранить черновик JSON: %1$s</string>
-    <string name="transfer_missing_project">Сначала откройте существующий проект Orca 3MF.</string>
+    <string name="transfer_missing_project">Сначала откройте существующий проект 3MF.</string>
 </resources>

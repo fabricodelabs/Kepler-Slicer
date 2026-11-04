@@ -110,7 +110,7 @@
     <string name="glass_reference_process">Reference preview: Process</string>
     <string name="glass_reference_preferences">Reference preview: Preferences</string>
     <string name="glass_back">Back to component gallery</string>
-    <string name="glass_single_instance">Allow only one OrcaSlicer instance</string>
+    <string name="glass_single_instance">Allow only one Kepler Slicer instance</string>
     <string name="glass_recent_models">Add STL/STEP files to recent files list</string>
     <string name="glass_no_warning">Don’t warn when loading 3MF with modified G-code</string>
     <string name="glass_import_step">Show options when importing STEP file</string>

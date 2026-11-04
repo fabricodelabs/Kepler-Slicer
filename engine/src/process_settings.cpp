@@ -86,7 +86,7 @@ void check_numeric(const ConfigOptionDef &def, double value) {
         throw std::invalid_argument("Value outside range for " + def.opt_key);
 }
 
-// Orca's convenience predicates catch malformed conditions and return true.
+// Upstream's convenience predicates catch malformed conditions and return true.
 // Pre-evaluate precisely the expressions they would use, failing closed on error.
 void check_conditions(const Preset &preset, const Preset &printer, const Preset &process, bool check_print) {
     const auto *printers = preset.config.option<ConfigOptionStrings>("compatible_printers");
@@ -234,7 +234,7 @@ Slic3r::DynamicPrintConfig apply_process_overrides_checked(const Slic3r::Dynamic
         throw std::invalid_argument("Incorrect preset types for process compatibility");
     DynamicPrintConfig candidate = apply_process_overrides(resolved, overrides_json);
     // After strict validation, reconstruct the exact changed key set from the
-    // input rather than diff(): float equality in Orca may be approximate.
+    // input rather than diff(): float equality in upstream may be approximate.
     const json changes = json::parse(overrides_json);
     t_config_option_keys keys; keys.reserve(changes.size());
     for (auto it = changes.begin(); it != changes.end(); ++it) keys.push_back(it.key());

@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory=$true)][string]$Ndk,
     [Parameter(Mandatory=$true)][string]$Cmake,
     [Parameter(Mandatory=$true)][string]$Ninja,
-    [Parameter(Mandatory=$true)][string]$OrcaSource,
+    [Parameter(Mandatory=$true)][string]$UpstreamSource,
     [Parameter(Mandatory=$true)][string]$OcctSource,
     [Parameter(Mandatory=$true)][string]$Build,
     [Parameter(Mandatory=$true)][string]$Prefix,
@@ -22,13 +22,13 @@ if ($Jobs -lt 1) { throw 'Jobs must be positive' }
 $ndkPath = Resolve-Required $Ndk
 $cmakeExe = Resolve-Required $Cmake
 $ninjaExe = Resolve-Required $Ninja
-$orca = Resolve-Required $OrcaSource
+$upstream = Resolve-Required $UpstreamSource
 $source = Resolve-Required $OcctSource
 New-Item -ItemType Directory -Force -Path $Build, $Prefix | Out-Null
 $buildPath = Resolve-Required $Build
 $prefixPath = Resolve-Required $Prefix
 $toolchain = Resolve-Required "$ndkPath/build/cmake/android.toolchain.cmake"
-$patch = Resolve-Required "$orca/deps/OCCT/0001-BRepMesh-seam-pcurve-at-edge-parameter.patch"
+$patch = Resolve-Required "$upstream/deps/OCCT/0001-BRepMesh-seam-pcurve-at-edge-parameter.patch"
 & git -C $source apply --check --ignore-space-change --whitespace=fix $patch
 if ($LASTEXITCODE -eq 0) { Run-Checked 'git' @('-C', $source, 'apply', '--ignore-space-change', '--whitespace=fix', $patch) }
 else {

@@ -1617,7 +1617,7 @@
         {
           "file": "src/libslic3r/PrintConfig.cpp",
           "line": 563,
-          "detail": "{\"brim_ears\", btEar},     // Orca"
+          "detail": "{\"brim_ears\", btEar},     // upstream"
         },
         {
           "file": "src/libslic3r/PrintConfig.cpp",
@@ -3782,7 +3782,7 @@
         "src/libslic3r/PrintConfig.cpp:7967",
         "src/libslic3r/PrintConfig.cpp:10002"
       ],
-      "android_gap": "Legacy migration/round-trip behavior should remain delegated to Orca."
+      "android_gap": "Legacy migration/round-trip behavior should remain delegated to upstream."
     },
     {
       "key": "uptodate",

@@ -26,7 +26,7 @@ std::vector<double> printer_build_volume(const std::string &profiles_root,
 
 // Caller holds the engine mutex and has set resource/data directories. The
 // returned list covers only vendors present in data/system; caller must label
-// that scope. "unknown" means Orca's condition could not be evaluated.
+// that scope. "unknown" means upstream's condition could not be evaluated.
 std::vector<ProfileCompatibility> list_system_compatibility(
     const std::string &profiles_root, const std::string &printer_vendor,
     const std::string &printer_name, const std::string &kind,

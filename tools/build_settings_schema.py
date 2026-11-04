@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a conservative, source-traceable Orca settings inventory.
+"""Generate a conservative, source-traceable upstream settings inventory.
 
 No C++ is executed: runtime defaults, computed expressions, templates, feature
 flags and whether a row is attached/visible remain unknown until reconciled
@@ -419,9 +419,9 @@ def build(checkout):
             'Schema entries do not mean the current mobile UI can edit them or that changing them is supported by JNI.']}}
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--orca',type=Path,default=WORKSPACE/'work'/'OrcaSlicer');p.add_argument('--output',type=Path,default=ROOT/'app'/'src'/'main'/'assets'/'orca_settings_schema.json');p.add_argument('--runtime-output',type=Path,default=ROOT/'app'/'src'/'main'/'assets'/'orca_settings_runtime.json');p.add_argument('--dynamic-report',type=Path,default=ROOT/'tools'/'SETTINGS_DYNAMIC_EXTRACTED.md');args=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--upstream',type=Path,default=WORKSPACE/'work'/'OrcaSlicer');p.add_argument('--output',type=Path,default=ROOT/'app'/'src'/'main'/'assets'/'kepler_settings_schema.json');p.add_argument('--runtime-output',type=Path,default=ROOT/'app'/'src'/'main'/'assets'/'kepler_settings_runtime.json');p.add_argument('--dynamic-report',type=Path,default=ROOT/'tools'/'SETTINGS_DYNAMIC_EXTRACTED.md');args=p.parse_args()
     try:
-        doc=build(args.orca);payload=json.dumps(doc,ensure_ascii=False,separators=(',',':'))+'\n';args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(payload,encoding='utf-8',newline='\n')
+        doc=build(args.upstream);payload=json.dumps(doc,ensure_ascii=False,separators=(',',':'))+'\n';args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(payload,encoding='utf-8',newline='\n')
         runtime={'schema_version':doc['schema_version'],'upstream_revision':doc['upstream_revision'],'source_hashes':{name:source['sha256'] for name,source in doc['sources'].items()},'sections':{}}
         for section,rows in doc['sections'].items():
             compact=[]
@@ -435,9 +435,9 @@ def main():
             runtime['sections'][section]=compact
         args.runtime_output.parent.mkdir(parents=True,exist_ok=True);args.runtime_output.write_text(json.dumps(runtime,ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf-8',newline='\n')
         def cell(s):return str(s).replace('|','\\|').replace('`','\\`').replace('\n',' ')
-        lines=['# Orca dynamic settings: unresolved source calls','',
+        lines=['# upstream dynamic settings: unresolved source calls','',
                'Generated static review queue, not a claim that the desktop UI omits these options. '
-               'No code is executed. Resolve each source expression and attachment against the pinned Orca checkout and active runtime.', '',
+               'No code is executed. Resolve each source expression and attachment against the pinned upstream checkout and active runtime.', '',
                '| Section | Builder | Source line | Call | Expression | Note |','|---|---|---:|---|---|---|']
         for d in doc['diagnostics']['dynamic_references']:
             expr=d['expression'];note=('Nested wrapper: inspect its inner get_option and actual row attachment' if 'get_option' in expr else

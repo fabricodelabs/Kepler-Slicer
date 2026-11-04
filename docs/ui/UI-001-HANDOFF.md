@@ -61,7 +61,7 @@ Each transfer needs a named task and a Codex-reviewed commit first. Requested AP
 
 ## 5. Changed paths and behavior impact
 
-- `app/src/main/java/com/orcamobile/app/glass/GlassUi.java`: `chip()` touch target minimum width. Behavior impact: touch area only; no callback, value or navigation change.
+- `app/src/main/java/com/keplerslicer/app/glass/GlassUi.java`: `chip()` touch target minimum width. Behavior impact: touch area only; no callback, value or navigation change.
 - `docs/ui/UI-001-HANDOFF.md`: this report.
 
 ## 6. Validation requests for Codex (none performed by me)
