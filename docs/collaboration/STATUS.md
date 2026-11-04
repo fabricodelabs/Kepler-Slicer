@@ -1,4 +1,12 @@
-# Current increment — 2026-11-03
+# Current increment — 2026-11-04
+
+UI-007 is accepted on Android and integrated at `180e64b`. The shared
+bottom navigation uses the original Kepler Glass UI v3 icons in Settings,
+Preferences and the developer gallery. The [increment report](INCREMENT-2026-11-04-UI007.md)
+records the APK, scope and portrait and landscape visual checks. Claude
+has stopped. Phase 2 remains in progress.
+
+## Previous UI-006 increment — 2026-11-03
 
 Owner's new primary visual target: [Kepler Glass UI v3 in Figma](https://www.figma.com/design/OBNMhh3YDB0kRzvPnSERYW).
 Library/Settings/Preferences browser inspection found concrete icon/navigation/
@@ -6,7 +14,7 @@ switch/control differences. See [Figma source audit](FIGMA-SOURCE-AUDIT.md).
 On 2026-11-04 Figma MCP returned Settings and Library contexts after the
 subscription update. The source screenshots and 84 SVG exports are saved
 under `outputs/Kepler-Figma-v3`. The audit identifies the first navigation
-assignment. The APK below predates implementation of the v3 design.
+assignment. The UI-006 APK below predates implementation of the v3 design.
 
 Latest increment: typed preset values and UI-006 search presentation are accepted
 at combined code checkpoint `b44b9ef`. See [UI-006 report](INCREMENT-2026-11-03-UI006.md)
