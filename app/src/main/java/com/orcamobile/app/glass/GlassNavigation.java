@@ -131,7 +131,9 @@ public final class GlassNavigation extends LinearLayout {
     /** Update selection in place to retain item views and accessibility focus. */
     private void updateAppearance() {
         GradientDrawable bar = new GradientDrawable();
-        bar.setColor(reduced ? tokens.reduceTransparencyFill : tokens.navFill);
+        // Frosted glass: Figma glass/fill over bg/base, nearly opaque because Android Views cannot blur what lies
+        // behind them; content scrolling under the floating bar stays readable only as a soft shadow.
+        bar.setColor(reduced ? tokens.reduceTransparencyFill : 0xE64E535A);
         bar.setCornerRadius(tokens.dp(tokens.navRadius));
         bar.setStroke(Math.max(1, tokens.dp(tokens.navStrokeWidth)), tokens.navStroke);
         setBackground(bar);

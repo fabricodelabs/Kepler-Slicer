@@ -24,7 +24,7 @@ final class MdUi {
     final Context context;
     final boolean dark;
     final int bg, surface, container, ink, muted, line;
-    private LinearLayout pageRoot;
+    private LinearLayout pageRoot; private FrameLayout pageHost;
     MdUi(Context context) {
         this.context=context; dark=true;
         bg=KeplerUi.BASE; surface=KeplerUi.GLASS; container=KeplerUi.GLASS;
@@ -52,7 +52,7 @@ final class MdUi {
     }
     /** Sub-screen header (Figma "Top bar"): 44dp glass back, centred 18/700 title, x20 y8. */
     LinearLayout page(Activity a,String title,Runnable back) {
-        LinearLayout root=vertical(); pageRoot=root; bars(a,root); a.setContentView(root);
+        LinearLayout root=vertical(); pageRoot=root; FrameLayout host=new FrameLayout(context); pageHost=host; host.addView(root,new FrameLayout.LayoutParams(-1,-1)); bars(a,host); a.setContentView(host);
         KeplerUi k=new KeplerUi(a);
         LinearLayout top=k.subHeader(title,a.getString(R.string.kv3_back),back,null);
         LinearLayout.LayoutParams tp=lp(-1,-2); tp.setMargins(dp(20),dp(8),dp(20),0); root.addView(top,tp);
@@ -94,5 +94,6 @@ final class MdUi {
         }); holder[0]=nav;
         int width=(int)(context.getResources().getDisplayMetrics().widthPixels/context.getResources().getDisplayMetrics().density);
         FrameLayout.LayoutParams n=new FrameLayout.LayoutParams(width>640?dp(600):-1,-2,Gravity.CENTER);n.setMargins(dp(16),dp(8),dp(16),dp(24));shell.addView(nav,n);parent.addView(shell,lp(-1,-2));
+        if(parent==pageRoot&&pageHost!=null){parent.removeView(shell);shell.removeView(nav);KeplerUi.floatNavigation(pageHost,parent,nav,dp(16),dp(24));}
     }
 }

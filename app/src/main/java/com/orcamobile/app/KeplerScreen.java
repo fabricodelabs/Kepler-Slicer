@@ -45,7 +45,7 @@ final class KeplerScreen {
                 if (index != 0) intent.putExtra("kepler_nav", index);
                 activity.startActivity(intent); activity.finish();
             });
-            LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, -2); np.setMargins(ui.dp(16), ui.dp(8), ui.dp(16), ui.dp(24)); column.addView(nav, np);
+            KeplerUi.floatNavigation(root, column, nav, ui.dp(16), ui.dp(24));
         } else nav = null;
         activity.setContentView(root);
     }
@@ -53,7 +53,7 @@ final class KeplerScreen {
     /** Floating primary action (Import "Choose file", node 4:311): 52dp, 16dp above the navigation. */
     void floating(View button) {
         if (floating != null) body.removeView(floating);
-        floating = button; FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM); p.setMargins(ui.dp(20), 0, ui.dp(20), ui.dp(8));
+        floating = button; FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM); p.setMargins(ui.dp(20), 0, ui.dp(20), nav == null ? ui.dp(16) : ui.dp(24 + 68 + 16));
         body.addView(button, p); content.setPadding(ui.dp(20), ui.dp(12), ui.dp(20), ui.dp(84));
     }
 
