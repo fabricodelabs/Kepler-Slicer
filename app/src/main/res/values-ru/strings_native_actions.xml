@@ -42,6 +42,8 @@
     <string name="native_material_colour_preset">%1$s, %2$s</string>
     <string name="native_preferences_test_passed">Нативных проверок пройдено: %1$d</string>
     <string name="native_preferences_test_report_saved">Отчёт JSON сохранён на устройстве.</string>
+    <string name="native_precision_test_passed">Проверки точности JNI пройдены (%1$d)</string>
+    <string name="native_precision_test_failed">Сбой проверки точности JNI. Новый отчёт точности не сохранён.\n%1$s</string>
     <string name="native_preferences_test_report_failed">Не удалось подготовить папку отчёта нативных проверок.</string>
     <string name="native_material_backup_profiles">Перед восстановлением резервной копии с материалами проекта выберите профили принтера, процесса и филамента.</string>
     <string name="native_material_backup_changed">Профили изменились во время проверки копии. Повторите восстановление.</string>
