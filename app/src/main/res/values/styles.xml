@@ -8,21 +8,23 @@
         <item name="android:colorAccent">#20201E</item>
         <item name="android:windowBackground">#F7F7F5</item>
     </style>
-    <style name="AppTheme" parent="AppThemeBase" />
+    <style name="AppTheme" parent="AppThemeDarkBase" />
     <style name="AppThemeDarkBase" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#111311</item>
-        <item name="android:navigationBarColor">#111311</item>
+        <item name="android:statusBarColor">#4A4F59</item>
+        <item name="android:navigationBarColor">#383D46</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">#D0D4CC</item>
-        <item name="android:windowBackground">#111311</item>
+        <item name="android:windowBackground">#383D46</item>
     </style>
     <style name="AppThemeDark" parent="AppThemeDarkBase" />
     <style name="KeplerAlertDark" parent="android:style/Theme.Material.Dialog.Alert">
-        <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#E4E6DF</item>
-        <item name="android:colorBackgroundFloating">#1C1E1C</item>
+        <item name="android:fontFamily">@font/manrope_medium</item>
+        <item name="android:textColorPrimary">#FFFFFFFF</item>
+        <item name="android:textColorSecondary">#E0FFFFFF</item>
+        <item name="android:colorAccent">#5EE0C8</item>
+        <item name="android:colorBackgroundFloating">#2E323A</item>
         <item name="android:windowBackground">@drawable/dialog_dark</item>
     </style>
     <style name="KeplerAlertLight" parent="android:style/Theme.Material.Light.Dialog.Alert">

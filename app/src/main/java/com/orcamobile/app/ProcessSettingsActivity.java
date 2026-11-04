@@ -54,11 +54,11 @@ public final class ProcessSettingsActivity extends Activity {
         MdUi.prepare(this); super.onCreate(state); if(android.os.Build.VERSION.SDK_INT>=33)backCallback=Api33.register(this); restored=state;
         ui=new MdUi(this); BG=ui.bg; INK=ui.ink; MUTED=ui.muted; SURFACE=ui.surface;
         if(state!=null) selected=state.getString("page","");
-        root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(BG);
+        root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackground(new com.orcamobile.app.glass.KeplerUi(this).backdrop());
         ui.bars(this,root);
         setContentView(root);
-        TextView back=text("‹   Назад",15,INK,true); back.setPadding(dp(20),dp(12),dp(20),dp(8)); back.setMinHeight(dp(48)); back.setOnClickListener(v->back()); root.addView(back);
-        TextView title=text("Параметры печати",26,INK,true); title.setPadding(dp(20),0,dp(20),dp(8)); root.addView(title);
+        {LinearLayout v3=new com.orcamobile.app.glass.KeplerUi(this).subHeader("Параметры печати",getString(R.string.kv3_back),this::back,null);LinearLayout.LayoutParams v3p=new LinearLayout.LayoutParams(-1,-2);v3p.setMargins(dp(20),dp(8),dp(20),dp(8));root.addView(v3,v3p);}
+        TextView title=text("",1,INK,true); title.setVisibility(View.GONE); root.addView(title);
         status=text("Загружаем настройки профиля Orca…",13,MUTED,false); status.setPadding(dp(20),0,dp(20),dp(10)); root.addView(status);
         ScrollView scroll=new ScrollView(this); scroll.setFillViewport(false); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         body=new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL); body.setPadding(dp(20),dp(16),dp(20),dp(24)); scroll.addView(body);

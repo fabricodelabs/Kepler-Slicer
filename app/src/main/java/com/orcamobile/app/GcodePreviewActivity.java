@@ -35,8 +35,8 @@ public final class GcodePreviewActivity extends Activity {
         });
         setContentView(root); ScrollView scroll = new ScrollView(this); root.addView(scroll, new LinearLayout.LayoutParams(-1,0,1));ui.navigation(this,root,0);
         content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(24), dp(24), dp(24), dp(32)); scroll.addView(content);
-        TextView back = text("‹   Назад", 15, true); back.setPadding(0, dp(8), 0, dp(12)); back.setOnClickListener(v -> finish()); content.addView(back);
-        content.addView(text("Предпросмотр слоёв", 28, true)); gap(12);
+        content.addView(new com.orcamobile.app.glass.KeplerUi(this).subHeader("Предпросмотр слоёв", getString(R.string.kv3_back), this::finish, null)); gap(12);
+        // Title is in the Kepler v3 top bar above.
         TextView state = text("Читаем G-code…", 14, false); content.addView(state);
         reader = new Thread(() -> {
             try {

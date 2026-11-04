@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
     private boolean darkMode = true, refreshAfterResume;
     private boolean compactLandscape;
     private AlertDialog activeTransformEditor;
-    private LinearLayout root, bottom;
+    private LinearLayout root;
     private int selected = 0;
     private static final int OPEN_STL = 101;
     private static final int REQUEST_IMPORT = 105, REQUEST_MODEL_DETAILS=106;
@@ -58,10 +58,10 @@ public class MainActivity extends Activity {
     private int bedGeneration;
     private boolean bedPending;
     private volatile boolean visibleWorkspace = true;
-    private TextView bedHint, workspaceSlice;
+    private TextView bedHint; private View workspaceSlice;
     private TextView prepareTab, layersTab, layerCaption, viewportMode;
     private LinearLayout layerPanel; private SeekBar layerSlider;
-    private FrameLayout viewportMove, viewportTransform; private StlView.MoveCallback viewportMoveCallback;
+    private View viewportMove, viewportTransform; private StlView.MoveCallback viewportMoveCallback;
     private boolean layersMode, pendingLayerPreview; private int layerRequest; private Thread layerReader; private GcodeAnalysis layerAnalysis;
     private Uri pendingUri;
     private boolean loadingMesh;
@@ -303,143 +303,439 @@ public class MainActivity extends Activity {
     }
 
     private void updatePalette() {
-        darkMode = !"light".equals(getSharedPreferences("app_preferences", MODE_PRIVATE).getString("theme", "dark"));
-        BG = darkMode ? 0xff111311 : 0xfffafaf7; SURFACE = darkMode ? 0xff1c1e1c : 0xffeff0ec;
-        LINE = darkMode ? 0xff3b3d39 : 0xffdadcd7; INK = darkMode ? 0xffe4e6df : 0xff1b1c1b; MUTED = darkMode ? 0xffacafa8 : 0xff696b68;
-        getWindow().setStatusBarColor(BG); getWindow().setNavigationBarColor(BG);
-        getWindow().getDecorView().setSystemUiVisibility(darkMode ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        // Kepler Glass UI v3 is a single dark glass theme (Figma "Kepler v3").
+        darkMode = true;
+        BG = com.orcamobile.app.glass.KeplerUi.BASE; SURFACE = com.orcamobile.app.glass.KeplerUi.GLASS; LINE = com.orcamobile.app.glass.KeplerUi.GLASS_STROKE;
+        INK = com.orcamobile.app.glass.KeplerUi.WHITE; MUTED = com.orcamobile.app.glass.KeplerUi.SECONDARY;
+        getWindow().setStatusBarColor(Color.rgb(74,79,89)); getWindow().setNavigationBarColor(Color.rgb(56,61,70));
+        getWindow().getDecorView().setSystemUiVisibility(0);
     }
+
+    private com.orcamobile.app.glass.KeplerUi kui;
+    private com.orcamobile.app.glass.KeplerUi.ModeToolbar modeBar;
+    private com.orcamobile.app.glass.GlassNavigation navBar;
+    private FrameLayout shellView, addButton;
+    private LinearLayout panelHost, prepareGroup;
+    private View toolsSheet, previewSheet;
+    private TextView plateChip, toolTitle;
+    private com.orcamobile.app.glass.KeplerUi.AxisField[] axisFields;
+    private LinearLayout[] toolTiles;
+    private int activeTool;
+    private boolean toolsMode;
 
     private void render() {
         refreshAfterResume = false; cancelLayerWork(); layersMode=false; layerAnalysis=null;
         if (stlView != null) { stlView.onPause(); stlView = null; }
-        updatePalette(); selected = 0;
+        updatePalette(); selected = 0; toolsMode = false;
         android.content.res.Configuration config = getResources().getConfiguration();
         compactLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && config.screenWidthDp >= 500;
-        root = vertical(); root.setBackgroundColor(BG);
-        if (android.os.Build.VERSION.SDK_INT >= 35) root.setOnApplyWindowInsetsListener((view, insets) -> {
+        kui = new com.orcamobile.app.glass.KeplerUi(this);
+        FrameLayout shell = new FrameLayout(this); shellView = shell; shell.setBackground(kui.backdrop());
+        root = vertical(); shell.addView(root, new FrameLayout.LayoutParams(-1,-1));
+        if (android.os.Build.VERSION.SDK_INT >= 35) shell.setOnApplyWindowInsetsListener((view, insets) -> {
             android.graphics.Insets safe = insets.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
-            view.setPadding(safe.left, safe.top, safe.right, safe.bottom); return insets;
+            root.setPadding(safe.left, safe.top, safe.right, safe.bottom); return insets;
         });
-        setContentView(root);
+        setContentView(shell);
         workspace();
+        navBar = new com.orcamobile.app.glass.GlassNavigation(this, 0, false, index -> {
+            if (index == 1) openSettingsPanel(); else if (index == 2) openExport(); else if (index == 3) startActivity(new Intent(this, PreferencesActivity.class));
+            if (navBar != null) navBar.post(() -> { if (navBar != null) navBar.setSelectedItem(0); });
+        });
         FrameLayout navShell = new FrameLayout(this) {
             @Override protected void onMeasure(int widthSpec, int heightSpec) {
-                int available = Math.max(0, View.MeasureSpec.getSize(widthSpec) - dp(24));
-                if (bottom != null && bottom.getLayoutParams() != null) bottom.getLayoutParams().width = Math.min(available, dp(600));
+                int available = Math.max(0, View.MeasureSpec.getSize(widthSpec) - dp(32));
+                if (navBar != null && navBar.getLayoutParams() != null) navBar.getLayoutParams().width = Math.min(available, dp(600));
                 super.onMeasure(widthSpec, heightSpec);
             }
         };
-        bottom = horizontal(); bottom.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL); bottom.setBackground(outline(SURFACE, 24, LINE));
-        pad(bottom, 2, compactLandscape ? 2 : 4, 2, compactLandscape ? 2 : 4); bottom.setMinimumHeight(dp(compactLandscape ? 54 : 72));
-        navShell.addView(bottom, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
-        root.addView(navShell, lp(-1, -2)); gap(root, compactLandscape ? 2 : 8);
-        navigation();
+        navShell.addView(navBar, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
+        LinearLayout.LayoutParams np = lp(-1, -2); np.bottomMargin = dp(compactLandscape ? 8 : 24); root.addView(navShell, np);
+    }
+
+    private String plateCaption() {
+        org.json.JSONObject project = modelMetadata == null ? null : modelMetadata.optJSONObject("project_data");
+        org.json.JSONArray plates = project == null ? null : project.optJSONArray("plates");
+        int plate = modelMetadata == null ? 0 : Math.max(0, modelMetadata.optInt("selected_plate", 0));
+        if (plates != null && plates.length() > 1) return getString(R.string.kv3_plate, Math.min(plate, plates.length() - 1) + 1, plates.length());
+        return getString(R.string.kv3_plate_single, plate + 1);
     }
 
     private void workspace() {
         OrcaProfileCatalog.Profile printer = OrcaProfileCatalog.loadSelection(this);
         OrcaProcessFilamentCatalog.Profile material = OrcaProcessFilamentCatalog.loadSelection(this, OrcaProcessFilamentCatalog.FILAMENT);
-        OrcaProcessFilamentCatalog.Profile process = OrcaProcessFilamentCatalog.loadSelection(this, OrcaProcessFilamentCatalog.PROCESS);
-        LinearLayout head = horizontal(); pad(head, compactLandscape ? 8 : 16, 8, compactLandscape ? 8 : 16, 4);
-        FrameLayout cover = new FrameLayout(this); cover.setBackground(outline(SURFACE, 14, LINE));
-        View coverFallback = new Icon("printer", MUTED); cover.addView(coverFallback, new FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER));
-        ImageView image = new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); pad(image, 3, 3, 3, 3);
-        ColorMatrix grey = new ColorMatrix(); grey.setSaturation(0); image.setColorFilter(new ColorMatrixColorFilter(grey)); cover.addView(image, new FrameLayout.LayoutParams(-1, -1));
-        if (printer != null && !printer.imported && modelProjectMode!=2) loadPrinterCover(image, coverFallback, printer);
-        head.addView(cover, lp(compactLandscape ? 42 : 56, compactLandscape ? 42 : 56)); click(cover, modelProjectMode==2?this::openSettingsPanel:this::openPrinterProfiles);
-        LinearLayout info = vertical(); pad(info, 12, 0, 0, 0);
-        LinearLayout machine = horizontal(); TextView printerName = text(printer == null ? "Выберите принтер" : (printer.model == null || printer.model.isEmpty() ? printer.name : printer.model), 16, INK, true);
-        if(modelProjectMode==2)printerName.setText(projectOptionCaption("printer_settings_id",getString(R.string.native_project_title)));
-        printerName.setMaxLines(1); printerName.setEllipsize(android.text.TextUtils.TruncateAt.END); machine.addView(printerName,new LinearLayout.LayoutParams(0,-2,1));
+        final com.orcamobile.app.glass.KeplerUi ui = kui;
+        Runnable openPrinter = modelProjectMode==2 ? this::openSettingsPanel : this::openPrinterProfiles;
+        com.orcamobile.app.glass.KeplerUi.Header head = ui.header("", openPrinter, getString(R.string.kv3_connections),
+                () -> startActivity(new Intent(this, DeviceActivity.class)));
+        TextView printerName = head.name;
+        printerName.setText(printer == null ? getString(R.string.kv3_choose_printer) : (printer.model == null || printer.model.isEmpty() ? printer.name : printer.model));
+        if (modelProjectMode==2) printerName.setText(projectOptionCaption("printer_settings_id", getString(R.string.native_project_title)));
         if (printer != null && printer.variant != null && !printer.variant.isEmpty()) {
-            TextView nozzle = text(modelProjectMode==2?projectOptionCaption("nozzle_diameter",printer.variant):printer.variant, 10, INK, true); pad(nozzle, 7, 5, 7, 5); nozzle.setBackground(outline(SURFACE, 10, LINE));
-            LinearLayout.LayoutParams n = lp(-2, -2); n.leftMargin=dp(6); machine.addView(nozzle,n);
+            String nozzle = modelProjectMode==2 ? projectOptionCaption("nozzle_diameter", printer.variant) : printer.variant;
+            ui.setNozzle(head, nozzle.matches("[0-9]+([.,][0-9]+)?") ? getString(R.string.kv3_nozzle, nozzle) : nozzle);
         }
-        TextView arrow = text("⌄", 20, INK, false); pad(arrow,6,0,0,0); machine.addView(arrow); click(machine, modelProjectMode==2?this::openSettingsPanel:this::openPrinterProfiles); info.addView(machine);
-        gap(info, 5);
-        LinearLayout profiles = horizontal(); TextView materialLabel = text(material == null ? "Материал ›" : material.name + " ›", 12, MUTED, false);
-        if(modelProjectMode>0)materialLabel.setText(projectOptionCaption("filament_settings_id",getString(R.string.phase2_settings_filament))+" ›");
-        materialLabel.setMinHeight(dp(compactLandscape ? 36 : 40)); materialLabel.setGravity(Gravity.CENTER_VERTICAL);
-        materialLabel.setMaxLines(1); materialLabel.setEllipsize(android.text.TextUtils.TruncateAt.END); profiles.addView(materialLabel,new LinearLayout.LayoutParams(0,-2,1));
-        click(materialLabel, () -> {if(modelProjectMode>0)openSettingsPanel();else openPrintProfile(OrcaProcessFilamentCatalog.FILAMENT, PICK_FILAMENT);});
-        TextView processLabel = text(process == null ? "Процесс ›" : process.name + " ›", 12, MUTED, false); pad(processLabel,8,0,0,0);
-        if(modelProjectMode>0)processLabel.setText(projectOptionCaption("print_settings_id",getString(R.string.phase2_settings_process))+" ›");
-        processLabel.setMinHeight(dp(compactLandscape ? 36 : 40)); processLabel.setGravity(Gravity.CENTER_VERTICAL);
-        processLabel.setMaxLines(1); processLabel.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        click(processLabel, () -> {if(modelProjectMode>0)openSettingsPanel();else openPrintProfile(OrcaProcessFilamentCatalog.PROCESS, PICK_PROCESS);}); profiles.addView(processLabel,new LinearLayout.LayoutParams(0,-2,1)); info.addView(profiles);
-        if(modelProjectMode<=0)loadUserPresetNames(printerName, materialLabel, processLabel);
-        head.addView(info, new LinearLayout.LayoutParams(0,-2,1));
-        FrameLayout network=toolButton("wifi","Подключения принтеров",()->{Intent intent=new Intent();intent.setClassName(this,getPackageName()+".NetworkActivity");startActivity(intent);});head.addView(network,lp(44,44));
+        TextView materialLabel = head.material;
+        materialLabel.setText(material == null ? getString(R.string.kv3_choose_material) : material.name);
+        if (modelProjectMode>0) materialLabel.setText(projectOptionCaption("filament_settings_id", getString(R.string.phase2_settings_filament)));
+        head.printer.setContentDescription(getString(R.string.kv3_printer_header, printerName.getText()));
+        { View materialRow = (View) materialLabel.getParent(); materialRow.setMinimumHeight(dp(24)); materialRow.setContentDescription(getString(R.string.kv3_choose_material) + ": " + materialLabel.getText()); click(materialRow, () -> { if (modelProjectMode > 0) openSettingsPanel(); else openPrintProfile(OrcaProcessFilamentCatalog.FILAMENT, PICK_FILAMENT); }); }
+        if (modelProjectMode<=0) loadUserPresetNames(printerName, materialLabel, new TextView(this));
+        LinearLayout.LayoutParams hp = lp(-1, -2); hp.setMargins(dp(20), dp(8), dp(20), 0);
+
         LinearLayout wideBody = null, side = null;
         if (compactLandscape) {
             wideBody = horizontal(); wideBody.setGravity(Gravity.TOP); side = vertical();
-            side.addView(head, lp(-1,-2)); wideBody.addView(side, lp(Math.min(220, getResources().getConfiguration().screenWidthDp / 3),-1));
+            LinearLayout.LayoutParams sh = lp(-1,-2); sh.setMargins(dp(16), dp(8), dp(4), 0); side.addView(head.view, sh);
+            wideBody.addView(side, new LinearLayout.LayoutParams(Math.min(dp(380), getResources().getDisplayMetrics().widthPixels * 2 / 5), -1));
             root.addView(wideBody, new LinearLayout.LayoutParams(-1,0,1));
-        } else root.addView(head);
+        } else root.addView(head.view, hp);
 
-        FrameLayout viewport = new FrameLayout(this); viewport.setBackgroundColor(BG);
-        StlView view = new StlView(this, mesh, projectBounds(modelMetadata)); stlView = view; view.setDarkMode(darkMode); viewport.addView(view, new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout stage=horizontal();stage.setBackground(outline(SURFACE,16,LINE));pad(stage,3,3,3,3);
-        prepareTab=text("Подготовка",12,INK,true);layersTab=text("Слои",12,MUTED,true);for(TextView tab:new TextView[]{prepareTab,layersTab}){tab.setGravity(Gravity.CENTER);pad(tab,12,0,12,0);stage.addView(tab,lp(-2,38));}
-        FrameLayout.LayoutParams stagePos=new FrameLayout.LayoutParams(-2,-2,Gravity.LEFT|Gravity.TOP);stagePos.setMargins(dp(16),dp(10),0,0);viewport.addView(stage,stagePos);
-        TextView modeLabel=text(moveMode ? "Перемещение" : "Вращение вида",11,MUTED,true);viewportMode=modeLabel;pad(modeLabel,10,6,10,6);modeLabel.setBackground(outline(SURFACE,12,LINE));FrameLayout.LayoutParams modePosition=new FrameLayout.LayoutParams(-2,-2,Gravity.LEFT|Gravity.TOP);modePosition.setMargins(dp(16),dp(62),0,0);viewport.addView(modeLabel,modePosition);
-        click(prepareTab,this::showPreparation);click(layersTab,this::openLayerPreview);updatePreviewTabs();
-        LinearLayout tools = vertical(); tools.setBackground(outline(SURFACE, 18, LINE)); pad(tools,4,4,4,4);
-        FrameLayout reset = toolButton("cube", "Сбросить ракурс", view::resetCamera); tools.addView(reset,lp(44,44));
-        FrameLayout layers = toolButton("layers", "Предпросмотр слоёв", this::openLayerPreview); tools.addView(layers,lp(44,44));
-        FrameLayout transform = toolButton("tune", "Преобразовать модель", this::editModelTransform); tools.addView(transform,lp(44,44));
-        FrameLayout move=toolButton("move","Переместить модель",()->{});tools.addView(move,lp(44,44));
-        move.setBackground(outline(moveMode ? LINE : SURFACE,12,LINE));
-        move.setContentDescription(moveMode ? "Перемещение модели включено. Нажмите для вращения вида" : "Вращение вида включено. Нажмите для перемещения модели");
-        FrameLayout.LayoutParams toolPosition = new FrameLayout.LayoutParams(-2,-2,Gravity.RIGHT|Gravity.TOP); toolPosition.setMargins(0,dp(8),dp(16),0); viewport.addView(tools,toolPosition);
-        boolean hasModel = mesh != null && !loadingMesh; final boolean editable = hasModel && mesh.vertices.length>0 && transformSupported(); transform.setEnabled(false); transform.setAlpha(.38f); move.setEnabled(false);move.setAlpha(.38f);
-        StlView.MoveCallback moved=next->commitDrag(view,next,transform,move); viewportMove=move;viewportTransform=transform;viewportMoveCallback=moved;
-        click(move,()->{moveMode=!moveMode;modeLabel.setText(moveMode?"Перемещение":"Вращение вида");move.setBackground(outline(moveMode?LINE:SURFACE,12,LINE));move.setContentDescription(moveMode?"Перемещение модели включено. Нажмите для вращения вида":"Вращение вида включено. Нажмите для перемещения модели");view.setMoveMode(moveMode,moved);});
-        FrameLayout add = new FrameLayout(this); add.setBackground(outline(SURFACE,100,LINE));
-        add.addView(new Icon("add",INK),new FrameLayout.LayoutParams(dp(26),dp(26),Gravity.CENTER)); add.setContentDescription("Импортировать модель"); click(add,this::chooseStl);
-        FrameLayout.LayoutParams plus = new FrameLayout.LayoutParams(dp(56),dp(56),Gravity.RIGHT|Gravity.BOTTOM); plus.setMargins(0,0,dp(16),dp(14)); viewport.addView(add,plus);
-        TextView hint = text(loadingMesh ? "Читаем модель…" : mesh == null ? "Добавьте модель" : mesh.vertices.length==0 ? "Пластина пуста" : modelMetadata!=null && modelMetadata.optBoolean("mapping_unresolved",false) ? "Пластина не определена · все объекты проекта" : "Условная сетка · стол загружается",11,MUTED,false);
-        bedHint = hint;
-        FrameLayout.LayoutParams hintPosition = new FrameLayout.LayoutParams(-2,-2,Gravity.LEFT|Gravity.BOTTOM); hintPosition.setMargins(dp(18),0,dp(88),dp(18)); viewport.addView(hint,hintPosition);
-        layerPanel=vertical();pad(layerPanel,12,8,12,8);layerPanel.setBackground(outline(SURFACE,16,LINE));layerPanel.setVisibility(View.GONE);
-        layerCaption=text("",12,INK,true);layerPanel.addView(layerCaption);click(layerCaption,()->{if(layerAnalysis!=null)dialog("О просмотре слоёв","Приблизительный просмотр линий экструзии и поддерживаемых дуг на высоте слоя. Холостые перемещения, толщина линий и изменение Z внутри сегмента не воспроизводятся. Пропущенных движений с неизвестной позицией: "+layerAnalysis.skippedUnknown+"; неподдерживаемых движений: "+layerAnalysis.unsupportedMoves+"; неотображённых дуг: "+layerAnalysis.arcMoves+".");});layerSlider=new SeekBar(this);layerSlider.setContentDescription("Количество видимых слоёв");layerPanel.addView(layerSlider,lp(-1,40));
-        FrameLayout.LayoutParams sliderPos=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);sliderPos.setMargins(dp(16),0,dp(88),dp(12));viewport.addView(layerPanel,sliderPos);
-        if (compactLandscape) wideBody.addView(viewport,new LinearLayout.LayoutParams(0,-1,1));
-        else root.addView(viewport,new LinearLayout.LayoutParams(-1,0,1));
+        FrameLayout viewport = new FrameLayout(this);
+        StlView view = new StlView(this, mesh, projectBounds(modelMetadata)); stlView = view; view.setDarkMode(true);
+        view.setBackdrop(kui.backdrop(), shellView);
+        viewport.addView(view, new FrameLayout.LayoutParams(-1,-1));
+
+        TextView chip = ui.chip(plateCaption(), false, null); plateChip = chip; viewportMode = chip;
+        FrameLayout.LayoutParams chipPos = new FrameLayout.LayoutParams(-2,-2,Gravity.START|Gravity.TOP); chipPos.setMargins(dp(20), dp(18), dp(96), 0); viewport.addView(chip, chipPos);
+
+        boolean hasModel = mesh != null && !loadingMesh; final boolean editable = hasModel && mesh.vertices.length>0 && transformSupported();
+        modeBar = ui.modeToolbar(new String[]{getString(R.string.kv3_mode_prepare), getString(R.string.kv3_mode_preview), getString(R.string.kv3_mode_tools)},
+                new Runnable[]{ () -> { showPreparation(); setToolsMode(false); }, this::openLayerPreview, this::openTools });
+        FrameLayout.LayoutParams toolPosition = new FrameLayout.LayoutParams(-2,-2,Gravity.END|Gravity.TOP); toolPosition.setMargins(0, dp(16), dp(20), 0); viewport.addView(modeBar.view, toolPosition);
+        View transform = modeBar.items[2]; transform.setEnabled(false); transform.setAlpha(.38f);
+
+        FrameLayout add = ui.glassButton(R.drawable.kv3_plus, 56, 26, getString(R.string.kv3_add_model), this::chooseStl); addButton = add;
+        FrameLayout.LayoutParams plus = new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.END|Gravity.BOTTOM); plus.setMargins(0, 0, dp(20), dp(12)); viewport.addView(add, plus);
+
+        TextView hint = ui.text(loadingMesh ? getString(R.string.kv3_reading_model) : mesh == null ? getString(R.string.kv3_no_model_detail) : mesh.vertices.length==0 ? "Пластина пуста" : modelMetadata!=null && modelMetadata.optBoolean("mapping_unresolved",false) ? "Пластина не определена · все объекты проекта" : "Условная сетка · стол загружается", 10, 600, com.orcamobile.app.glass.KeplerUi.SECONDARY);
+        hint.setAlpha(.6f); hint.setMaxLines(2); bedHint = hint;
+        FrameLayout.LayoutParams hintPosition = new FrameLayout.LayoutParams(-2,-2,Gravity.START|Gravity.BOTTOM); hintPosition.setMargins(dp(20), 0, dp(92), dp(18)); viewport.addView(hint, hintPosition);
+
+        statusPill = ui.statusPill(com.orcamobile.app.glass.KeplerUi.MINT, getString(R.string.kv3_sliced_plate, 1));
+        statusPill.setBackground(ui.shape(0x2E5EE0C8, 0x805EE0C8, 18)); statusPill.setVisibility(View.GONE);
+        viewport.addView(statusPill, new FrameLayout.LayoutParams(chipPos));
+        layerRail = new com.orcamobile.app.glass.LayerRail(this); layerRail.setContentDescription(getString(R.string.kv3_layer, 1)); layerRail.setVisibility(View.GONE);
+        FrameLayout.LayoutParams railPos = new FrameLayout.LayoutParams(dp(44), dp(150), Gravity.END|Gravity.TOP); railPos.setMargins(0, dp(192), dp(20), 0); viewport.addView(layerRail, railPos);
+        layerRail.setListener(p -> { if (layerSlider != null) layerSlider.setProgress(p); });
+        layerPanel = buildPreviewSheet(); layerPanel.setVisibility(View.GONE);
+
+        if (compactLandscape) wideBody.addView(viewport, new LinearLayout.LayoutParams(0,-1,1));
+        else root.addView(viewport, new LinearLayout.LayoutParams(-1,0,1));
+
+        LinearLayout host = vertical(); panelHost = host;
+        if (compactLandscape) { side.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1)); LinearLayout.LayoutParams hostLp = lp(-1,-2); hostLp.setMargins(dp(4), 0, dp(4), dp(8)); side.addView(host, hostLp); }
+        else root.addView(host, lp(-1, -2));
+
+        LinearLayout prepare = vertical(); prepareGroup = prepare;
         if (mesh != null && !loadingMesh) {
-            LinearLayout card = horizontal(); card.setBackground(outline(SURFACE,18,LINE)); pad(card,12,7,12,7);
-            FrameLayout modelIcon = new FrameLayout(this); modelIcon.setBackground(shape(darkMode ? 0xff353835 : 0xffe1e3df,12));
-            modelIcon.addView(new Icon("cube",INK),new FrameLayout.LayoutParams(dp(24),dp(24),Gravity.CENTER)); card.addView(modelIcon,lp(compactLandscape ? 32 : 44,compactLandscape ? 32 : 44));
-            LinearLayout labels = vertical(); pad(labels,12,0,0,0); TextView file = text(meshName,14,INK,true); file.setSingleLine(true); file.setEllipsize(android.text.TextUtils.TruncateAt.END); labels.addView(file);
-            if (!compactLandscape) { gap(labels,3); labels.addView(text(String.format(java.util.Locale.getDefault(),"Исходная модель  ·  %.1f × %.1f × %.1f мм",mesh.size[0],mesh.size[1],mesh.size[2]),11,MUTED,false)); }
-            if(needsProjectModeReview()){gap(labels,4);labels.addView(text(getString(R.string.native_project_legacy_mode),11,MUTED,false));TextView review=text(getString(R.string.native_project_review_existing),12,INK,true);review.setMinHeight(dp(44));review.setGravity(Gravity.CENTER_VERTICAL);labels.addView(review);click(review,()->{String expected=meshFileName;if(expected==null||!expected.equals(getSharedPreferences("current_model",0).getString("file",""))){restoreModel();return;}loadModelUri(Uri.fromFile(new java.io.File(new java.io.File(getFilesDir(),"models"),expected)),false,meshName);});}
-            card.addView(labels,new LinearLayout.LayoutParams(0,-2,1)); card.addView(text("›",23,INK,false));
-            LinearLayout.LayoutParams cardParams=lp(-1,-2); cardParams.setMargins(dp(compactLandscape ? 8 : 16),0,dp(compactLandscape ? 8 : 16),dp(8));
-            if (compactLandscape) side.addView(card,cardParams); else root.addView(card,cardParams); click(card,modelMetadata==null?this::editModelTransform:this::openModelDetails);
+            com.orcamobile.app.glass.KeplerUi.ObjectCard card = ui.objectCard(modelMetadata==null ? this::openTools : this::openModelDetails);
+            card.name.setText(meshName); card.details.setText(modelDetails());
+            card.view.setContentDescription(meshName + ". " + card.details.getText());
+            if (needsProjectModeReview()) {
+                card.details.setText(getString(R.string.native_project_legacy_mode));
+                TextView review = ui.line(getString(R.string.native_project_review_existing), 12, 700, com.orcamobile.app.glass.KeplerUi.WHITE);
+                review.setMinHeight(dp(36)); review.setGravity(Gravity.CENTER_VERTICAL); card.labels.addView(review);
+                click(review, () -> { String expected=meshFileName; if(expected==null||!expected.equals(getSharedPreferences("current_model",0).getString("file",""))){restoreModel();return;} loadModelUri(Uri.fromFile(new java.io.File(new java.io.File(getFilesDir(),"models"),expected)),false,meshName); });
+            }
+            LinearLayout.LayoutParams cardParams = lp(-1,-2); cardParams.setMargins(dp(compactLandscape ? 12 : 20), 0, dp(compactLandscape ? 12 : 20), dp(12));
+            prepare.addView(card.view, cardParams);
         }
-        TextView slice = text("▶   Нарезать",15,INK,true); workspaceSlice=slice; slice.setGravity(Gravity.CENTER); slice.setBackground(outline(SURFACE,20,LINE));
-        LinearLayout.LayoutParams sliceParams=lp(-1,compactLandscape ? 40 : 48); sliceParams.setMargins(dp(16),0,dp(16),dp(compactLandscape ? 4 : 8)); root.addView(slice,sliceParams); click(slice,this::openSlice);
-        previewReady = mesh == null; slice.setEnabled(false); slice.setAlpha(.42f);
+        LinearLayout slice = ui.primaryButton(R.drawable.kv3_play, getString(R.string.kv3_slice_plate), this::openSlice);
+        workspaceSlice = slice;
+        LinearLayout.LayoutParams sliceParams = lp(-1, compactLandscape ? 48 : 52); sliceParams.setMargins(dp(compactLandscape ? 12 : 20), 0, dp(compactLandscape ? 12 : 20), dp(12));
+        prepare.addView(slice, sliceParams);
+        host.addView(prepare, lp(-1,-2));
+
+        toolsSheet = buildToolsSheet(); toolsSheet.setVisibility(View.GONE);
+        LinearLayout.LayoutParams sheetParams = lp(-1,-2); sheetParams.setMargins(dp(12), 0, dp(12), dp(8)); host.addView(toolsSheet, sheetParams);
+        LinearLayout.LayoutParams previewParams = lp(-1,-2); previewParams.setMargins(dp(12), 0, dp(12), dp(8)); host.addView(layerPanel, previewParams);
+
+        previewReady = mesh == null; ui.setEnabled(slice, false);
+        View move = toolTiles[0];
+        StlView.MoveCallback moved = next -> commitDrag(view, next, transform, move); viewportMove = move; viewportTransform = transform; viewportMoveCallback = moved;
         if (hasModel) view.setModelTransform(modelTransform, error -> {
             if (isDestroyed() || stlView != view) return;
             previewReady = error == null; transform.setEnabled(previewReady&&editable); transform.setAlpha(previewReady&&editable ? 1 : .38f);
-            move.setEnabled(previewReady&&editable);move.setAlpha(previewReady&&editable?1:.38f);view.setMoveMode(previewReady&&editable&&moveMode,moved);
-            if(!editable)modeLabel.setText("Расположение проекта");
-            boolean sliceable=previewReady&&canSliceModel();slice.setEnabled(sliceable); slice.setAlpha(sliceable ? 1 : .42f);
+            view.setMoveMode(previewReady&&editable&&moveMode&&toolsMode&&activeTool==0, moved);
+            boolean sliceable = previewReady&&canSliceModel(); ui.setEnabled(slice, sliceable);
+            refreshToolFields();
             if (error != null) {pendingLayerPreview=false;dialog("Не удалось обновить модель",error.getMessage());} else maybeOpenRequestedLayers();
         });
         loadSelectedBed(printer, view, hint);
     }
 
+    private String modelDetails() {
+        String name = meshFileName == null ? (meshName == null ? "" : meshName) : meshFileName;
+        int dot = name.lastIndexOf('.');
+        String type = dot >= 0 && dot < name.length() - 1 ? name.substring(dot + 1).toUpperCase(java.util.Locale.ROOT) : "";
+        if (modelMetadata != null && !modelMetadata.optString("format").isEmpty()) type = modelMetadata.optString("format").toUpperCase(java.util.Locale.ROOT);
+        long bytes = meshFileName == null ? 0 : new java.io.File(new java.io.File(getFilesDir(), "models"), meshFileName).length();
+        String size = bytes > 0 ? android.text.format.Formatter.formatShortFileSize(this, bytes) : "";
+        String dims = mesh == null ? "" : String.format(java.util.Locale.getDefault(), "%.1f × %.1f × %.1f", mesh.size[0], mesh.size[1], mesh.size[2]);
+        if (type.isEmpty() || size.isEmpty()) return (type.isEmpty() ? size : type) + (type.isEmpty() && size.isEmpty() ? "" : " · ") + dims + " " + getString(R.string.kv3_unit_mm);
+        return getString(R.string.kv3_model_details, type, size, dims);
+    }
+
+    /** Tools sheet (Figma node 3:205): title + file, 4-column tool grid, coloured X/Y/Z fields. */
+    private View buildToolsSheet() {
+        final com.orcamobile.app.glass.KeplerUi ui = kui;
+        LinearLayout sheet = ui.sheet();
+        LinearLayout title = ui.row(); title.setPadding(dp(4), 0, dp(4), 0);
+        toolTitle = ui.line(getString(R.string.kv3_tool_move), 16, 700, com.orcamobile.app.glass.KeplerUi.WHITE); title.addView(toolTitle, ui.weight());
+        TextView file = ui.line(meshName == null ? "" : meshName, 12, 500, com.orcamobile.app.glass.KeplerUi.SECONDARY); file.setMaxWidth(dp(180)); title.addView(file);
+        sheet.addView(title, lp(-1,-2));
+        int[] icons = {R.drawable.kv3_move, R.drawable.kv3_refresh, R.drawable.kv3_scale, R.drawable.kv3_lay_on_face, R.drawable.kv3_cut, R.drawable.kv3_support_paint, R.drawable.kv3_seam_paint, R.drawable.kv3_fuzzy_skin, R.drawable.kv3_text, R.drawable.kv3_measure, R.drawable.kv3_assembly, R.drawable.kv3_brim_ears};
+        int[] labels = {R.string.kv3_tool_move, R.string.kv3_tool_rotate, R.string.kv3_tool_scale, R.string.kv3_tool_lay_on_face, R.string.kv3_tool_cut, R.string.kv3_tool_support_paint, R.string.kv3_tool_seam_paint, R.string.kv3_tool_fuzzy_skin, R.string.kv3_tool_text, R.string.kv3_tool_measure, R.string.kv3_tool_assembly, R.string.kv3_tool_brim_ears};
+        toolTiles = new LinearLayout[icons.length];
+        for (int i = 0; i < icons.length; i++) {
+            final int index = i; final String label = getString(labels[i]);
+            toolTiles[i] = ui.toolTile(icons[i], label, i == activeTool, () -> {
+                if (index <= 2) selectTool(index);
+                else com.orcamobile.app.glass.GlassBottomSheet.info(this, root, false, label, getString(R.string.kv3_tool_unavailable, label));
+            });
+        }
+        sheet.addView(ui.grid(toolTiles, 4), ui.below(10));
+        LinearLayout fields = ui.row(); fields.setGravity(Gravity.TOP);
+        String[] axes = {"X", "Y", "Z"}; int[] colors = {com.orcamobile.app.glass.KeplerUi.AXIS_X, com.orcamobile.app.glass.KeplerUi.AXIS_Y, com.orcamobile.app.glass.KeplerUi.AXIS_Z};
+        axisFields = new com.orcamobile.app.glass.KeplerUi.AxisField[3];
+        for (int i = 0; i < 3; i++) {
+            final int axis = i;
+            axisFields[i] = ui.axisField(axes[i], colors[i], "", axes[i]);
+            axisFields[i].value.setOnEditorActionListener((v, action, event) -> { commitAxis(axis); return false; });
+            axisFields[i].value.setOnFocusChangeListener((v, focused) -> { if (!focused) commitAxis(axis); });
+            LinearLayout.LayoutParams p = ui.weight(); if (i > 0) p.leftMargin = dp(8); fields.addView(axisFields[i].view, p);
+        }
+        sheet.addView(fields, ui.below(10));
+        return sheet;
+    }
+
+    private LinearLayout statusPill; private com.orcamobile.app.glass.LayerRail layerRail;
+    private TextView statTime, statFilament, statCost; private boolean playing; private int statsRequest;
+
+    /** Slice result sheet (Figma node 3:382): colour modes, legend, stats, layer scrubber, Print / Export. */
+    private LinearLayout buildPreviewSheet() {
+        final com.orcamobile.app.glass.KeplerUi ui = kui; final int white = com.orcamobile.app.glass.KeplerUi.WHITE, secondary = com.orcamobile.app.glass.KeplerUi.SECONDARY;
+        LinearLayout sheet = ui.sheet();
+        android.widget.HorizontalScrollView modes = new android.widget.HorizontalScrollView(this); modes.setHorizontalScrollBarEnabled(false); modes.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        LinearLayout chips = ui.row(); modes.addView(chips);
+        int[] modeLabels = {R.string.kv3_color_feature, R.string.kv3_color_speed, R.string.kv3_color_flow, R.string.kv3_color_height, R.string.kv3_color_temperature};
+        modeChips.clear();
+        for (int i = 0; i < modeLabels.length; i++) {
+            final int mode = i;
+            TextView chip = ui.chip(getString(modeLabels[i]), i == colorMode, () -> setColorMode(mode));
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, dp(36)); if (i > 0) p.leftMargin = dp(8); chips.addView(chip, p); modeChips.add(chip);
+        }
+        sheet.addView(modes, lp(-1, -2));
+        int[] legendColors = {0xFFFF9F43, 0xFFF5D06B, 0xFFFF7A6E, 0xFFB06CF0, 0xFF6FD0C4, 0xFF6F9CF0};
+        int[] legendLabels = {R.string.kv3_legend_outer, R.string.kv3_legend_inner, R.string.kv3_legend_sparse, R.string.kv3_legend_solid, R.string.kv3_legend_support, R.string.kv3_legend_bridge};
+        com.orcamobile.app.glass.FlowRow legend = new com.orcamobile.app.glass.FlowRow(this, dp(14), dp(6)); legendRow = legend;
+        String[] labels = new String[legendLabels.length]; for (int k = 0; k < labels.length; k++) labels[k] = getString(legendLabels[k]);
+        fillLegend(legendColors, labels);
+        sheet.addView(legend, ui.below(10));
+        LinearLayout stats = ui.row(); stats.setGravity(Gravity.TOP);
+        int[] statLabels = {R.string.kv3_stat_time, R.string.kv3_stat_filament, R.string.kv3_stat_cost}; TextView[] values = new TextView[3];
+        for (int i = 0; i < 3; i++) {
+            LinearLayout box = ui.column(); box.setPadding(dp(12), dp(8), dp(12), dp(8)); box.setBackground(ui.field(16));
+            box.addView(ui.line(getString(statLabels[i]), 12, 500, secondary));
+            values[i] = ui.line("—", 15, 700, white); LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(-1, -2); vp.topMargin = dp(1); box.addView(values[i], vp);
+            LinearLayout.LayoutParams bp = ui.weight(); if (i > 0) bp.leftMargin = dp(8); stats.addView(box, bp);
+        }
+        statTime = values[0]; statFilament = values[1]; statCost = values[2];
+        sheet.addView(stats, ui.below(10));
+        LinearLayout scrubber = ui.row();
+        FrameLayout play = new FrameLayout(this); ImageView playArt = ui.image(R.drawable.kv3_play, 18, white);
+        play.addView(playArt, new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER)); ui.pressable(play, null, 16);
+        play.setContentDescription(getString(R.string.kv3_play_layers)); play.setOnClickListener(v -> togglePlayback(playArt));
+        scrubber.addView(play, lp(32, 32));
+        layerSlider = new SeekBar(this); layerSlider.setContentDescription("Количество видимых слоёв");
+        layerSlider.setProgressTintList(android.content.res.ColorStateList.valueOf(white));
+        layerSlider.setThumbTintList(android.content.res.ColorStateList.valueOf(white));
+        layerSlider.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x52FFFFFF));
+        layerSlider.setPadding(dp(8), 0, dp(8), 0);
+        scrubber.addView(layerSlider, new LinearLayout.LayoutParams(0, dp(32), 1));
+        layerCaption = ui.line(getString(R.string.kv3_layer, 1), 12, 500, secondary);
+        click(layerCaption, () -> { if (layerAnalysis!=null) dialog("О просмотре слоёв","Приблизительный просмотр линий экструзии и поддерживаемых дуг на высоте слоя. Холостые перемещения, толщина линий и изменение Z внутри сегмента не воспроизводятся. Пропущенных движений с неизвестной позицией: "+layerAnalysis.skippedUnknown+"; неподдерживаемых движений: "+layerAnalysis.unsupportedMoves+"; неотображённых дуг: "+layerAnalysis.arcMoves+"."); });
+        scrubber.addView(layerCaption);
+        sheet.addView(scrubber, ui.below(10));
+        LinearLayout actions = ui.row();
+        LinearLayout print = ui.primaryButton(R.drawable.kv3_print, getString(R.string.kv3_print), () -> { Intent intent = new Intent(); intent.setClassName(this, getPackageName()+".NetworkActivity"); startActivity(intent); });
+        print.setMinimumHeight(dp(48)); ui.pressable(print, ui.shape(white, 0, 24), 24);
+        actions.addView(print, ui.weight());
+        LinearLayout export = ui.secondaryButton(R.drawable.kv3_upload, getString(R.string.kv3_export), 48, 24, this::openExport);
+        LinearLayout.LayoutParams ep = ui.weight(); ep.leftMargin = dp(8); actions.addView(export, ep);
+        sheet.addView(actions, ui.below(10));
+        return sheet;
+    }
+
+    private final java.util.List<TextView> modeChips = new java.util.ArrayList<>();
+    private com.orcamobile.app.glass.FlowRow legendRow; private int colorMode; private ToolpathGeometry layerGeometry; private int colorRequest;
+
+    private void fillLegend(int[] colors, String[] labels) {
+        if (legendRow == null) return; legendRow.removeAllViews();
+        for (int k = 0; k < colors.length; k++) {
+            LinearLayout item = kui.row();
+            View sw = new View(this); sw.setBackground(kui.shape(colors[k], 0, 3)); item.addView(sw, lp(10, 10));
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2); tp.leftMargin = dp(6); item.addView(kui.line(labels[k], 12, 500, com.orcamobile.app.glass.KeplerUi.WHITE), tp);
+            legendRow.addView(item, new ViewGroup.LayoutParams(-2, -2));
+        }
+    }
+    /** Legend for the active colour mode: feature classes, or a five-step value scale with units. */
+    private void updateLegend(GcodeAnalysis analysis) {
+        if (colorMode == ToolpathGeometry.MODE_FEATURE || analysis == null) {
+            int[] c = java.util.Arrays.copyOfRange(ToolpathGeometry.FEATURE_COLORS, 1, 7);
+            fillLegend(c, new String[]{getString(R.string.kv3_legend_outer), getString(R.string.kv3_legend_inner), getString(R.string.kv3_legend_sparse), getString(R.string.kv3_legend_solid), getString(R.string.kv3_legend_support), getString(R.string.kv3_legend_bridge)});
+            return;
+        }
+        double[] r = ToolpathGeometry.range(analysis, colorMode);
+        String unit = colorMode == ToolpathGeometry.MODE_SPEED ? getString(R.string.kv3_unit_mm_s) : colorMode == ToolpathGeometry.MODE_FLOW ? getString(R.string.kv3_unit_mm_per_mm) : colorMode == ToolpathGeometry.MODE_TEMPERATURE ? "°C" : getString(R.string.kv3_unit_mm);
+        if (!(r[1] >= r[0]) || !Double.isFinite(r[0])) { fillLegend(new int[]{ToolpathGeometry.FEATURE_COLORS[0]}, new String[]{getString(R.string.kv3_no_data)}); return; }
+        int[] colors = new int[5]; String[] labels = new String[5];
+        for (int i = 0; i < 5; i++) { double t = i / 4.0; colors[i] = ToolpathGeometry.ramp(t); double v = r[0] + (r[1] - r[0]) * t;
+            labels[i] = (colorMode == ToolpathGeometry.MODE_FLOW ? String.format(java.util.Locale.getDefault(), "%.3f", v) : colorMode == ToolpathGeometry.MODE_HEIGHT ? String.format(java.util.Locale.getDefault(), "%.2f", v) : String.format(java.util.Locale.getDefault(), "%.0f", v)) + " " + unit; }
+        fillLegend(colors, labels);
+    }
+    private void setColorMode(int mode) {
+        colorMode = mode; for (int i = 0; i < modeChips.size(); i++) kui.setChipActive(modeChips.get(i), i == mode);
+        final ToolpathGeometry geometry = layerGeometry; final GcodeAnalysis analysis = layerAnalysis; final StlView view = stlView; final int request = ++colorRequest;
+        updateLegend(analysis);
+        if (geometry == null || analysis == null || view == null) return;
+        new Thread(() -> { try { java.nio.FloatBuffer c = ToolpathGeometry.colors(analysis, mode, geometry.vertices.capacity() / 3);
+            runOnUiThread(() -> { if (isDestroyed() || request != colorRequest || stlView != view || layerGeometry != geometry) return; geometry.colors = c; view.requestRender(); }); } catch (Exception ignored) { } }, "toolpath-colors").start();
+    }
+
+    private void togglePlayback(ImageView art) {
+        if (layerSlider == null) return;
+        playing = !playing; art.setImageDrawable(kui.icon(playing ? R.drawable.kv3_pause : R.drawable.kv3_play, com.orcamobile.app.glass.KeplerUi.WHITE));
+        if (!playing) return;
+        if (layerSlider.getProgress() >= layerSlider.getMax()) layerSlider.setProgress(0);
+        final SeekBar bar = layerSlider;
+        Runnable step = new Runnable() { @Override public void run() {
+            if (!playing || bar != layerSlider || !layersMode || isDestroyed()) { playing = false; art.setImageDrawable(kui.icon(R.drawable.kv3_play, com.orcamobile.app.glass.KeplerUi.WHITE)); return; }
+            if (bar.getProgress() >= bar.getMax()) { playing = false; art.setImageDrawable(kui.icon(R.drawable.kv3_play, com.orcamobile.app.glass.KeplerUi.WHITE)); return; }
+            bar.setProgress(bar.getProgress() + 1); bar.postDelayed(this, 60);
+        }};
+        bar.postDelayed(step, 60);
+    }
+
+    /** Which bottom panel and overlays are visible for Prepare, Preview and Tools. */
+    private void syncPanels() {
+        boolean preview = layersMode && layerPanel != null && layerPanel.getVisibility() == View.VISIBLE;
+        if (prepareGroup != null) prepareGroup.setVisibility(toolsMode || preview ? View.GONE : View.VISIBLE);
+        if (toolsSheet != null) toolsSheet.setVisibility(toolsMode ? View.VISIBLE : View.GONE);
+        if (addButton != null) addButton.setVisibility(toolsMode || layersMode ? View.GONE : View.VISIBLE);
+        if (statusPill != null) { statusPill.setVisibility(preview ? View.VISIBLE : View.GONE); int plate = modelMetadata == null ? 0 : Math.max(0, modelMetadata.optInt("selected_plate", 0)); ((TextView) statusPill.getChildAt(1)).setText(getString(R.string.kv3_sliced_plate, plate + 1)); }
+        if (plateChip != null) plateChip.setVisibility(preview ? View.GONE : View.VISIBLE);
+        if (layerRail != null) layerRail.setVisibility(preview ? View.VISIBLE : View.GONE);
+        if (!preview) playing = false; else loadSliceStats();
+    }
+
+    /** Reads Orca's summary comments from the current result (time, filament weight, cost). */
+    private void loadSliceStats() {
+        final java.io.File file = lastResult(); final int request = ++statsRequest;
+        if (file == null || statTime == null) return;
+        new Thread(() -> {
+            String time = null, grams = null, cost = null;
+            try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(file, "r")) {
+                long start = Math.max(0, in.length() - 96 * 1024); in.seek(start); byte[] buffer = new byte[(int) (in.length() - start)]; in.readFully(buffer);
+                for (String line : new String(buffer, java.nio.charset.StandardCharsets.UTF_8).split("\n")) {
+                    String l = line.trim().toLowerCase(java.util.Locale.ROOT); if (!l.startsWith(";")) continue;
+                    String value = l.contains("=") ? l.substring(l.indexOf('=') + 1).trim() : l.contains(":") ? l.substring(l.lastIndexOf(':') + 1).trim() : "";
+                    if (value.isEmpty()) continue;
+                    if (time == null && l.contains("estimated printing time")) time = value;
+                    else if (grams == null && l.contains("filament") && l.contains("[g]") && value.matches("[0-9.,]+.*")) grams = value.split("[ ,]")[0] + " " + getString(R.string.kv3_unit_g);
+                    else if (cost == null && l.contains("filament cost") && value.matches("[0-9.,]+.*")) cost = value.split("[ ,]")[0];
+                }
+            } catch (Exception ignored) { }
+            final String t = time, g = grams, c = cost;
+            runOnUiThread(() -> { if (isDestroyed() || request != statsRequest || statTime == null) return; statTime.setText(t == null ? "—" : t); statFilament.setText(g == null ? "—" : g); statCost.setText(c == null ? "—" : c); });
+        }, "slice-stats").start();
+    }
+
+    private void openTools() {
+        boolean editable = previewReady && mesh != null && !loadingMesh && mesh.vertices.length > 0 && transformSupported();
+        if (!editable) { dialog(getString(R.string.kv3_mode_tools), getString(R.string.kv3_tools_unavailable)); return; }
+        if (layersMode) showPreparation();
+        setToolsMode(true);
+    }
+    private void setToolsMode(boolean on) {
+        toolsMode = on;
+        if (modeBar != null) modeBar.select(on ? 2 : layersMode ? 1 : 0);
+        syncPanels();
+        if (bedHint != null && on) bedHint.setVisibility(View.GONE); else if (bedHint != null && !layersMode) bedHint.setVisibility(View.VISIBLE);
+        if (stlView != null) stlView.setMoveMode(on && activeTool == 0 && previewReady && moveMode, viewportMoveCallback);
+        if (on) refreshToolFields();
+    }
+    private void selectTool(int index) {
+        activeTool = index; if (index == 0) moveMode = true;
+        int[] labels = {R.string.kv3_tool_move, R.string.kv3_tool_rotate, R.string.kv3_tool_scale};
+        if (toolTitle != null) toolTitle.setText(labels[index]);
+        if (toolTiles != null) for (int i = 0; i < toolTiles.length; i++) {
+            boolean on = i == index; LinearLayout t = toolTiles[i];
+            kui.pressable(t, on ? kui.shape(com.orcamobile.app.glass.KeplerUi.WHITE, 0, 16) : kui.glass(16), 16); t.setSelected(on);
+            ((ImageView) t.getChildAt(0)).setImageDrawable(kui.icon(new int[]{R.drawable.kv3_move, R.drawable.kv3_refresh, R.drawable.kv3_scale, R.drawable.kv3_lay_on_face, R.drawable.kv3_cut, R.drawable.kv3_support_paint, R.drawable.kv3_seam_paint, R.drawable.kv3_fuzzy_skin, R.drawable.kv3_text, R.drawable.kv3_measure, R.drawable.kv3_assembly, R.drawable.kv3_brim_ears}[i], on ? com.orcamobile.app.glass.KeplerUi.ON_ACTIVE : com.orcamobile.app.glass.KeplerUi.WHITE));
+            ((TextView) t.getChildAt(1)).setTextColor(on ? com.orcamobile.app.glass.KeplerUi.ON_ACTIVE : com.orcamobile.app.glass.KeplerUi.WHITE);
+        }
+        if (stlView != null) stlView.setMoveMode(toolsMode && index == 0 && previewReady, viewportMoveCallback);
+        refreshToolFields();
+    }
+    /** Values shown in the X/Y/Z fields for the active tool, from the stored model transform. */
+    private double[] toolValues(ModelTransform t) {
+        if (activeTool == 1) return new double[]{t.rx, t.ry, t.rz};
+        if (activeTool == 2) return new double[]{t.sx * 100, t.sy * 100, t.sz * 100};
+        return new double[]{t.offsetX, t.offsetY, 0};
+    }
+    private void refreshToolFields() {
+        if (axisFields == null) return;
+        double[] v = toolValues(modelTransform);
+        String unit = getString(activeTool == 1 ? R.string.kv3_unit_deg : activeTool == 2 ? R.string.kv3_unit_percent : R.string.kv3_unit_mm);
+        boolean editable = previewReady && mesh != null && mesh.vertices.length > 0 && transformSupported();
+        for (int i = 0; i < 3; i++) {
+            EditText field = axisFields[i].value; if (!field.hasFocus()) field.setText(String.format(java.util.Locale.ROOT, "%.2f", v[i]));
+            boolean enabled = editable && !(activeTool == 0 && i == 2);
+            field.setEnabled(enabled); axisFields[i].view.setAlpha(enabled ? 1f : .5f);
+            field.setContentDescription(getString(R.string.kv3_axis, new String[]{"X","Y","Z"}[i], unit));
+        }
+    }
+    private void commitAxis(int axis) {
+        if (axisFields == null || stlView == null || meshFileName == null || !previewReady || !transformSupported()) return;
+        if (activeTool == 0 && axis == 2) return;
+        double value;
+        try { value = Double.parseDouble(axisFields[axis].value.getText().toString().trim().replace(',', '.')); }
+        catch (NumberFormatException e) { refreshToolFields(); dialog(getString(R.string.kv3_apply_failed), getString(R.string.kv3_check_value)); return; }
+        ModelTransform t = modelTransform; double[] v = toolValues(t);
+        if (Math.abs(v[axis] - value) < 1e-9) return;
+        v[axis] = value;
+        final ModelTransform next;
+        try {
+            if (activeTool == 1) next = new ModelTransform(v[0], v[1], v[2], t.sx, t.sy, t.sz, t.offsetX, t.offsetY);
+            else if (activeTool == 2) next = new ModelTransform(t.rx, t.ry, t.rz, v[0] / 100, v[1] / 100, v[2] / 100, t.offsetX, t.offsetY);
+            else next = new ModelTransform(t.rx, t.ry, t.rz, t.sx, t.sy, t.sz, v[0], v[1]);
+        } catch (IllegalArgumentException e) { refreshToolFields(); dialog(getString(R.string.kv3_apply_failed), e.getMessage()); return; }
+        final StlView view = stlView; final String file = meshFileName; final ModelTransform old = modelTransform;
+        dragReady(view, viewportTransform, viewportMove, false);
+        view.setModelTransform(next, error -> {
+            if (isDestroyed() || stlView != view) return;
+            try {
+                if (error != null) throw new IllegalArgumentException(error.getMessage());
+                CurrentModelStore.saveTransform(this, file, next); modelTransform = next;
+                dragReady(view, viewportTransform, viewportMove, true); refreshToolFields(); ControlPreferences.scheduleAutoSlice(this);
+            } catch (Exception e) {
+                view.setModelTransform(old, ignored -> { if (!isDestroyed() && stlView == view) { dragReady(view, viewportTransform, viewportMove, true); refreshToolFields(); } });
+                dialog(getString(R.string.kv3_apply_failed), e.getMessage());
+            }
+        });
+    }
+
     private void openSettingsPanel(){startActivity(new Intent(this, SettingsActivity.class));}
 
-    private void dragReady(StlView view,FrameLayout transform,FrameLayout move,boolean ready) {
+    private void dragReady(StlView view,View transform,View move,boolean ready) {
         previewReady=ready;transform.setEnabled(ready);move.setEnabled(ready);transform.setAlpha(ready?1:.38f);move.setAlpha(ready?1:.38f);
-        if(workspaceSlice!=null){workspaceSlice.setEnabled(ready);workspaceSlice.setAlpha(ready?1:.42f);}
-        view.setMoveMode(ready&&moveMode,value->commitDrag(view,value,transform,move));
+        if(workspaceSlice!=null){boolean sliceable=ready&&canSliceModel();workspaceSlice.setEnabled(sliceable);workspaceSlice.setAlpha(sliceable?1:.42f);}
+        view.setMoveMode(ready&&moveMode&&toolsMode&&activeTool==0,value->commitDrag(view,value,transform,move));
+        if(ready)refreshToolFields();
     }
-    private void commitDrag(StlView view,ModelTransform next,FrameLayout transform,FrameLayout move) {
+    private void commitDrag(StlView view,ModelTransform next,View transform,View move) {
         if(stlView!=view||meshFileName==null||!previewReady){view.discardPendingMove();return;}
         String expected=meshFileName;ModelTransform old=modelTransform;
         try {
@@ -473,7 +769,7 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 if (isDestroyed()) return;
                 if (names[0] != null && printer.isAttachedToWindow()) printer.setText(names[0]);
-                if (names[1] != null && filament.isAttachedToWindow()) filament.setText(names[1] + " ›");
+                if (names[1] != null && filament.isAttachedToWindow()) filament.setText(names[1]);
                 if (names[2] != null && process.isAttachedToWindow()) process.setText(names[2] + " ›");
             });
         });
@@ -577,31 +873,31 @@ public class MainActivity extends Activity {
         } catch(java.io.IOException e) { return null; }
     }
     private void cancelLayerWork(){layerRequest++;Thread worker=layerReader;layerReader=null;if(worker!=null)worker.interrupt();}
-    private void updatePreviewTabs(){if(prepareTab==null||layersTab==null)return;prepareTab.setBackground(shape(layersMode?SURFACE:LINE,12));layersTab.setBackground(shape(layersMode?LINE:SURFACE,12));prepareTab.setTextColor(layersMode?MUTED:INK);layersTab.setTextColor(layersMode?INK:MUTED);prepareTab.setSelected(!layersMode);layersTab.setSelected(layersMode);}
+    private void updatePreviewTabs(){if(modeBar!=null)modeBar.select(layersMode?1:toolsMode?2:0);syncPanels();}
     private void showPreparation(){cancelLayerWork();layersMode=false;layerAnalysis=null;StlView view=stlView;if(view!=null)view.clearToolpaths();if(layerPanel!=null)layerPanel.setVisibility(View.GONE);if(bedHint!=null)bedHint.setVisibility(View.VISIBLE);updatePreviewTabs();
-        boolean editable=previewReady&&mesh!=null&&mesh.vertices.length>0&&transformSupported();if(viewportTransform!=null){viewportTransform.setEnabled(editable);viewportTransform.setAlpha(editable?1:.38f);}if(viewportMove!=null){viewportMove.setEnabled(editable);viewportMove.setAlpha(editable?1:.38f);}if(view!=null)view.setMoveMode(editable&&moveMode,viewportMoveCallback);
-        if(viewportMode!=null)viewportMode.setText(editable?(moveMode?"Перемещение":"Вращение вида"):"Вращение вида");}
+        boolean editable=previewReady&&mesh!=null&&mesh.vertices.length>0&&transformSupported();if(viewportTransform!=null){viewportTransform.setEnabled(editable);viewportTransform.setAlpha(editable?1:.38f);}if(viewportMove!=null){viewportMove.setEnabled(editable);viewportMove.setAlpha(editable?1:.38f);}if(view!=null)view.setMoveMode(editable&&moveMode&&toolsMode&&activeTool==0,viewportMoveCallback);
+        if(viewportMode!=null)viewportMode.setText(plateCaption());}
     private void maybeOpenRequestedLayers(){if(!pendingLayerPreview||!visibleWorkspace||isDestroyed()||isFinishing())return;if(loadingMesh)return;if(mesh==null||mesh.vertices.length==0){pendingLayerPreview=false;dialog("Предпросмотр слоёв","Откройте непустую модель и выполните нарезку.");return;}if(!previewReady||loadedBed==null)return;pendingLayerPreview=false;openLayerPreview();}
     private void openLayerPreview(){
         if(layersMode)return;if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog("Предпросмотр слоёв","Сначала откройте модель и дождитесь её отображения.");return;}
         if(loadedBed==null){dialog("Предпросмотр слоёв","Дождитесь загрузки геометрии выбранного стола принтера.");return;}
-        cancelLayerWork();final int request=layerRequest;final StlView view=stlView;layersMode=true;updatePreviewTabs();view.setMoveMode(false,null);
+        cancelLayerWork();final int request=layerRequest;final StlView view=stlView;layersMode=true;setToolsMode(false);updatePreviewTabs();view.setMoveMode(false,null);
         if(viewportTransform!=null){viewportTransform.setEnabled(false);viewportTransform.setAlpha(.38f);}if(viewportMove!=null){viewportMove.setEnabled(false);viewportMove.setAlpha(.38f);}if(viewportMode!=null)viewportMode.setText("Читаем слои…");
         layerReader=new Thread(()->{try{
             java.io.File file=lastResult();if(file==null)throw new java.io.IOException("Сначала повторите нарезку для текущей модели и настроек.");long length=file.length(),modified=file.lastModified();
             GcodeAnalysis analysis=GcodeAnalysis.read(file);if(Thread.currentThread().isInterrupted())return;
-            ToolpathGeometry geometry=ToolpathGeometry.build(analysis);if(Thread.currentThread().isInterrupted())return;
+            ToolpathGeometry geometry=ToolpathGeometry.build(analysis);if(Thread.currentThread().isInterrupted())return;geometry.colors=ToolpathGeometry.colors(analysis,colorMode,geometry.vertices.capacity()/3);
             java.io.File fresh=lastResult();if(fresh==null||!fresh.equals(file)||file.length()!=length||file.lastModified()!=modified)throw new java.io.IOException("Модель, настройки или результат изменились. Повторите нарезку.");
             if(geometry.layerCount==0)throw new java.io.IOException("Нет поддерживаемых слоёв для отображения.");
-            runOnUiThread(()->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;layerAnalysis=analysis;int count=geometry.layerCount;
+            runOnUiThread(()->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;layerAnalysis=analysis;layerGeometry=geometry;updateLegend(analysis);int count=geometry.layerCount;
                 view.setToolpaths(geometry,count,error->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;if(error!=null){showPreparation();dialog("Предпросмотр слоёв",error.getMessage());return;}
-                    if(viewportMode!=null)viewportMode.setText("Просмотр слоёв");if(bedHint!=null)bedHint.setVisibility(View.GONE);layerPanel.setVisibility(View.VISIBLE);layerSlider.setMax(count-1);
+                    if(viewportMode!=null)viewportMode.setText(plateCaption());if(bedHint!=null)bedHint.setVisibility(View.GONE);layerPanel.setVisibility(View.VISIBLE);layerSlider.setMax(count-1);if(layerRail!=null)layerRail.setMax(count-1);syncPanels();
                     layerSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar bar,int progress,boolean fromUser){int visible=progress+1;view.setVisibleToolpathLayers(visible);updateLayerCaption(analysis,geometry,visible);}public void onStartTrackingTouch(SeekBar bar){}public void onStopTrackingTouch(SeekBar bar){}});
                     layerSlider.setProgress(count-1);updateLayerCaption(analysis,geometry,count);
                 });});
         }catch(Exception | OutOfMemoryError error){String message=error instanceof OutOfMemoryError?"Недостаточно памяти для просмотра траекторий.":error.getMessage()==null?"Не удалось прочитать G-code.":error.getMessage();runOnUiThread(()->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;showPreparation();dialog("Предпросмотр слоёв",message);});}},"workspace-toolpaths");layerReader.start();
     }
-    private void updateLayerCaption(GcodeAnalysis analysis,ToolpathGeometry geometry,int visible){int index=visible-1;double z=index<analysis.layers.size()?analysis.layers.get(index).z:Double.NaN;String value="Приблизительно · слой "+visible+" / "+geometry.layerCount+(Double.isFinite(z)?String.format(java.util.Locale.getDefault(),"  ·  Z %.3f мм",z):"  ·  Z неизвестен");if(geometry.skippedLayersWithoutZ>0||analysis.unsupportedMoves>0||analysis.skippedUnknown>0)value+="  ·  неполный просмотр";layerCaption.setText(value);}
+    private void updateLayerCaption(GcodeAnalysis analysis,ToolpathGeometry geometry,int visible){int index=visible-1;double z=index<analysis.layers.size()?analysis.layers.get(index).z:Double.NaN;String value="Приблизительно · слой "+visible+" / "+geometry.layerCount+(Double.isFinite(z)?String.format(java.util.Locale.getDefault(),"  ·  Z %.3f мм",z):"  ·  Z неизвестен");if(geometry.skippedLayersWithoutZ>0||analysis.unsupportedMoves>0||analysis.skippedUnknown>0)value+="  ·  неполный просмотр";layerCaption.setText(getString(R.string.kv3_layer,visible));layerCaption.setContentDescription(value);if(layerRail!=null){layerRail.setProgress(visible-1);layerRail.setContentDescription(value);}}
     private void openExport() {
         java.io.File file=lastResult(); if(file==null) { dialog("Экспорт","Сначала повторите нарезку для текущей модели и настроек."); return; }
         String name=getSharedPreferences("last_slice_result",MODE_PRIVATE).getString("model","kepler-result");
@@ -700,25 +996,6 @@ public class MainActivity extends Activity {
         });
         editor.show();
     }
-    private void navigation() {
-        String[] names = {"Стол", "Параметры", "Экспорт", "Общие"}; String[] icons = {"cube", "tune", "export", "prefs"};
-        for (int i = 0; i < names.length; i++) {
-            final int index = i; LinearLayout item = vertical(); item.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-            FrameLayout pill = new FrameLayout(this); if (i == 0) pill.setBackground(shape(darkMode ? 0xff454844 : 0xffe0e2dc, 100));
-            int iconSize = compactLandscape ? 20 : 24;
-            pill.addView(new Icon(icons[i], selected == i ? INK : MUTED), new FrameLayout.LayoutParams(dp(iconSize), dp(iconSize), Gravity.CENTER));
-            item.addView(pill, lp(compactLandscape ? 50 : 56, compactLandscape ? 26 : 32)); gap(item, compactLandscape ? 2 : 4);
-            TextView label = text(names[i], compactLandscape ? 10 : 12, selected == i ? INK : MUTED, selected == i);
-            label.setGravity(Gravity.CENTER); label.setMaxLines(1); label.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            label.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            item.addView(label, lp(-1, -2));
-            item.setMinimumHeight(dp(44));
-            item.setContentDescription(names[i] + (i == 0 ? ", выбран" : "")); item.setSelected(i == 0);
-            click(item, () -> { if(index==1) openSettingsPanel(); else if(index==2) openExport(); else if(index==3) startActivity(new Intent(this,PreferencesActivity.class)); });
-            bottom.addView(item, new LinearLayout.LayoutParams(0, -2, 1));
-        }
-    }
-
     private class Icon extends View {
         final String name; final Paint p = new Paint(3); final int color;
         Icon(String name, int color) { super(MainActivity.this); this.name = name; this.color = color; }

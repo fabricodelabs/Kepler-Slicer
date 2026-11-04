@@ -111,7 +111,7 @@ public class PrinterPickerActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle out) { out.putString("query",query); if(chosenModel!=null) out.putString("model",chosenModel.key()); if(chosenVariant!=null) out.putString("variant",chosenVariant.path); super.onSaveInstanceState(out); }
     @Override protected void onDestroy() { worker.shutdownNow(); if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback); super.onDestroy(); }
     @android.annotation.TargetApi(33) private static final class Api33 {static Object register(PrinterPickerActivity a){android.window.OnBackInvokedCallback cb=a::handleBack;a.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,cb);return cb;}static void unregister(PrinterPickerActivity a,Object cb){a.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)cb);}}
-    private void handleBack() { if(chosenModel!=null) { chosenModel=null; chosenVariant=null; render(); } else finish(); }
+    private void handleBack() { if(chosenModel!=null) { chosenModel=null; chosenVariant=null; render(); } else if(library) { library=false; render(); } else finish(); }
     @android.annotation.SuppressLint("GestureBackNavigation") @Override public void onBackPressed() { handleBack(); }
     private int dp(float n) { return (int)(n*getResources().getDisplayMetrics().density+.5f); }
     private GradientDrawable shape(int color, int radius) { GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d; }
@@ -122,74 +122,146 @@ public class PrinterPickerActivity extends Activity {
     private LinearLayout.LayoutParams lp(int w,int h) { return new LinearLayout.LayoutParams(w<0?w:dp(w),h<0?h:dp(h)); }
     private void gap(LinearLayout v,int h) { v.addView(new View(this),lp(1,h)); }
     private void padding(View v,int l,int t,int r,int b) { v.setPadding(dp(l),dp(t),dp(r),dp(b)); }
+    private boolean library;
+    private KeplerScreen screen;
+    private com.orcamobile.app.glass.KeplerUi ui;
     private void render() {
-        root=column(); root.setBackgroundColor(BG);
-        FrameLayout shell=new FrameLayout(this); shell.setBackgroundColor(BG);
-        if(android.os.Build.VERSION.SDK_INT>=35) shell.setOnApplyWindowInsetsListener((v,insets)->{ android.graphics.Insets s=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout()); v.setPadding(s.left,s.top,s.right,s.bottom); return insets; });
-        FrameLayout.LayoutParams panel=new FrameLayout.LayoutParams(-1,-1,Gravity.TOP|Gravity.CENTER_HORIZONTAL);
-        if(getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density>640) panel.width=dp(600);
-        shell.addView(root,panel); setContentView(shell);
-        LinearLayout bar=row(); padding(bar,20,12,20,8);
-        TextView back=text("‹",32,INK,false); back.setGravity(Gravity.CENTER); back.setContentDescription("Назад"); bar.addView(back,lp(42,48)); back.setOnClickListener(v->onBackPressed());
-        LinearLayout heading=column(); padding(heading,8,0,0,0);
-        TextView name=text("KEPLER SLICER",11,INK,true); name.setLetterSpacing(.13f); heading.addView(name); gap(heading,4); heading.addView(text("НАСТРОЙКА ПРИНТЕРА",9,MUTED,true));
-        bar.addView(heading,new LinearLayout.LayoutParams(0,-2,1)); root.addView(bar);
-        if(models==null) { TextView state=text(error==null ? "Загружаем каталог OrcaSlicer…" : "Не удалось загрузить каталог: "+error,14,MUTED,false); padding(state,24,28,24,0); root.addView(state); return; }
-        if(chosenModel==null) renderList(); else renderDetails();
+        String title = chosenModel != null ? chosenModel.name : library ? getString(R.string.kv3_printer_library) : getString(R.string.kv3_printers);
+        View plus = new com.orcamobile.app.glass.KeplerUi(this).glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.kv3_add_printer), () -> { library = true; chosenModel = null; render(); });
+        screen = new KeplerScreen(this, title, this::handleBack, library || chosenModel != null ? null : plus, 1); ui = screen.ui;
+        root = screen.column; content = screen.content;
+        if (models == null) { TextView state = ui.text(error == null ? "Загружаем каталог OrcaSlicer…" : "Не удалось загрузить каталог: " + error, 14, 500, com.orcamobile.app.glass.KeplerUi.SECONDARY); content.addView(state); return; }
+        if (chosenModel != null) renderDetails(); else if (library) renderList(); else renderPrinters();
     }
+
+    /** Printers & profiles (Figma node 5:245): the active printer card with nozzle variants, process and actions. */
+    private void renderPrinters() {
+        final int white = com.orcamobile.app.glass.KeplerUi.WHITE, secondary = com.orcamobile.app.glass.KeplerUi.SECONDARY;
+        OrcaProfileCatalog.Profile selection = OrcaProfileCatalog.loadSelection(this);
+        Model current = null;
+        if (selection != null) for (Model m : models) if (m.vendor.equals(selection.vendor) && m.name.equals(selection.model)) { current = m; break; }
+        if (selection != null) {
+            LinearLayout card = ui.column(); card.setBackground(ui.shape(com.orcamobile.app.glass.KeplerUi.GLASS, 0x995EE0C8, 24));
+            LinearLayout head = ui.row(); head.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12)); head.setMinimumHeight(ui.dp(72));
+            head.addView(printerTile(current), ui.lp(48, 48));
+            LinearLayout labels = ui.column(); LinearLayout.LayoutParams lpp = ui.weight(); lpp.leftMargin = ui.dp(12); lpp.rightMargin = ui.dp(12); head.addView(labels, lpp);
+            labels.addView(ui.line(selection.model == null || selection.model.isEmpty() ? selection.name : selection.model, 16, 700, white));
+            LinearLayout status = ui.row(); View dot = new View(this); dot.setBackground(ui.shape(0x99FFFFFF, 0, 4)); status.addView(dot, ui.lp(8, 8));
+            LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, -2); sp.leftMargin = ui.dp(6); status.addView(ui.line(selection.vendor + " · " + getString(R.string.kv3_system_profile), 12, 500, secondary), sp);
+            labels.addView(status, ui.below(2));
+            head.addView(selectedBadge());
+            card.addView(head);
+            if (current != null && current.variants.size() > 0) {
+                LinearLayout nozzle = ui.column(); nozzle.setPadding(ui.dp(14), 0, ui.dp(14), ui.dp(12));
+                nozzle.addView(ui.line(getString(R.string.kv3_nozzle_caption), 12, 500, secondary));
+                LinearLayout group = ui.row(); group.setPadding(ui.dp(4), ui.dp(4), ui.dp(4), ui.dp(4)); group.setBackground(ui.shape(com.orcamobile.app.glass.KeplerUi.FIELD, 0, 16));
+                android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this); hs.setHorizontalScrollBarEnabled(false); hs.setFillViewport(true); hs.addView(group, new FrameLayout.LayoutParams(-1, -2));
+                for (OrcaProfileCatalog.Profile p : current.variants) {
+                    boolean on = p.path.equals(selection.path); String label = p.variant == null || p.variant.trim().isEmpty() ? "—" : p.variant;
+                    TextView seg = ui.line(label, 13, 700, on ? com.orcamobile.app.glass.KeplerUi.ON_ACTIVE : white); seg.setGravity(Gravity.CENTER); seg.setPadding(ui.dp(12), 0, ui.dp(12), 0); seg.setMinHeight(ui.dp(36));
+                    if (on) seg.setBackground(ui.shape(white, 0, 12)); else { ui.pressable(seg, null, 12); final Model model = current; seg.setOnClickListener(v -> saveVariant(model, p, false)); }
+                    seg.setContentDescription(getString(R.string.kv3_nozzle_caption) + " " + label + (on ? ", " + getString(R.string.glass_selected) : ""));
+                    group.addView(seg, new LinearLayout.LayoutParams(0, ui.dp(36), 1)); ((LinearLayout.LayoutParams) seg.getLayoutParams()).width = 0; seg.setMinWidth(ui.dp(64));
+                }
+                if (current.variants.size() <= 5) { hs.removeView(group); nozzle.addView(group, ui.below(6)); } else nozzle.addView(hs, ui.below(6)); card.addView(nozzle);
+            }
+            card.addView(ui.hairline());
+            OrcaProcessFilamentCatalog.Profile process = OrcaProcessFilamentCatalog.loadSelection(this, OrcaProcessFilamentCatalog.PROCESS);
+            card.addView(ui.listRow(0, process == null ? getString(R.string.kv3_choose_process) : process.name, getString(R.string.kv3_process_system), process == null ? null : selectedBadge(), () -> startActivity(new Intent(this, ProfilePickerActivity.class).putExtra(ProfilePickerActivity.EXTRA_KIND, OrcaProcessFilamentCatalog.PROCESS))));
+            card.addView(ui.hairline());
+            card.addView(ui.listRow(0, getString(R.string.kv3_other_processes), getString(R.string.kv3_other_processes_detail), ui.image(R.drawable.kv3_chevron_right, 20, white), () -> startActivity(new Intent(this, ProfilePickerActivity.class).putExtra(ProfilePickerActivity.EXTRA_KIND, OrcaProcessFilamentCatalog.PROCESS))));
+            card.addView(ui.hairline());
+            LinearLayout actions = ui.row(); actions.setPadding(ui.dp(14), ui.dp(13), ui.dp(14), ui.dp(14));
+            actions.addView(ui.secondaryButton(R.drawable.kv3_sliders, getString(R.string.kv3_edit_printer), 44, 22, () -> startActivity(new Intent(this, SettingsActivity.class).putExtra("kepler_kind", "printer"))), ui.weight());
+            LinearLayout.LayoutParams cp = ui.weight(); cp.leftMargin = ui.dp(8);
+            actions.addView(ui.secondaryButton(R.drawable.kv3_wifi, getString(R.string.kv3_connection), 44, 22, () -> startActivity(new Intent(this, NetworkActivity.class))), cp);
+            card.addView(actions);
+            content.addView(card, new LinearLayout.LayoutParams(-1, -2));
+        }
+        LinearLayout lib = ui.card(24);
+        lib.addView(ui.listRow(R.drawable.kv3_printer, getString(R.string.kv3_printer_library), getString(R.string.kv3_printer_library_detail), ui.image(R.drawable.kv3_chevron_right, 20, white), () -> { library = true; render(); }));
+        content.addView(lib, ui.below(10));
+    }
+    private View printerTile(Model model) {
+        FrameLayout tile = new FrameLayout(this); tile.setBackground(ui.shape(com.orcamobile.app.glass.KeplerUi.FIELD, 0, 14));
+        tile.addView(ui.image(R.drawable.kv3_printer, 24, com.orcamobile.app.glass.KeplerUi.WHITE), new FrameLayout.LayoutParams(ui.dp(24), ui.dp(24), Gravity.CENTER)); return tile;
+    }
+    /** Mint "Selected" badge (node 5:270): 24dp mint circle with the dark check. */
+    private View selectedBadge() {
+        FrameLayout b = new FrameLayout(this); b.setBackground(ui.shape(com.orcamobile.app.glass.KeplerUi.MINT, 0, 12));
+        b.addView(ui.image(R.drawable.kv3_check, 16, 0xFF12302A), new FrameLayout.LayoutParams(ui.dp(16), ui.dp(16), Gravity.CENTER));
+        b.setLayoutParams(ui.lp(24, 24)); b.setContentDescription(getString(R.string.glass_selected)); return b;
+    }
+    private void saveVariant(Model model, OrcaProfileCatalog.Profile variant, boolean close) {
+        try {
+            OrcaProfileCatalog.Profile previous = OrcaProfileCatalog.loadSelection(this);
+            boolean changed = previous == null || previous.imported != variant.imported || !previous.path.equals(variant.path) || !previous.name.equals(variant.name) || !previous.vendor.equals(variant.vendor);
+            if (changed) ProcessOverridesStore.changeSelection(this, () -> OrcaProfileCatalog.saveSelection(this, variant));
+            setResult(RESULT_OK, new Intent());
+            if (close) finish(); else render();
+        } catch (Exception e) { screen.info("Не удалось сохранить профиль", e.getMessage()); }
+    }
+
     private void renderList() {
-        LinearLayout top=column(); padding(top,24,20,24,8); root.addView(top);
-        top.addView(text("Выберите принтер",27,INK,true)); gap(top,8);
-        top.addView(text("Модели и варианты сопел из каталога OrcaSlicer",13,MUTED,false)); gap(top,20);
-        LinearLayout searchBox=row(); searchBox.setBackground(outline(CARD,24)); padding(searchBox,16,0,12,0);
-        TextView searchIcon=text("⌕",24,MUTED,false); searchBox.addView(searchIcon,lp(30,48));
-        EditText input=new EditText(this); input.setSingleLine(true); input.setTextSize(14); input.setTextColor(INK); input.setHintTextColor(MUTED); input.setHint("Поиск модели или производителя"); input.setBackgroundColor(Color.TRANSPARENT); input.setText(query);
-        searchBox.addView(input,new LinearLayout.LayoutParams(0,dp(48),1)); top.addView(searchBox,lp(-1,50)); gap(top,18);
-        TextView counter=text("",12,MUTED,true); top.addView(counter); gap(top,4);
-        ListView list=new ListView(this); list.setDivider(null); list.setClipToPadding(false); list.setPadding(dp(24),0,dp(24),dp(16)); root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
-        BaseAdapter adapter=new BaseAdapter() {
-            public int getCount(){return visible.size();} public Object getItem(int pos){return visible.get(pos);} public long getItemId(int pos){return pos;}
-            public View getView(int pos, View recycled, ViewGroup parent){
-                Model m=visible.get(pos); LinearLayout item=row(); item.setBackground(outline(CARD,20)); padding(item,10,10,12,10);
-                FrameLayout thumb=coverView(m,72); item.addView(thumb,lp(72,72));
-                LinearLayout labels=column(); padding(labels,14,0,4,0); labels.addView(text(m.vendor.toUpperCase(Locale.ROOT),10,MUTED,true)); gap(labels,5);
-                TextView title=text(m.name,15,INK,true); title.setMaxLines(2); labels.addView(title); gap(labels,5); labels.addView(text(m.variants.size()+" проф.",11,MUTED,false)); item.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
-                item.addView(text("›",26,MUTED,false)); LinearLayout wrapper=column(); wrapper.addView(item,lp(-1,-2)); gap(wrapper,8); return wrapper;
+        final int white = com.orcamobile.app.glass.KeplerUi.WHITE, secondary = com.orcamobile.app.glass.KeplerUi.SECONDARY;
+        screen.body.removeView(screen.scroll);
+        LinearLayout top = ui.column(); top.setPadding(ui.dp(20), ui.dp(12), ui.dp(20), ui.dp(4));
+        LinearLayout searchBox = ui.row(); searchBox.setBackground(ui.field(22)); searchBox.setPadding(ui.dp(14), 0, ui.dp(12), 0);
+        searchBox.addView(ui.image(R.drawable.kv3_search, 20, secondary));
+        EditText input = new EditText(this); input.setSingleLine(true); input.setTextSize(14); input.setTextColor(white); input.setHintTextColor(secondary); input.setHint("Поиск модели или производителя"); input.setBackgroundColor(Color.TRANSPARENT); input.setText(query);
+        com.orcamobile.app.glass.GlassTypography.apply(input, 500);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0, ui.dp(48), 1); ip.leftMargin = ui.dp(8); searchBox.addView(input, ip); top.addView(searchBox, ui.lp(-1, 48));
+        TextView counter = ui.caption(""); counter.setPadding(ui.dp(4), ui.dp(16), ui.dp(4), ui.dp(8)); top.addView(counter);
+        LinearLayout wrap = ui.column(); wrap.addView(top);
+        ListView list = new ListView(this); list.setDivider(null); list.setClipToPadding(false); list.setSelector(new android.graphics.drawable.ColorDrawable(0)); list.setPadding(ui.dp(20), 0, ui.dp(20), ui.dp(16)); wrap.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
+        screen.body.addView(wrap, new FrameLayout.LayoutParams(-1, -1));
+        BaseAdapter adapter = new BaseAdapter() {
+            public int getCount() { return visible.size(); } public Object getItem(int pos) { return visible.get(pos); } public long getItemId(int pos) { return pos; }
+            public View getView(int pos, View recycled, ViewGroup parent) {
+                Model m = visible.get(pos); LinearLayout item = ui.row(); item.setBackground(ui.glass(24)); item.setPadding(ui.dp(10), ui.dp(10), ui.dp(14), ui.dp(10));
+                FrameLayout thumb = coverView(m, 64); item.addView(thumb, ui.lp(64, 64));
+                LinearLayout labels = ui.column(); LinearLayout.LayoutParams lp2 = ui.weight(); lp2.leftMargin = ui.dp(12); lp2.rightMargin = ui.dp(8);
+                labels.addView(ui.caption(m.vendor));
+                TextView title = ui.text(m.name, 16, 700, white); title.setMaxLines(2); labels.addView(title, ui.below(2));
+                labels.addView(ui.line(m.variants.size() + " проф.", 12, 500, secondary), ui.below(2)); item.addView(labels, lp2);
+                item.addView(ui.image(R.drawable.kv3_chevron_right, 20, white));
+                LinearLayout wrapper = ui.column(); wrapper.addView(item, ui.lp(-1, -2)); wrapper.addView(ui.spacer(10)); return wrapper;
             }
         }; list.setAdapter(adapter);
-        Runnable filter=()->{ String q=query.trim().toLowerCase(Locale.ROOT); visible.clear(); for(Model m:models) if(q.isEmpty() || (m.vendor+" "+m.name).toLowerCase(Locale.ROOT).contains(q)) visible.add(m); counter.setText(visible.isEmpty()?"Модели не найдены":"МОДЕЛИ  ·  "+visible.size()); adapter.notifyDataSetChanged(); };
-        input.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int c,int f){} public void onTextChanged(CharSequence s,int a,int before,int count){ query=s.toString();filter.run();} public void afterTextChanged(Editable e){} });
-        list.setOnItemClickListener((p,v,pos,id)->{ chosenModel=visible.get(pos); chosenVariant=null; detailScrollY=0; OrcaProfileCatalog.Profile saved=OrcaProfileCatalog.loadSelection(this); if(saved!=null) for(OrcaProfileCatalog.Profile variant:chosenModel.variants) if(variant.path.equals(saved.path)) chosenVariant=variant; ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(input.getWindowToken(),0); render(); });
+        Runnable filter = () -> { String q = query.trim().toLowerCase(Locale.ROOT); visible.clear(); for (Model m : models) if (q.isEmpty() || (m.vendor + " " + m.name).toLowerCase(Locale.ROOT).contains(q)) visible.add(m); counter.setText((visible.isEmpty() ? "Модели не найдены" : "Модели  ·  " + visible.size()).toUpperCase(Locale.getDefault())); adapter.notifyDataSetChanged(); };
+        input.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s, int a, int c, int f) {} public void onTextChanged(CharSequence s, int a, int before, int count) { query = s.toString(); filter.run(); } public void afterTextChanged(Editable e) {} });
+        list.setOnItemClickListener((p, v, pos, id) -> { chosenModel = visible.get(pos); chosenVariant = null; detailScrollY = 0; OrcaProfileCatalog.Profile saved = OrcaProfileCatalog.loadSelection(this); if (saved != null) for (OrcaProfileCatalog.Profile variant : chosenModel.variants) if (variant.path.equals(saved.path)) chosenVariant = variant; ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(input.getWindowToken(), 0); render(); });
         filter.run();
     }
+
     private void renderDetails() {
-        ScrollView scroll=new ScrollView(this); scroll.setFillViewport(true); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        content=column(); padding(content,24,16,24,24); scroll.addView(content);
-        TextView vendor=text(chosenModel.vendor.toUpperCase(Locale.ROOT),11,MUTED,true); vendor.setLetterSpacing(.08f); content.addView(vendor); gap(content,8);
-        content.addView(text(chosenModel.name,27,INK,true)); gap(content,8); content.addView(text("Выберите вариант профиля для этой модели",13,MUTED,false)); gap(content,20);
-        FrameLayout hero=coverView(chosenModel,240); content.addView(hero,lp(-1,240)); gap(content,22);
-        content.addView(text("Сопло и вариант",18,INK,true)); gap(content,7);
-        content.addView(text("Названия вариантов взяты из профилей OrcaSlicer.",12,MUTED,false)); gap(content,12);
-        for(OrcaProfileCatalog.Profile p:chosenModel.variants) {
-            LinearLayout option=row(); option.setBackground(outline(CARD,18)); padding(option,16,13,16,13);
-            LinearLayout labels=column(); String variant=p.variant==null || p.variant.trim().isEmpty()?"Вариант не указан":"Вариант  " + p.variant;
-            labels.addView(text(variant,15,INK,true)); gap(labels,5); labels.addView(text(p.name,11,MUTED,false)); option.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
-            boolean selected=chosenVariant!=null && p.path.equals(chosenVariant.path); TextView radio=text(selected?"●":"○",24,INK,false); radio.setContentDescription(selected?"Выбрано":"Не выбрано"); option.addView(radio);
-            option.setContentDescription(variant+", "+p.name+(selected?", выбрано":"")); option.setOnClickListener(v->{chosenVariant=p; detailScrollY=scroll.getScrollY(); render();}); content.addView(option,lp(-1,-2)); gap(content,8);
+        final int white = com.orcamobile.app.glass.KeplerUi.WHITE, secondary = com.orcamobile.app.glass.KeplerUi.SECONDARY;
+        ScrollView scroll = screen.scroll;
+        content.addView(ui.caption(chosenModel.vendor));
+        content.addView(ui.text("Выберите вариант профиля для этой модели", 13, 500, secondary), ui.below(6));
+        FrameLayout hero = coverView(chosenModel, 220); content.addView(hero, new LinearLayout.LayoutParams(-1, ui.dp(220))); ((LinearLayout.LayoutParams) hero.getLayoutParams()).topMargin = ui.dp(14);
+        screen.section("Сопло и вариант", null, null);
+        LinearLayout card = ui.card(24);
+        for (int i = 0; i < chosenModel.variants.size(); i++) {
+            OrcaProfileCatalog.Profile p = chosenModel.variants.get(i);
+            String variant = p.variant == null || p.variant.trim().isEmpty() ? "Вариант не указан" : "Вариант  " + p.variant;
+            boolean selected = chosenVariant != null && p.path.equals(chosenVariant.path);
+            View trailing = selected ? selectedBadge() : null;
+            LinearLayout row = ui.listRow(0, variant, p.name, trailing, () -> { chosenVariant = p; detailScrollY = scroll.getScrollY(); render(); });
+            row.setContentDescription(variant + ", " + p.name + (selected ? ", выбрано" : ""));
+            if (i > 0) card.addView(ui.hairline()); card.addView(row);
         }
-        gap(content,8); TextView disclaimer=text("Системный профиль сохраняется на устройстве и применяется при экспериментальной нарезке вместе с выбранными процессом и материалом.",12,MUTED,false); disclaimer.setLineSpacing(dp(3),1); content.addView(disclaimer); gap(content,16);
-        TextView save=text("Сохранить выбор",14,chosenVariant==null?MUTED:BG,true); save.setGravity(Gravity.CENTER); save.setBackground(shape(chosenVariant==null?LINE:INK,24)); save.setEnabled(chosenVariant!=null); content.addView(save,lp(-1,50));
-        save.setOnClickListener(v->{try {
-            OrcaProfileCatalog.Profile previous=OrcaProfileCatalog.loadSelection(this);
-            boolean changed=previous==null || previous.imported!=chosenVariant.imported || !previous.path.equals(chosenVariant.path) || !previous.name.equals(chosenVariant.name) || !previous.vendor.equals(chosenVariant.vendor);
-            if(changed) ProcessOverridesStore.changeSelection(this,()->OrcaProfileCatalog.saveSelection(this,chosenVariant));
-            setResult(RESULT_OK,new Intent()); finish();
-        } catch(Exception e) { new android.app.AlertDialog.Builder(this).setTitle("Не удалось сохранить профиль").setMessage(e.getMessage()).setPositiveButton("Понятно",null).show(); }});
-        scroll.post(()->scroll.scrollTo(0,detailScrollY));
+        content.addView(card, new LinearLayout.LayoutParams(-1, -2));
+        TextView disclaimer = ui.text("Системный профиль сохраняется на устройстве и применяется при экспериментальной нарезке вместе с выбранными процессом и материалом.", 12, 500, secondary); disclaimer.setPadding(ui.dp(4), 0, ui.dp(4), 0);
+        content.addView(disclaimer, ui.below(14));
+        LinearLayout save = ui.primaryButton(R.drawable.kv3_check, "Сохранить выбор", () -> { if (chosenVariant != null) saveVariant(chosenModel, chosenVariant, true); });
+        ui.setEnabled(save, chosenVariant != null);
+        content.addView(save, ui.below(16));
+        scroll.post(() -> scroll.scrollTo(0, detailScrollY));
     }
     private FrameLayout coverView(Model model,int size) {
-        FrameLayout box=new FrameLayout(this); box.setBackground(shape(SURFACE,20)); box.setClipToOutline(true);
-        TextView fallback=text("▧",size>100?48:26,MUTED,false); fallback.setGravity(Gravity.CENTER); fallback.setContentDescription("Изображение модели отсутствует"); box.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
+        FrameLayout box=new FrameLayout(this); box.setBackground(shape(com.orcamobile.app.glass.KeplerUi.FIELD,size>100?20:16)); box.setClipToOutline(true);
+        TextView fallback=text("▧",size>100?48:26,com.orcamobile.app.glass.KeplerUi.SECONDARY,false); fallback.setGravity(Gravity.CENTER); fallback.setContentDescription("Изображение модели отсутствует"); box.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
         ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); image.setPadding(dp(8),dp(8),dp(8),dp(8)); image.setContentDescription("Изображение "+model.name+" из OrcaSlicer");
         box.addView(image,new FrameLayout.LayoutParams(-1,-1));
         if(model.cover.isEmpty()) { image.setVisibility(View.GONE); return box; }

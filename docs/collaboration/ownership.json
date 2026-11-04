@@ -12,7 +12,31 @@
     "app/src/main/res/values*/glass_strings.xml",
     "app/src/main/res/values*/glass_entry_strings.xml",
     "app/src/main/res/values*/styles.xml",
-    "docs/ui/*"
+    "docs/ui/*",
+    "app/src/main/java/com/orcamobile/app/MainActivity.java",
+    "app/src/main/java/com/orcamobile/app/StlView.java",
+    "app/src/main/java/com/orcamobile/app/MdUi.java",
+    "app/src/main/java/com/orcamobile/app/KeplerScreen.java",
+    "app/src/main/java/com/orcamobile/app/DeviceActivity.java",
+    "app/src/main/java/com/orcamobile/app/ImportActivity.java",
+    "app/src/main/java/com/orcamobile/app/PrimitiveShapes.java",
+    "app/src/main/java/com/orcamobile/app/ShareProvider.java",
+    "app/src/main/java/com/orcamobile/app/GcodeExportActivity.java",
+    "app/src/main/java/com/orcamobile/app/GcodePreviewActivity.java",
+    "app/src/main/java/com/orcamobile/app/GcodeAnalysis.java",
+    "app/src/main/java/com/orcamobile/app/ToolpathGeometry.java",
+    "app/src/main/java/com/orcamobile/app/NetworkActivity.java",
+    "app/src/main/java/com/orcamobile/app/PrinterPickerActivity.java",
+    "app/src/main/java/com/orcamobile/app/ProfilePickerActivity.java",
+    "app/src/main/java/com/orcamobile/app/ProcessSettingsActivity.java",
+    "app/src/main/java/com/orcamobile/app/SliceActivity.java",
+    "app/src/main/AndroidManifest.xml",
+    "app/src/main/res/values*/kepler_v3_*.xml",
+    "tools/SvgToVector.java",
+    "docs/collaboration/ownership.json"
+  ],
+  "ownerTransfers": [
+    {"task": "UI-010", "date": "2026-11-04", "by": "owner (chat)", "note": "Owner lifted the ownership limits for the full Kepler Glass UI v3 port; the paths appended to the claude list after docs/ui/* were edited under this decision. Codex should review them before integration."}
   ],
   "mixedFrozen": [
     "MainActivity.java",

@@ -1,7 +1,6 @@
 package com.orcamobile.app;
 
 import android.app.Activity;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.Editable;
@@ -11,147 +10,164 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import com.keplerslicer.engine.ExperimentalSlicer;
+import com.orcamobile.app.glass.KeplerUi;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Selects exact upstream profile identities. The engine validates final compatibility. */
+/**
+ * Filament library (Figma node 5:406) and the matching process library. Selects exact upstream profile
+ * identities; the engine validates final compatibility.
+ */
 public class ProfilePickerActivity extends Activity {
     public static final String EXTRA_KIND = "profile_kind";
-    private int BG, INK, MUTED, CARD, CONTAINER;
+    private static final String[] TYPES = {"PLA", "PETG", "ABS", "ASA", "TPU", "PA", "PC"};
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
-    private final List<OrcaProcessFilamentCatalog.Profile> visible = new ArrayList<>();
+    private final List<Object> rows = new ArrayList<>();
     private List<OrcaProcessFilamentCatalog.Profile> all;
     private OrcaProfileCatalog.Profile printer;
-    private OrcaProcessFilamentCatalog.Profile selectedProcess;
-    private String kind, query = "";
-    private boolean showAll;
+    private OrcaProcessFilamentCatalog.Profile selectedProcess, current;
+    private String kind, query = "", type;
+    private boolean showAll, favouritesOnly;
     private boolean calculating = true;
     private String compatibilityError;
     private Map<String,String> compatibility = new HashMap<>();
+    private final Set<String> favourites = new HashSet<>();
     private int generation;
-    private TextView status, filter;
+    private TextView status, compatibleChip, favouriteChip; private EditText search;
+    private final List<TextView> typeChips = new ArrayList<>();
     private BaseAdapter adapter;
-    private int dp(float n) { return (int)(n * getResources().getDisplayMetrics().density + .5f); }
-    private LinearLayout.LayoutParams lp(int w, int h) { return new LinearLayout.LayoutParams(w < 0 ? w : dp(w), h < 0 ? h : dp(h)); }
-    private TextView text(String value, int sp, int color, boolean bold) {
-        TextView v = new TextView(this); v.setText(value); v.setTextSize(sp); v.setTextColor(color);
-        v.setTypeface(Typeface.create("sans-serif", bold ? Typeface.BOLD : Typeface.NORMAL)); return v;
+    private KeplerScreen screen; private KeplerUi ui; private LinearLayout index; private ListView listView;
+    /** Alphabet index (Figma 5:406): one 11/600 letter per vendor initial; tap jumps to that vendor group. */
+    private void updateIndex() {
+        if (index == null) return; index.removeAllViews(); java.util.LinkedHashMap<Character, Integer> first = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < rows.size(); i++) if (rows.get(i) instanceof Header) { String v = ((Header) rows.get(i)).vendor; if (v.isEmpty()) continue; char c = Character.toUpperCase(v.charAt(0)); if (!first.containsKey(c)) first.put(c, i); }
+        index.setVisibility(first.size() > 1 ? View.VISIBLE : View.GONE);
+        for (java.util.Map.Entry<Character, Integer> e : first.entrySet()) { TextView t = ui.line(String.valueOf(e.getKey()), 11, 600, KeplerUi.WHITE); t.setGravity(Gravity.CENTER); t.setMinHeight(ui.dp(20)); t.setContentDescription(String.valueOf(e.getKey())); final int pos = e.getValue(); t.setOnClickListener(v -> listView.setSelectionFromTop(pos, 0)); index.addView(t, new LinearLayout.LayoutParams(-1, -2)); }
     }
-    private GradientDrawable shape(int color, int radius) {
-        GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d;
-    }
-    private void pad(View v, int l, int t, int r, int b) { v.setPadding(dp(l),dp(t),dp(r),dp(b)); }
+
+    private static final class Header { final String vendor; final int count; Header(String v, int c) { vendor = v; count = c; } }
+    private static final class Row { final OrcaProcessFilamentCatalog.Profile profile; final boolean first, last; Row(OrcaProcessFilamentCatalog.Profile p, boolean f, boolean l) { profile = p; first = f; last = l; } }
 
     @Override public void onCreate(Bundle state) {
         MdUi.prepare(this); super.onCreate(state);
-        MdUi palette = new MdUi(this);
-        BG=palette.bg; INK=palette.ink; MUTED=palette.muted; CARD=palette.surface; CONTAINER=palette.container;
         kind = getIntent().getStringExtra(EXTRA_KIND);
         if (!OrcaProcessFilamentCatalog.PROCESS.equals(kind) && !OrcaProcessFilamentCatalog.FILAMENT.equals(kind)) { finish(); return; }
-        if (state != null) { query = state.getString("query", ""); showAll = state.getBoolean("showAll"); }
+        if (state != null) { query = state.getString("query", ""); showAll = state.getBoolean("showAll"); type = state.getString("type"); favouritesOnly = state.getBoolean("fav"); }
+        favourites.addAll(getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).getStringSet("favourites_" + kind, new HashSet<>()));
         printer = OrcaProfileCatalog.loadSelection(this);
-        selectedProcess = OrcaProcessFilamentCatalog.FILAMENT.equals(kind)
-                ? OrcaProcessFilamentCatalog.loadSelection(this, OrcaProcessFilamentCatalog.PROCESS) : null;
-        getWindow().setStatusBarColor(BG); getWindow().setNavigationBarColor(BG);
-        getWindow().getDecorView().setSystemUiVisibility(palette.dark ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        selectedProcess = OrcaProcessFilamentCatalog.FILAMENT.equals(kind) ? OrcaProcessFilamentCatalog.loadSelection(this, OrcaProcessFilamentCatalog.PROCESS) : null;
+        current = OrcaProcessFilamentCatalog.loadSelection(this, kind);
+        boolean filament = OrcaProcessFilamentCatalog.FILAMENT.equals(kind);
+        KeplerUi kui = new KeplerUi(this);
+        View plus = kui.glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.kv3_new_preset), () -> screen.unavailable(getString(R.string.kv3_new_preset)));
+        screen = new KeplerScreen(this, getString(filament ? R.string.kv3_filament : R.string.kv3_process), this::finish, plus, 1); ui = screen.ui;
+        if (printer == null || printer.imported || printer.path.isEmpty()) { screen.content.addView(ui.text("Сначала выберите системный профиль принтера и сопла.", 14, 500, KeplerUi.SECONDARY)); return; }
 
-        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(BG);
-        if (android.os.Build.VERSION.SDK_INT >= 35) root.setOnApplyWindowInsetsListener((v,insets) -> {
-            android.graphics.Insets s = insets.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
-            v.setPadding(s.left,s.top,s.right,s.bottom); return insets;
-        });
-        setContentView(root);
-        LinearLayout bar = new LinearLayout(this); bar.setGravity(Gravity.CENTER_VERTICAL); pad(bar,20,12,20,8);
-        TextView back = text("‹",32,INK,false); back.setGravity(Gravity.CENTER); back.setContentDescription("Назад"); back.setOnClickListener(v -> finish()); bar.addView(back,lp(42,48));
-        TextView title = text(OrcaProcessFilamentCatalog.PROCESS.equals(kind) ? "Профиль печати" : "Профиль материала", 21, INK, true);
-        pad(title,8,0,0,0); bar.addView(title,new LinearLayout.LayoutParams(0,-2,1)); root.addView(bar);
-        if (printer == null || printer.imported || printer.path.isEmpty()) {
-            TextView msg = text("Сначала выберите системный профиль принтера и сопла.",14,MUTED,false); pad(msg,24,20,24,0); root.addView(msg); return;
-        }
-        LinearLayout top = new LinearLayout(this); top.setOrientation(LinearLayout.VERTICAL); pad(top,24,8,24,8); root.addView(top);
-        top.addView(text(printer.name,13,INK,true));
-        TextView explanation = text("Движок Orca проверяет производителя принтера, выбранного процесса и библиотеку материалов. Остальные профили общего каталога не проверены.",12,MUTED,false);
-        pad(explanation,0,6,0,12); top.addView(explanation);
-        EditText search = new EditText(this); search.setSingleLine(true); search.setTextSize(15); search.setTextColor(INK);
-        search.setHintTextColor(MUTED); search.setHint("Поиск профиля"); search.setBackground(shape(CARD,22));
-        pad(search,16,0,16,0); search.setText(query); top.addView(search,lp(-1,50));
-        filter = text("",13,INK,true); filter.setGravity(Gravity.CENTER); filter.setBackground(shape(CONTAINER,100));
-        filter.setMinHeight(dp(48)); pad(filter,12,8,12,8);
-        LinearLayout.LayoutParams filterLp = lp(-1,-2); filterLp.topMargin = dp(12); top.addView(filter,filterLp);
-        filter.setOnClickListener(v -> { showAll = !showAll; refilter(); });
-        status = text("Загружаем профили…",12,MUTED,false); pad(status,0,12,0,4); top.addView(status);
-        ListView list = new ListView(this); list.setDivider(null); list.setClipToPadding(false); list.setPadding(dp(24),0,dp(24),dp(16));
-        root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
-        adapter = new BaseAdapter() {
-            @Override public int getCount() { return visible.size(); }
-            @Override public Object getItem(int i) { return visible.get(i); }
-            @Override public long getItemId(int i) { return i; }
-            @Override public View getView(int i, View ignored, ViewGroup parent) {
-                OrcaProcessFilamentCatalog.Profile p = visible.get(i);
-                LinearLayout wrapper = new LinearLayout(ProfilePickerActivity.this); wrapper.setOrientation(LinearLayout.VERTICAL);
-                LinearLayout row = new LinearLayout(ProfilePickerActivity.this); row.setOrientation(LinearLayout.VERTICAL);
-                row.setBackground(shape(CARD,18)); pad(row,16,12,16,12);
-                TextView name = text(p.name,15,INK,true); name.setMaxLines(2); row.addView(name);
-                String hint = p.vendor + " · " + compatibilityLabel(compatibility.get(profileKey(p.vendor,p.name)));
-                TextView subtitle = text(hint,11,MUTED,false); pad(subtitle,0,4,0,0); row.addView(subtitle);
-                wrapper.addView(row,lp(-1,-2)); View gap = new View(ProfilePickerActivity.this); wrapper.addView(gap,lp(1,8)); return wrapper;
+        screen.body.removeView(screen.scroll);
+        LinearLayout top = ui.column(); top.setPadding(ui.dp(20), ui.dp(4), ui.dp(20), 0);
+        if (filament) {
+            LinearLayout head = ui.row(); head.setPadding(ui.dp(4), ui.dp(12), ui.dp(4), ui.dp(8));
+            head.addView(ui.caption(getString(R.string.kv3_loaded)), ui.weight());
+            TextView sync = ui.line(getString(R.string.kv3_sync_printer), 12, 600, KeplerUi.WHITE); sync.setMinHeight(ui.dp(32)); sync.setGravity(Gravity.CENTER_VERTICAL); ui.pressable(sync, null, 8);
+            sync.setOnClickListener(v -> screen.unavailable(getString(R.string.kv3_sync_printer))); head.addView(sync);
+            top.addView(head, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout slots = ui.row();
+            for (int i = 0; i < 4; i++) {
+                boolean loaded = i == 0 && current != null;
+                View slot = slotCard(i + 1, loaded ? shortName(current.name) : getString(R.string.kv3_slot_empty), loaded);
+                LinearLayout.LayoutParams p = ui.weight(); if (i > 0) p.leftMargin = ui.dp(8); slots.addView(slot, p);
             }
+            top.addView(slots, new LinearLayout.LayoutParams(-1, -2));
+        }
+        LinearLayout box = ui.row(); box.setBackground(ui.glass(24)); box.setPadding(ui.dp(16), 0, ui.dp(12), 0);
+        box.addView(ui.image(R.drawable.kv3_search, 20, KeplerUi.WHITE));
+        search = new EditText(this); search.setSingleLine(true); search.setTextSize(15); search.setTextColor(KeplerUi.WHITE); search.setHintTextColor(KeplerUi.SECONDARY);
+        search.setHint(getString(R.string.kv3_search_profiles)); search.setBackground(null); search.setText(query); com.orcamobile.app.glass.GlassTypography.apply(search, 500);
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0, ui.dp(48), 1); sp.leftMargin = ui.dp(10); box.addView(search, sp);
+        top.addView(box, filament ? ui.below(14) : ui.below(12)); ((LinearLayout.LayoutParams) box.getLayoutParams()).height = ui.dp(48);
+
+        HorizontalScrollView s1 = new HorizontalScrollView(this); s1.setHorizontalScrollBarEnabled(false); s1.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        LinearLayout r1 = ui.row(); s1.addView(r1);
+        TextView allChip = ui.chip(getString(R.string.kv3_filter_all), type == null && !favouritesOnly, null); typeChips.add(allChip);
+        allChip.setOnClickListener(v -> { type = null; favouritesOnly = false; updateChips(); refilter(); }); ui.pressable(allChip, allChip.getBackground(), 18);
+        r1.addView(allChip, new LinearLayout.LayoutParams(-2, ui.dp(36)));
+        favouriteChip = ui.chip(getString(R.string.kv3_filter_favourites), favouritesOnly, () -> { favouritesOnly = !favouritesOnly; if (favouritesOnly) type = null; updateChips(); refilter(); });
+        addChip(r1, favouriteChip);
+        if (filament) for (String t : TYPES) { TextView c = ui.chip(t, t.equals(type), () -> { type = t.equals(type) ? null : t; favouritesOnly = false; updateChips(); refilter(); }); c.setTag(t); typeChips.add(c); addChip(r1, c); }
+        top.addView(s1, ui.below(12));
+        HorizontalScrollView s2 = new HorizontalScrollView(this); s2.setHorizontalScrollBarEnabled(false); s2.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        LinearLayout r2 = ui.row(); s2.addView(r2);
+        String printerLabel = printer.model == null || printer.model.isEmpty() ? printer.name : printer.model;
+        compatibleChip = ui.chip(getString(R.string.kv3_filter_compatible, printerLabel), !showAll, () -> { showAll = !showAll; updateChips(); refilter(); });
+        r2.addView(compatibleChip, new LinearLayout.LayoutParams(-2, ui.dp(36)));
+        addChip(r2, ui.chip(getString(R.string.kv3_filter_my_presets), false, () -> screen.unavailable(getString(R.string.kv3_filter_my_presets))));
+        addChip(r2, ui.chip(getString(R.string.kv3_filter_vendors), false, () -> screen.unavailable(getString(R.string.kv3_filter_vendors))));
+        top.addView(s2, ui.below(8));
+        status = ui.text("Загружаем профили…", 12, 500, KeplerUi.SECONDARY); status.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), 0); top.addView(status);
+
+        LinearLayout wrap = ui.column(); wrap.addView(top);
+        ListView list = new ListView(this); list.setDivider(null); list.setClipToPadding(false); list.setSelector(new android.graphics.drawable.ColorDrawable(0));
+        list.setPadding(ui.dp(20), 0, ui.dp(28), ui.dp(16)); FrameLayout listFrame = new FrameLayout(this); listFrame.addView(list, new FrameLayout.LayoutParams(-1, -1)); listView = list;
+        index = ui.column(); index.setGravity(Gravity.CENTER); FrameLayout.LayoutParams ip = new FrameLayout.LayoutParams(ui.dp(24), -2, Gravity.END | Gravity.CENTER_VERTICAL); ip.rightMargin = ui.dp(2); listFrame.addView(index, ip);
+        wrap.addView(listFrame, new LinearLayout.LayoutParams(-1, 0, 1));
+        screen.body.addView(wrap, new FrameLayout.LayoutParams(-1, -1));
+        adapter = new BaseAdapter() {
+            @Override public int getCount() { return rows.size(); }
+            @Override public Object getItem(int i) { return rows.get(i); }
+            @Override public long getItemId(int i) { return i; }
+            @Override public int getViewTypeCount() { return 2; }
+            @Override public int getItemViewType(int i) { return rows.get(i) instanceof Header ? 0 : 1; }
+            @Override public boolean isEnabled(int i) { return rows.get(i) instanceof Row; }
+            @Override public View getView(int i, View ignored, ViewGroup parent) { Object o = rows.get(i); return o instanceof Header ? header((Header) o) : profileRow((Row) o); }
         };
         list.setAdapter(adapter);
-        list.setOnItemClickListener((parent, view, position, id) -> {
-            try {
-                OrcaProcessFilamentCatalog.Profile next=visible.get(position), previous=OrcaProcessFilamentCatalog.loadSelection(this,kind);
-                boolean changed=previous==null || !previous.path.equals(next.path) || !previous.vendor.equals(next.vendor) || !previous.name.equals(next.name);
-                if(changed) ProcessOverridesStore.changeSelection(this,()->{
-                    OrcaProfileCatalog.Profile current=OrcaProfileCatalog.loadSelection(this);
-                    if(current==null || !current.path.equals(printer.path)) throw new java.io.IOException("Профиль принтера изменился. Откройте выбор снова.");
-                    OrcaProcessFilamentCatalog.saveSelection(this,next,printer);
-                });
-                setResult(RESULT_OK); finish();
-            }
-            catch (Exception e) { new android.app.AlertDialog.Builder(this).setTitle("Не удалось сохранить профиль").setMessage(e.getMessage()).setPositiveButton("Понятно",null).show(); }
-        });
+        list.setOnItemClickListener((parent, view, position, id) -> { Object o = rows.get(position); if (o instanceof Row) choose(((Row) o).profile); });
         search.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s,int start,int count,int after) { }
-            @Override public void onTextChanged(CharSequence s,int start,int before,int count) { query = s.toString(); refilter(); }
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { query = s.toString(); refilter(); }
             @Override public void afterTextChanged(Editable e) { }
         });
         final int token = ++generation;
         final android.content.Context context = getApplicationContext();
         worker.execute(() -> {
             try {
-                List<OrcaProcessFilamentCatalog.Profile> loaded = OrcaProcessFilamentCatalog.load(context,kind);
-                runOnUiThread(() -> { if (!isDestroyed() && token == generation) { all = loaded; refilter(); } });
+                List<OrcaProcessFilamentCatalog.Profile> loaded = OrcaProcessFilamentCatalog.load(context, kind);
+                runOnUiThread(() -> { if (!isDestroyed() && token == generation) { all = loaded; search.setHint(getString(R.string.kv3_search_count, loaded.size())); refilter(); } });
                 String processVendor = selectedProcess == null ? "" : selectedProcess.vendor;
                 String processName = selectedProcess == null ? "" : selectedProcess.name;
                 CompatibilityResources paths = CompatibilityResources.prepare(context, printer.vendor, processVendor);
-                String[] rows = ExperimentalSlicer.listSystemCompatibility(printer.vendor, printer.name, kind,
+                String[] result = ExperimentalSlicer.listSystemCompatibility(printer.vendor, printer.name, kind,
                         processVendor, processName, paths.resources.getAbsolutePath(), paths.data.getAbsolutePath());
-                if (rows == null || rows.length % 3 != 0) throw new java.io.IOException("Неверный ответ движка совместимости.");
+                if (result == null || result.length % 3 != 0) throw new java.io.IOException("Неверный ответ движка совместимости.");
                 Map<String,String> checked = new HashMap<>();
-                for (int i=0; i<rows.length; i+=3) {
-                    if (rows[i] == null || rows[i+1] == null || rows[i+2] == null ||
-                            !(rows[i+2].equals("yes") || rows[i+2].equals("no") || rows[i+2].equals("unknown") || rows[i+2].equals("printer_only")))
+                for (int i = 0; i < result.length; i += 3) {
+                    if (result[i] == null || result[i+1] == null || result[i+2] == null ||
+                            !(result[i+2].equals("yes") || result[i+2].equals("no") || result[i+2].equals("unknown") || result[i+2].equals("printer_only")))
                         throw new java.io.IOException("Неверный ответ движка совместимости.");
-                    checked.put(profileKey(rows[i], rows[i+1]), rows[i+2]);
+                    checked.put(profileKey(result[i], result[i+1]), result[i+2]);
                 }
                 runOnUiThread(() -> {
                     if (isDestroyed() || token != generation) return;
-                    OrcaProfileCatalog.Profile current = OrcaProfileCatalog.loadSelection(this);
+                    OrcaProfileCatalog.Profile currentPrinter = OrcaProfileCatalog.loadSelection(this);
                     OrcaProcessFilamentCatalog.Profile currentProcess = OrcaProcessFilamentCatalog.FILAMENT.equals(kind)
                             ? OrcaProcessFilamentCatalog.loadSelection(this, OrcaProcessFilamentCatalog.PROCESS) : null;
-                    if (current == null || !printer.path.equals(current.path) || !sameProfile(selectedProcess,currentProcess)) {
-                        calculating = false; compatibilityError = "Выбор принтера или процесса изменился. Откройте экран заново."; showAll = true; refilter(); return;
+                    if (currentPrinter == null || !printer.path.equals(currentPrinter.path) || !sameProfile(selectedProcess, currentProcess)) {
+                        calculating = false; compatibilityError = "Выбор принтера или процесса изменился. Откройте экран заново."; showAll = true; updateChips(); refilter(); return;
                     }
                     compatibility = checked; calculating = false; refilter();
                 });
@@ -159,13 +175,82 @@ public class ProfilePickerActivity extends Activity {
                 String message = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
                 runOnUiThread(() -> {
                     if (!isDestroyed() && token == generation) {
-                        calculating = false; compatibilityError = message; showAll = true;
+                        calculating = false; compatibilityError = message; showAll = true; updateChips();
                         if (all == null) status.setText("Не удалось загрузить профили: " + message); else refilter();
                     }
                 });
             }
         });
     }
+
+    private void addChip(LinearLayout row, TextView chip) { LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, ui.dp(36)); p.leftMargin = ui.dp(8); row.addView(chip, p); }
+    private void updateChips() {
+        for (TextView c : typeChips) { Object t = c.getTag(); ui.setChipActive(c, t == null ? type == null && !favouritesOnly : t.equals(type)); }
+        if (favouriteChip != null) ui.setChipActive(favouriteChip, favouritesOnly);
+        if (compatibleChip != null) ui.setChipActive(compatibleChip, !showAll);
+    }
+
+    /** AMS slot (node 5:406 "Loaded"): glass r18, 22dp colour circle, "n" + 11/600 name; the loaded slot has a mint stroke. */
+    private View slotCard(int number, String name, boolean loaded) {
+        LinearLayout c = ui.column(); c.setGravity(Gravity.CENTER); c.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), ui.dp(10)); c.setMinimumHeight(ui.dp(80));
+        c.setBackground(ui.shape(KeplerUi.GLASS, loaded ? 0xB35EE0C8 : KeplerUi.GLASS_STROKE, 18));
+        View circle = new View(this); GradientDrawable g = new GradientDrawable(); g.setShape(GradientDrawable.OVAL);
+        if (loaded) { g.setColor(0xFFE9EEF5); g.setStroke(Math.max(1, ui.dp(1)), 0x66FFFFFF); } else { g.setColor(0); g.setStroke(Math.max(1, ui.dp(1.5f)), 0xB3FFFFFF, ui.dp(3), ui.dp(3)); }
+        circle.setBackground(g); c.addView(circle, ui.lp(24, 24));
+        TextView n = ui.line(String.valueOf(number), 11, 600, KeplerUi.WHITE); n.setGravity(Gravity.CENTER); c.addView(n, ui.below(6));
+        TextView t = ui.line(name, 11, 600, KeplerUi.WHITE); t.setGravity(Gravity.CENTER); c.addView(t, new LinearLayout.LayoutParams(-1, -2));
+        c.setContentDescription(getString(R.string.kv3_slot, number) + ", " + name);
+        if (!loaded) ui.pressable(c, c.getBackground(), 18); if (!loaded) c.setOnClickListener(v -> screen.unavailable(getString(R.string.kv3_slot, number)));
+        return c;
+    }
+    private static String shortName(String name) { int at = name.indexOf(" @"); return at > 0 ? name.substring(0, at) : name; }
+    private static String typeOf(String name) { String upper = name.toUpperCase(Locale.ROOT); for (String t : new String[]{"PETG", "PLA", "ABS", "ASA", "TPU", "PCTG", "PA", "PC", "PVA", "HIPS", "PET"}) if (upper.matches(".*(^|[^A-Z])" + t + "([^A-Z]|$).*")) return t; return ""; }
+
+    private View header(Header h) {
+        LinearLayout r = ui.row(); r.setPadding(ui.dp(4), ui.dp(20), ui.dp(4), ui.dp(8));
+        r.addView(ui.caption(h.vendor), ui.weight()); r.addView(ui.line(String.valueOf(h.count), 12, 700, KeplerUi.SECONDARY)); return r;
+    }
+    /** Profile row (node 5:406 list): 26dp swatch, 15/600 name + mint slot tag, 12/500 detail, star toggle; rows join into one r24 card. */
+    private View profileRow(Row row) {
+        OrcaProcessFilamentCatalog.Profile p = row.profile; boolean filament = OrcaProcessFilamentCatalog.FILAMENT.equals(kind);
+        boolean selected = current != null && current.path.equals(p.path) && current.vendor.equals(p.vendor) && current.name.equals(p.name);
+        LinearLayout r = ui.row(); r.setPadding(ui.dp(14), ui.dp(10), ui.dp(8), ui.dp(10)); r.setMinimumHeight(ui.dp(58));
+        GradientDrawable bg = new GradientDrawable(); bg.setColor(KeplerUi.GLASS); bg.setStroke(Math.max(1, ui.dp(1)), KeplerUi.GLASS_STROKE);
+        float rad = ui.dp(24), top = row.first ? rad : 0, bottom = row.last ? rad : 0; bg.setCornerRadii(new float[]{top, top, top, top, bottom, bottom, bottom, bottom});
+        r.setBackground(bg);
+        if (filament) { View sw = new View(this); GradientDrawable g = new GradientDrawable(); g.setShape(GradientDrawable.OVAL); g.setColor(selected ? 0xFFE9EEF5 : 0xFF9DA3AD); g.setStroke(Math.max(1, ui.dp(1)), 0x66FFFFFF); sw.setBackground(g); r.addView(sw, ui.lp(26, 26)); }
+        else { FrameLayout tile = new FrameLayout(this); tile.setBackground(ui.shape(KeplerUi.GLASS, 0, 10)); tile.addView(ui.image(R.drawable.kv3_layers, 18, KeplerUi.WHITE), new FrameLayout.LayoutParams(ui.dp(18), ui.dp(18), Gravity.CENTER)); r.addView(tile, ui.lp(32, 32)); }
+        LinearLayout col = ui.column(); LinearLayout.LayoutParams cp = ui.weight(); cp.leftMargin = ui.dp(14); cp.rightMargin = ui.dp(6); r.addView(col, cp);
+        LinearLayout titleRow = ui.row(); TextView name = ui.line(shortName(p.name), 15, 600, KeplerUi.WHITE); name.setMaxWidth(ui.dp(selected ? 190 : 250)); titleRow.addView(name, new LinearLayout.LayoutParams(-2, -2));
+        if (selected) { TextView tag = ui.line(filament ? getString(R.string.kv3_slot, 1) : getString(R.string.glass_selected), 11, 600, KeplerUi.MINT); tag.setPadding(ui.dp(7), ui.dp(2), ui.dp(7), ui.dp(2)); tag.setBackground(ui.shape(0x2E5EE0C8, 0, 6)); LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2); tp.leftMargin = ui.dp(8); titleRow.addView(tag, tp); }
+        col.addView(titleRow);
+        String t = typeOf(p.name); String detail = (t.isEmpty() ? "" : t + " · ") + compatibilityLabel(compatibility.get(profileKey(p.vendor, p.name)));
+        TextView sub = ui.line(detail, 12, 500, KeplerUi.SECONDARY); col.addView(sub, ui.below(2));
+        String key = profileKey(p.vendor, p.name); boolean fav = favourites.contains(key);
+        FrameLayout star = new FrameLayout(this); ImageView art = ui.image(fav ? R.drawable.kv3_star_filled : R.drawable.kv3_star, 22, KeplerUi.WHITE);
+        star.addView(art, new FrameLayout.LayoutParams(ui.dp(22), ui.dp(22), Gravity.CENTER)); ui.pressable(star, null, 22);
+        star.setContentDescription(getString(R.string.kv3_filter_favourites)); star.setFocusable(true);
+        star.setOnClickListener(v -> { if (favourites.contains(key)) favourites.remove(key); else favourites.add(key); getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).edit().putStringSet("favourites_" + kind, new HashSet<>(favourites)).apply(); refilter(); });
+        r.addView(star, ui.lp(44, 44));
+        r.setContentDescription(p.name + ", " + p.vendor + ", " + detail);
+        LinearLayout wrapper = ui.column(); wrapper.addView(r, new LinearLayout.LayoutParams(-1, -2));
+        if (!row.last) { View d = new View(this); d.setBackgroundColor(KeplerUi.DIVIDER); wrapper.addView(d, new LinearLayout.LayoutParams(-1, Math.max(1, ui.dp(1)))); }
+        return wrapper;
+    }
+
+    private void choose(OrcaProcessFilamentCatalog.Profile next) {
+        try {
+            OrcaProcessFilamentCatalog.Profile previous = OrcaProcessFilamentCatalog.loadSelection(this, kind);
+            boolean changed = previous == null || !previous.path.equals(next.path) || !previous.vendor.equals(next.vendor) || !previous.name.equals(next.name);
+            if (changed) ProcessOverridesStore.changeSelection(this, () -> {
+                OrcaProfileCatalog.Profile currentPrinter = OrcaProfileCatalog.loadSelection(this);
+                if (currentPrinter == null || !currentPrinter.path.equals(printer.path)) throw new java.io.IOException("Профиль принтера изменился. Откройте выбор снова.");
+                OrcaProcessFilamentCatalog.saveSelection(this, next, printer);
+            });
+            setResult(RESULT_OK); finish();
+        } catch (Exception e) { screen.info("Не удалось сохранить профиль", e.getMessage()); }
+    }
+
     private static String profileKey(String vendor, String name) { return vendor + "\u0000" + name; }
     private static boolean sameProfile(OrcaProcessFilamentCatalog.Profile a, OrcaProcessFilamentCatalog.Profile b) {
         return a == null ? b == null : b != null && a.vendor.equals(b.vendor) && a.name.equals(b.name);
@@ -180,22 +265,32 @@ public class ProfilePickerActivity extends Activity {
         }
     }
     private void refilter() {
-        if (filter == null || all == null) return;
-        filter.setText(showAll ? "Весь каталог  ·  Показать проверенные" : "Проверенные  ·  Показать весь каталог");
-        String q = query.trim().toLowerCase(Locale.ROOT); visible.clear();
+        if (status == null || all == null) return;
+        String q = query.trim().toLowerCase(Locale.ROOT); List<OrcaProcessFilamentCatalog.Profile> visible = new ArrayList<>();
         for (OrcaProcessFilamentCatalog.Profile p : all) {
-            String state = compatibility.get(profileKey(p.vendor,p.name));
+            String state = compatibility.get(profileKey(p.vendor, p.name));
             if (!showAll && !("yes".equals(state) || "printer_only".equals(state))) continue;
             if (!q.isEmpty() && !(p.name + " " + p.vendor).toLowerCase(Locale.ROOT).contains(q)) continue;
+            if (type != null && !type.equals(typeOf(p.name))) continue;
+            if (favouritesOnly && !favourites.contains(profileKey(p.vendor, p.name))) continue;
             visible.add(p);
         }
-        visible.sort(Comparator.<OrcaProcessFilamentCatalog.Profile>comparingInt(p -> "yes".equals(compatibility.get(profileKey(p.vendor,p.name))) ? 0 : 1)
-                .thenComparing(p -> p.name.toLowerCase(Locale.ROOT)).thenComparing(p -> p.vendor));
+        visible.sort(Comparator.<OrcaProcessFilamentCatalog.Profile, String>comparing(p -> p.vendor.toLowerCase(Locale.ROOT))
+                .thenComparingInt(p -> "yes".equals(compatibility.get(profileKey(p.vendor, p.name))) ? 0 : 1)
+                .thenComparing(p -> p.name.toLowerCase(Locale.ROOT)));
+        rows.clear();
+        for (int i = 0; i < visible.size(); ) {
+            String vendor = visible.get(i).vendor; int j = i; while (j < visible.size() && visible.get(j).vendor.equals(vendor)) j++;
+            rows.add(new Header(vendor, j - i));
+            for (int k = i; k < j; k++) rows.add(new Row(visible.get(k), k == i, k == j - 1));
+            i = j;
+        }
         if (calculating) status.setText("Проверяем совместимость в OrcaSlicer…");
         else if (compatibilityError != null) status.setText("Не удалось проверить совместимость: " + compatibilityError);
-        else status.setText(visible.isEmpty() ? "Ничего не найдено" : "ПРОФИЛИ  ·  " + visible.size());
-        adapter.notifyDataSetChanged();
+        else status.setText(visible.isEmpty() ? "Ничего не найдено" : "");
+        status.setVisibility(status.getText().length() == 0 ? View.GONE : View.VISIBLE);
+        adapter.notifyDataSetChanged(); updateIndex();
     }
-    @Override protected void onSaveInstanceState(Bundle out) { out.putString("query",query); out.putBoolean("showAll",showAll); super.onSaveInstanceState(out); }
+    @Override protected void onSaveInstanceState(Bundle out) { out.putString("query", query); out.putBoolean("showAll", showAll); out.putString("type", type); out.putBoolean("fav", favouritesOnly); super.onSaveInstanceState(out); }
     @Override protected void onDestroy() { generation++; worker.shutdownNow(); super.onDestroy(); }
 }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="kv3_layers">
+        <item quantity="one">%d слой</item>
+        <item quantity="few">%d слоя</item>
+        <item quantity="many">%d слоёв</item>
+        <item quantity="other">%d слоя</item>
+    </plurals>
+</resources>
