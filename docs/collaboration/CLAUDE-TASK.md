@@ -1,5 +1,7 @@
 # UI-008 — Figma v3 Settings hub (6:368)
 
+Integrated at `aa38e26`. See the [Android QA report](INCREMENT-2026-11-04-UI008.md). The assignment below records the initial handoff.
+
 Implement only the native Settings hub visual layout, including its scrolling
 cards and actions. Do this yourself in the Kepler-Claude worktree with the
 existing bounded launcher. Read AGENTS.md, CLAUDE.md and the relevant parts of
