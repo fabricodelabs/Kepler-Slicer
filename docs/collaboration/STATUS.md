@@ -1,9 +1,9 @@
-# Current checkpoint — 2026-11-04
+# Current increment — 2026-11-04
 
-UI-008 Settings hub is in progress at Claude checkpoint `e68d8e9`. Its
-components compile and await the hub wiring. Technical JNI diagnostics are
-built at Codex checkpoint `a847f46` and await device validation. See the
-[checkpoint report](INCREMENT-2026-11-04-UI008.md) for exact scope.
+The UI-008 Settings hub is integrated at `aa38e26`. The [increment report](INCREMENT-2026-11-04-UI008.md)
+records the build, device screenshots and remaining design differences.
+The [JNI precision fixture](JNI-PRECISION-2026-11-04.md) passed on Android
+and is included. Phase 2 remains in progress.
 
 ## Accepted UI-007 increment — 2026-11-04
 
