@@ -15,5 +15,21 @@
 - Label uses fixed 1.3 line spacing multiplier with font padding off; verify vs. Manrope metrics.
 - Item height is min 54dp and grows with font scale, so the bar exceeds 68dp at large fonts by design.
 
-## Pending Codex checks (nothing run here)
+## Integration changes
+
+Codex preserved the Claude candidate at `f0cffa1` and corrected the gallery
+footer with a separate outer column and positive insets. The inner tab height
+now derives from the rounded bar height and padding. The caption reserves a
+scale-aware line box and allows taller native font metrics. Host margins use
+the same nav tokens. The obsolete flex and circle tokens were removed.
+Reduced transparency uses its existing opaque fill with the v3 outline.
+
+## Candidate checks
+
+Offline `assembleDebug lintDebug` passed with 120 lint warnings. Source SVG
+and raster PNG hashes match the staged manifest. Android Studio installed
+APK `5829926B…` on Medium Phone API 37. The integrator records actual device
+coverage and remaining deviations in the increment report.
+
+## Original Claude acceptance checklist
 Compile; `tools/check_team_scope.ps1`; `git diff --check`; emulator QA: 390dp portrait (expect 358x68), narrow width, landscape, font scale 1.3/2.0 (ellipsis, no clipping), reduced transparency, keyboard open in Settings, TalkBack selected state/focus retention, gallery reference mode scroll state and routes.
