@@ -1,5 +1,7 @@
 # UI-007 Figma v3 bottom navigation
 
+Completed and integrated at `180e64b`. See the [QA report](INCREMENT-2026-11-04-UI007.md). The assignment below records the original handoff.
+
 Implement this bounded Phase 2 presentation task in Kepler-Claude on claude/ui.
 Read AGENTS.md and CLAUDE.md. Use Java/Android Views. This is a new task, separate
 from the completed UI-006 run. Launcher remains Sonnet, medium, USD1, 12 turns.
