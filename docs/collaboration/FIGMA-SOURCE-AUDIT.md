@@ -1,9 +1,8 @@
 # Figma source audit: Kepler Slicer Glass UI v3
 
-Status: source identified through read-only browser inspection. Library,
-Settings and Preferences were visually inspected; precise layer parameters,
-source assets and tokens have not been retrieved. This is not a complete visual
-audit or an implementation handoff.
+On 2026-11-04 Figma MCP returned design context and screenshots for Settings
+(`6:368`) and Library (`2:32`) after the owner updated the subscription.
+The initial browser observations below are retained for the other nodes.
 
 ## Owner requirement and source
 
@@ -82,30 +81,34 @@ assets or measured design specifications.
 - Preferences has matching header/search, category chips, compact groups and
   the same bottom-navigation component. Full-length reference columns exist.
 
-These findings establish concrete mismatches for a later scoped handoff. Icon
-paths, stroke bounds, gradients, blur, typography metrics and all dimensions
-must still be obtained from high-fidelity design context before implementation.
+These observations guided the first high-fidelity reads of Settings and Library.
 
-## Available context and missing inspection
+## Retrieved Figma context
 
-The Figma plugin is reported installed and enabled, but the session tool inventory
-does not currently expose `get_design_context` or `get_screenshot`. The owner
-added `@Figma` after supplying the URL; the subsequent tool inventory still
-contained no Figma tools. Browser accessibility labels
-are not a substitute for high-fidelity design context.
+The earlier Starter quota failure is resolved for the two tested reads.
+The local capture at `outputs/Kepler-Figma-v3` contains the generated
+reference layouts, node and component notes, original PNG previews, and
+all 84 SVG references returned by the two contexts (61 distinct hashes).
+Each SVG parsed successfully. The manifest records its source group,
+file name, dimensions, size and SHA-256. The reference layouts use relative
+asset paths so the capture does not depend on expiring Figma URLs.
 
-Before assigning implementation, obtain and inspect the relevant node context,
-reference screenshots, component/instance relationships, variants and interaction
-states; exact icon/vector assets and export bounds; typography; colors and
-opacity; effects, gradients and blur; strokes and radii; layout measurements,
-spacing, constraints and scrolling behavior; variables/tokens; and any available
-adaptive layouts. Record the mapping from Figma nodes to existing Android
-components. Details absent from the inspected source must remain explicit gaps.
+The Library reference shows four navigation states. The bar is 358 by 68
+design pixels at the 390-pixel Settings width. Its four items share the
+available width, with 6-pixel outer padding, 4-pixel gaps, 22-pixel icons,
+and 11-pixel Manrope semibold captions below the icons. The active item
+uses a white pill. The capture also contains the switch variants and
+original icon assets. Process, Preferences and other screens still need
+their own high-fidelity inspection before their implementation.
 
-Figma-driven UI implementation remains pending the required context; this audit
-does not restart Claude. Prepare a bounded implementation assignment after the required
-high-fidelity context is available. Do not recreate missing assets from a guess
-or claim that the current Material glyphs match the Figma icons.
+The first bounded UI assignment can now use these references to align
+`GlassNavigation` and its four icons, with footer layout changes limited
+to Settings, Preferences and the component gallery. Preserve existing
+navigation callbacks, localized accessibility labels, adaptive font behavior
+and safe insets. Verify the four states and actual rendered assets against
+the reference, then check portrait, landscape, large font and keyboard
+behavior through computer use. Workspace navigation in frozen
+`MainActivity` and broader shared palette changes require separate scopes.
 
 ## Existing native UI and ownership
 
@@ -168,8 +171,7 @@ with the Figma Library. Shared glass changes also affect Workspace and other
 mixed/frozen consumers without editing their source files, so those consumers
 need regression checks when a shared component changes.
 
-After context is available, start with one bounded mapping/foundations/icons/
-component assignment, using `GlassGalleryActivity` for inspection, then assign
+Use `GlassGalleryActivity` to inspect the navigation and assign wider
 Settings/Preferences screen work separately. Preserve real model/profile values,
 units, provenance markers, matching/filter semantics, lifecycle and freshness
 guards, draft/save behavior and project read-only enforcement. Sample Figma
@@ -185,8 +187,5 @@ The existing product scope remains Phase 2. Phases 3–7 retain their current ow
 approval gates; identifying Workspace, Import, Preview, Device or Export entries
 in Figma does not open those product phases or authorize their technical work.
 
-The subagent initially added only this audit document. The integrator then
-recorded the primary-source requirement in agent coordination documents and
-propagated it through the worktrees. No application code, Figma source design,
-APK, user model/profile or emulator state was changed for this design inspection;
-no new Claude run was started.
+This access check produced the local design capture and updated the team
+handoff. Application implementation and device acceptance remain pending.
