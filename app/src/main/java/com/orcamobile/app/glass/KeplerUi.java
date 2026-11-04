@@ -34,6 +34,38 @@ public final class KeplerUi {
     public Context context() { return context; }
     public int dp(float v) { return Math.round(v * density); }
 
+    /**
+     * Figma nav bar floats over the page (x16, bottom 24) instead of occupying its own band: the nav is moved
+     * into {@code host} (a FrameLayout over {@code content}) and every scrolling list/scroll view inside content
+     * gets bottom padding equal to the nav's footprint with clipToPadding off, so rows scroll underneath it.
+     */
+    public static void floatNavigation(android.widget.FrameLayout host, View content, View nav, int sideMarginPx, int bottomMarginPx) {
+        if (nav.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) nav.getParent()).removeView(nav);
+        android.widget.FrameLayout.LayoutParams p = new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+        p.setMargins(sideMarginPx, 0, sideMarginPx, bottomMarginPx); host.addView(nav, p);
+        final int extra = Math.round(12 * host.getResources().getDisplayMetrics().density);
+        host.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            if (nav.getHeight() <= 0) return;
+            int[] navXY = new int[2]; nav.getLocationInWindow(navXY);
+            padScrollables(content, navXY[1] - extra, nav.getHeight() + bottomMarginPx + extra);
+        });
+    }
+    private static void padScrollables(View v, int navTop, int fallback) {
+        if (v.getVisibility() == View.GONE) return;
+        if (v instanceof android.widget.ScrollView || v instanceof android.widget.AbsListView) {
+            int[] xy = new int[2]; v.getLocationInWindow(xy); int bottom = xy[1] + v.getHeight();
+            int need = Math.max(0, bottom - navTop); if (need == 0 && bottom == xy[1]) need = fallback;
+            Object done = v.getTag(R.id.kv3_nav_pad); int base = done instanceof int[] ? ((int[]) done)[0] : v.getPaddingBottom();
+            if (!(done instanceof int[]) || ((int[]) done)[1] != need) {
+                v.setTag(R.id.kv3_nav_pad, new int[]{base, need});
+                v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), base + need);
+                if (v instanceof android.view.ViewGroup) ((android.view.ViewGroup) v).setClipToPadding(false);
+            }
+            return;
+        }
+        if (v instanceof android.view.ViewGroup) { android.view.ViewGroup g = (android.view.ViewGroup) v; for (int i = 0; i < g.getChildCount(); i++) padScrollables(g.getChildAt(i), navTop, fallback); }
+    }
+
     /** Page background: #383d46 with the three original Figma glows. */
     public Drawable backdrop() { return SettingsHubUi.backdrop(context); }
 

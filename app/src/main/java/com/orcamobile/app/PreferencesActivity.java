@@ -66,7 +66,7 @@ public final class PreferencesActivity extends Activity {
         LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);
         int navInset=ui.dp(ui.tokens.navInset);
         np.setMargins(navInset,ui.dp(8),navInset,ui.dp(ui.tokens.navBottom));
-        column.addView(nav,np);
+        column.addView(nav,np);com.orcamobile.app.glass.KeplerUi.floatNavigation(root,column,nav,navInset,ui.dp(ui.tokens.navBottom));
     }
     private void heading(int title){TextView v=ui.section(s(title));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(ui.dp(4),ui.dp(12),ui.dp(4),ui.dp(6));content.addView(v,p);}
     private LinearLayout card(){return ui.vertical();}

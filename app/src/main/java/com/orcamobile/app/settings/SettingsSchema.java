@@ -19,10 +19,10 @@ import java.util.regex.Pattern;
 
 /** Immutable metadata generated from the pinned Orca sources; does not validate through Orca. */
 public final class SettingsSchema {
-    private static volatile SettingsSchema cached;
+    private static volatile SettingsSchema cached; private static volatile String cachedLanguage;
     private final Map<String, List<Option>> sections;
 
-    private SettingsSchema(JSONObject document) throws JSONException, IOException {
+    private SettingsSchema(JSONObject document, JSONObject tr) throws JSONException, IOException {
         if (document.optInt("schema_version", -1) != 1) throw new IOException("Unsupported settings schema version");
         JSONObject source = document.getJSONObject("sections");
         Map<String, List<Option>> result = new LinkedHashMap<>();
@@ -31,7 +31,7 @@ public final class SettingsSchema {
             List<Option> options = new ArrayList<>(rows.length());
             java.util.HashSet<String> seen = new java.util.HashSet<>();
             for (int i = 0; i < rows.length(); i++) {
-                Option option = new Option(rows.getJSONObject(i));
+                Option option = new Option(rows.getJSONObject(i), tr);
                 if (option.key.isEmpty() || !seen.add(option.key)) throw new IOException("Duplicate or empty schema key: " + option.key);
                 options.add(option);
             }
@@ -40,18 +40,35 @@ public final class SettingsSchema {
         sections = Collections.unmodifiableMap(result);
     }
 
+    private static volatile JSONObject translationCache; private static volatile String translationLocale;
+    /** Russian UI strings for engine labels (assets/ui_ru.json), or null when the app language is not Russian. */
+    static JSONObject translations(Context context) {
+        String lang = context.getResources().getConfiguration().getLocales().get(0).getLanguage();
+        if (!"ru".equals(lang)) return null;
+        JSONObject cachedTr = translationCache; if (cachedTr != null && lang.equals(translationLocale)) return cachedTr;
+        try (InputStream in = context.getApplicationContext().getAssets().open(UI_RU); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] b = new byte[16384]; for (int n; (n = in.read(b)) != -1;) out.write(b, 0, n);
+            cachedTr = new JSONObject(new String(out.toByteArray(), StandardCharsets.UTF_8)); translationCache = cachedTr; translationLocale = lang; return cachedTr;
+        } catch (Exception e) { return null; }
+    }
+    static final String UI_RU = "orca_ui_ru.json";
+    private static String tr(JSONObject tr, String s) { if (tr == null || s == null || s.isEmpty()) return s; String v = tr.optString(s, ""); if (v.isEmpty()) v = tr.optString(s.trim(), ""); return v.isEmpty() ? s : v; }
+    /** Display text for a page or other engine string in the current app language (page ids stay English). */
+    public static String display(Context context, String s) { return tr(translations(context), s); }
+
     /** Call on a worker thread; the cached result and its option collections are immutable. */
     public static SettingsSchema load(Context context) throws IOException {
-        SettingsSchema result = cached;
+        String language = context.getResources().getConfiguration().getLocales().get(0).getLanguage();
+        SettingsSchema result = language.equals(cachedLanguage) ? cached : null;
         if (result == null) synchronized (SettingsSchema.class) {
-            result = cached;
+            result = language.equals(cachedLanguage) ? cached : null;
             if (result == null) {
                 try (InputStream input = context.getApplicationContext().getAssets().open("orca_settings_runtime.json");
                      ByteArrayOutputStream output = new ByteArrayOutputStream()) {
                     byte[] buffer = new byte[16384];
                     for (int n; (n = input.read(buffer)) != -1;) output.write(buffer, 0, n);
-                    result = new SettingsSchema(new JSONObject(new String(output.toByteArray(), StandardCharsets.UTF_8)));
-                    cached = result;
+                    result = new SettingsSchema(new JSONObject(new String(output.toByteArray(), StandardCharsets.UTF_8)), translations(context));
+                    cached = result; cachedLanguage = language;
                 } catch (JSONException ex) { throw new IOException("Invalid settings schema", ex); }
             }
         }
@@ -130,17 +147,17 @@ public final class SettingsSchema {
         /** Nested default lists/maps are immutable. Use defaultJsonValue() for a fresh JSON value. */
         public final Object defaultValue;
 
-        private Option(JSONObject row) throws JSONException {
+        private Option(JSONObject row, JSONObject tr) throws JSONException {
             key = row.getString("key"); baseKey = string(row,"base_key");
             index = row.isNull("index") ? null : row.getInt("index");
-            label = string(row,"label"); tooltip = string(row,"tooltip");
+            label = tr(tr, string(row,"label")); tooltip = tr(tr, string(row,"tooltip"));
             type = string(row,"type"); units = string(row,"units");
             min = number(row,"min"); max = number(row,"max");
             String originalMode = string(row,"mode"); modeKnown = originalMode != null;
             mode = modeKnown ? originalMode : "comExpert";
             String originalPage = string(row,"page"); pageKnown = originalPage != null;
             page = pageKnown ? originalPage : "Other options";
-            String originalGroup = string(row,"group"); group = originalGroup == null ? "Other options" : originalGroup;
+            String originalGroup = string(row,"group"); group = tr(tr, originalGroup == null ? "Other options" : originalGroup);
             JSONObject enums = row.optJSONObject("enums");
             List<String> values = new ArrayList<>(), labels = new ArrayList<>();
             boolean complete = enums != null && enums.optBoolean("values_complete", false);
@@ -149,7 +166,7 @@ public final class SettingsSchema {
                 if (vs != null) for (int i=0; i<vs.length(); i++) {
                     if (vs.isNull(i)) { complete = false; continue; }
                     String val = vs.optString(i); values.add(val);
-                    labels.add(ls != null && i < ls.length() && !ls.isNull(i) ? ls.optString(i) : val);
+                    labels.add(tr(tr, ls != null && i < ls.length() && !ls.isNull(i) ? ls.optString(i) : val));
                 }
             }
             enumValues = Collections.unmodifiableList(values); enumLabels = Collections.unmodifiableList(labels);
