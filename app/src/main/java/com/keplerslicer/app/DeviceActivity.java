@@ -16,6 +16,7 @@ import com.keplerslicer.app.glass.KeplerUi;
  * implemented in this build, so every live value shows an honest empty state and controls explain that.
  */
 public final class DeviceActivity extends Activity {
+    private final GradientDrawable[] amsDot = new GradientDrawable[4]; private final TextView[] amsText = new TextView[4]; private final LinearLayout[] amsBox = new LinearLayout[4];
     private KeplerScreen screen; private KeplerUi ui; private TextView status, jobPercent, jobDetail; private View statusDot, jobFill; private LinearLayout jobTrack; private final TextView[] tempValues = new TextView[3], tempTargets = new TextView[3];
 
     @Override public void onCreate(Bundle state) {
@@ -88,9 +89,9 @@ public final class DeviceActivity extends Activity {
             slot.setBackground(ui.shape(KeplerUi.GLASS, loaded ? KeplerUi.MINT : KeplerUi.GLASS_STROKE, 18));
             View c = new View(this); GradientDrawable g = new GradientDrawable(); g.setShape(GradientDrawable.OVAL);
             if (loaded) { g.setColor(0xFFE9EEF5); g.setStroke(Math.max(1, ui.dp(1)), 0x66FFFFFF); } else { g.setColor(0); g.setStroke(Math.max(1, ui.dp(1.5f)), 0xB3FFFFFF, ui.dp(3), ui.dp(3)); }
-            c.setBackground(g); slot.addView(c, ui.lp(28, 28));
+            c.setBackground(g); slot.addView(c, ui.lp(28, 28)); amsDot[i] = g; amsBox[i] = slot;
             String label = (i + 1) + " · " + (loaded ? shortType(filament.name) : getString(R.string.kv3_slot_empty));
-            TextView t = ui.line(label, 12, 600, white); t.setGravity(Gravity.CENTER); slot.addView(t, ui.below(6));
+            TextView t = ui.line(label, 12, 600, white); t.setGravity(Gravity.CENTER); slot.addView(t, ui.below(6)); amsText[i] = t;
             slot.setContentDescription(getString(R.string.kv3_slot, i + 1) + ", " + label);
             LinearLayout.LayoutParams p = ui.weight(); if (i > 0) p.leftMargin = ui.dp(8); ams.addView(slot, p);
         }
@@ -178,6 +179,15 @@ public final class DeviceActivity extends Activity {
             if (p != null) { t[0] = new double[]{p.optDouble("temp_nozzle", Double.NaN), p.optDouble("target_nozzle", Double.NaN)}; t[1] = new double[]{p.optDouble("temp_bed", Double.NaN), p.optDouble("target_bed", Double.NaN)}; }
             org.json.JSONObject job = json.optJSONObject("job");
             if (job != null && job.has("progress")) showProgress(job.optDouble("progress", Double.NaN) / 100.0, state, job.optLong("time_remaining", -1));
+        } else if (type == PrinterEndpoint.Type.BAMBU) {
+            // Bambu LAN report: temperatures, progress, job name and the first AMS unit.
+            t[0] = new double[]{json.optDouble("nozzle_temper", Double.NaN), json.optDouble("nozzle_target_temper", Double.NaN)};
+            t[1] = new double[]{json.optDouble("bed_temper", Double.NaN), json.optDouble("bed_target_temper", Double.NaN)};
+            if (json.has("chamber_temper")) t[2] = new double[]{json.optDouble("chamber_temper", Double.NaN), Double.NaN};
+            if (json.has("mc_percent")) showProgress(json.optDouble("mc_percent", Double.NaN) / 100.0, state, json.has("mc_remaining_time") ? json.optLong("mc_remaining_time", -1) * 60 : -1);
+            if (!json.optString("subtask_name", "").isEmpty() && jobDetail != null) jobDetail.setText(json.optString("subtask_name"));
+            AmsTrays.Tray[] trays = AmsTrays.parse(json);
+            if (trays != null) { AmsTrays.save(this, trays); showTrays(trays); }
         } else if (type == PrinterEndpoint.Type.MOONRAKER) {
             org.json.JSONObject r = json.optJSONObject("result"), s = r == null ? null : r.optJSONObject("status"), sd = s == null ? null : s.optJSONObject("virtual_sdcard"), ps = s == null ? null : s.optJSONObject("print_stats");
             if (sd != null && sd.has("progress")) showProgress(sd.optDouble("progress", Double.NaN), state, -1);
@@ -187,6 +197,19 @@ public final class DeviceActivity extends Activity {
             if (t[i] == null || !Double.isFinite(t[i][0])) continue;
             tempValues[i].setText(String.format(java.util.Locale.getDefault(), "%.0f°", t[i][0]));
             tempTargets[i].setText(Double.isFinite(t[i][1]) && t[i][1] > 0 ? getString(R.string.kv3_target, String.format(java.util.Locale.getDefault(), "%.0f°", t[i][1])) : getString(R.string.kv3_no_target));
+        }
+    }
+    /** AMS slots from the printer: tray colour, material type and the active tray. */
+    private void showTrays(AmsTrays.Tray[] trays) {
+        for (int i = 0; i < 4 && i < trays.length; i++) {
+            if (amsDot[i] == null || amsText[i] == null || amsBox[i] == null) continue;
+            AmsTrays.Tray t = trays[i];
+            if (t.loaded) { amsDot[i].setColor(t.color); amsDot[i].setStroke(Math.max(1, ui.dp(1)), 0x66FFFFFF); }
+            else { amsDot[i].setColor(0); amsDot[i].setStroke(Math.max(1, ui.dp(1.5f)), 0xB3FFFFFF, ui.dp(3), ui.dp(3)); }
+            String label = (i + 1) + " · " + (t.loaded ? t.type : getString(R.string.kv3_slot_empty));
+            amsText[i].setText(label);
+            amsBox[i].setBackground(ui.shape(KeplerUi.GLASS, t.active ? KeplerUi.MINT : KeplerUi.GLASS_STROKE, 18));
+            amsBox[i].setContentDescription(getString(R.string.kv3_slot, i + 1) + ", " + label);
         }
     }
     private void showProgress(double fraction, String state, long secondsLeft) {

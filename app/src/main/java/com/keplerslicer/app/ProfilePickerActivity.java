@@ -84,12 +84,14 @@ public class ProfilePickerActivity extends Activity {
             LinearLayout head = ui.row(); head.setPadding(ui.dp(4), ui.dp(12), ui.dp(4), ui.dp(8));
             head.addView(ui.caption(getString(R.string.kv3_loaded)), ui.weight());
             TextView sync = ui.line(getString(R.string.kv3_sync_printer), 12, 600, KeplerUi.WHITE); sync.setMinHeight(ui.dp(32)); sync.setGravity(Gravity.CENTER_VERTICAL); ui.pressable(sync, null, 8);
-            sync.setOnClickListener(v -> screen.unavailable(getString(R.string.kv3_sync_printer))); head.addView(sync);
+            sync.setOnClickListener(v -> syncAms()); head.addView(sync);
+            final AmsTrays.Tray[] trays = AmsTrays.load(this);
             top.addView(head, new LinearLayout.LayoutParams(-1, -2));
             LinearLayout slots = ui.row();
             for (int i = 0; i < 4; i++) {
                 boolean loaded = i == 0 && current != null;
-                View slot = slotCard(i + 1, loaded ? shortName(current.name) : getString(R.string.kv3_slot_empty), loaded);
+                if (trays != null) loaded = trays[i].loaded;
+                View slot = trays != null ? slotCard(i + 1, trays[i].loaded ? trays[i].type : getString(R.string.kv3_slot_empty), trays[i].loaded, trays[i].color) : slotCard(i + 1, loaded ? shortName(current.name) : getString(R.string.kv3_slot_empty), loaded, 0xFFE9EEF5);
                 LinearLayout.LayoutParams p = ui.weight(); if (i > 0) p.leftMargin = ui.dp(8); slots.addView(slot, p);
             }
             top.addView(slots, new LinearLayout.LayoutParams(-1, -2));
@@ -191,11 +193,24 @@ public class ProfilePickerActivity extends Activity {
     }
 
     /** AMS slot (node 5:406 "Loaded"): glass r18, 22dp colour circle, "n" + 11/600 name; the loaded slot has a mint stroke. */
-    private View slotCard(int number, String name, boolean loaded) {
+    /** Reads the AMS trays from the selected Bambu Lab printer (LAN, read-only) and shows them. */
+    private void syncAms() {
+        new Thread(() -> {
+            String error = null;
+            try {
+                NetworkStore.Connection c = NetworkStore.load(this).selected();
+                if (c == null || c.endpoint.type != PrinterEndpoint.Type.BAMBU) error = getString(R.string.kv3_ams_needs_bambu);
+                else { NetworkPolicy.requireEndpoint(this, c.endpoint); AmsTrays.Tray[] t = AmsTrays.parse(BambuLan.report(c.endpoint, new NetworkHttp.Cancellation())); if (t == null) error = getString(R.string.kv3_ams_none); else AmsTrays.save(this, t); }
+            } catch (Exception e) { error = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
+            final String message = error;
+            runOnUiThread(() -> { if (isDestroyed()) return; if (message != null) screen.info(getString(R.string.kv3_sync_printer), message); else recreate(); });
+        }, "ams-sync").start();
+    }
+    private View slotCard(int number, String name, boolean loaded, int color) {
         LinearLayout c = ui.column(); c.setGravity(Gravity.CENTER); c.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), ui.dp(10)); c.setMinimumHeight(ui.dp(80));
         c.setBackground(ui.shape(KeplerUi.GLASS, loaded ? 0xB35EE0C8 : KeplerUi.GLASS_STROKE, 18));
         View circle = new View(this); GradientDrawable g = new GradientDrawable(); g.setShape(GradientDrawable.OVAL);
-        if (loaded) { g.setColor(0xFFE9EEF5); g.setStroke(Math.max(1, ui.dp(1)), 0x66FFFFFF); } else { g.setColor(0); g.setStroke(Math.max(1, ui.dp(1.5f)), 0xB3FFFFFF, ui.dp(3), ui.dp(3)); }
+        if (loaded) { g.setColor(color); g.setStroke(Math.max(1, ui.dp(1)), 0x66FFFFFF); } else { g.setColor(0); g.setStroke(Math.max(1, ui.dp(1.5f)), 0xB3FFFFFF, ui.dp(3), ui.dp(3)); }
         circle.setBackground(g); c.addView(circle, ui.lp(24, 24));
         TextView n = ui.line(String.valueOf(number), 11, 600, KeplerUi.WHITE); n.setGravity(Gravity.CENTER); c.addView(n, ui.below(6));
         TextView t = ui.line(name, 11, 600, KeplerUi.WHITE); t.setGravity(Gravity.CENTER); c.addView(t, new LinearLayout.LayoutParams(-1, -2));

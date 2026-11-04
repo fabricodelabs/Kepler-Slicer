@@ -51,6 +51,7 @@ public final class PrinterHostClient {
                 if(result==null||!result.has("klippy_state")||result.isNull("klippy_state")) throw new IOException("Ответ не похож на Moonraker.");
                 return new HostInfo("Moonraker",result.optString("klippy_state","unknown"),false);
             }
+            case BAMBU: { JSONObject r = BambuLan.report(endpoint, cancel); return new HostInfo("Bambu Lab " + endpoint.username.trim(), r.optString("gcode_state", "unknown"), false); }
             default: throw new IOException("Этот тип сервера пока не поддерживается.");
         }
     }
@@ -77,6 +78,7 @@ public final class PrinterHostClient {
                 test(cancel); return new Status("unknown","");
             case PRUSACONNECT:
                 test(cancel); return new Status("unknown","");
+            case BAMBU: { JSONObject r = BambuLan.report(endpoint, cancel); return new Status(r.optString("gcode_state", "unknown"), r.toString()); }
             default: throw new IOException("Статус для этого сервера пока не поддерживается.");
         }
     }

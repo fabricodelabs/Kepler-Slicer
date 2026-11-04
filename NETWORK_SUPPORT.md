@@ -25,7 +25,9 @@
 
 **Upstream Cloud:** реализован экспериментальный вход внешним браузером с PKCE и локальным callback, шифрованное хранение сессии, обновление токена, pull профилей и удалений, локальное зеркало с атомарным курсором, явное редактирование и отправка выбранного JSON, выявление конфликтов и экспорт через SAF. Проверки выполнялись с loopback и JVM-подменами, а не с реальными аккаунтами. Серверная политика авторизации и все провайдеры не подтверждены. Импортированные профили пока не применяются нативным движком к нарезке; это не синхронизация всех возможностей desktop.
 
-**Bambu:** официальный README Bambu Studio указывает на сетевой плагин с non-free библиотеками. Официальный Android SDK для этого плагина в доступной документации не обнаружен; это не доказывает его отсутствия. Bambu LAN/cloud, аккаунт, камера и отправка в текущем Android-порту не заявлены работающими.
+**Bambu (LAN, 2026-11-05):** read-only status and AMS over the printer MQTT (port 8883, user `bblp`, access code; serial in the User field), private LAN addresses only; only the `pushall` status request is sent. Tested against a loopback simulator (`tools/test_bambu_lan.ps1`), not a real printer. File transfer (FTPS) and Bambu cloud are not implemented.
+
+**Bambu (cloud):** официальный README Bambu Studio указывает на сетевой плагин с non-free библиотеками. Официальный Android SDK для этого плагина в доступной документации не обнаружен; это не доказывает его отсутствия. Bambu LAN/cloud, аккаунт, камера и отправка в текущем Android-порту не заявлены работающими.
 
 Источники: [исходный upstream на использованном коммите](https://github.com/OrcaSlicer/OrcaSlicer/tree/6d2869c430284714f0a22570c38d3b359965a802), [Bambu Studio README](https://github.com/bambulab/BambuStudio/blob/master/README.md), [руководство upstream Cloud](https://cloud.orcaslicer.com/wiki/). Практическая доступность сервисов, пользовательские данные, совместимость устройств и пригодность G-code к печати требуют отдельной проверки.
 
