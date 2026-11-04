@@ -27,7 +27,6 @@ public final class SettingsHubUi {
     private final float density;
 
     public static final class Picker {
-        public final LinearLayout view=null;
         public final TextView name,sub;
         final LinearLayout box;
         Picker(LinearLayout box,TextView name,TextView sub){this.box=box;this.name=name;this.sub=sub;}
@@ -59,9 +58,10 @@ public final class SettingsHubUi {
     private void pressable(View v,int fill,int stroke,float radiusDp){v.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF),fill==0?null:shape(fill,stroke,radiusDp),shape(WHITE,0,radiusDp)));v.setClickable(true);v.setFocusable(true);}
     private ImageView image(int res,float sizeDp){ImageView i=new ImageView(context);i.setImageResource(res);i.setScaleType(ImageView.ScaleType.FIT_CENTER);i.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp),dp(sizeDp)));i.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);return i;}
 
-    public LinearLayout topBar(View title,View action){
+    public LinearLayout topBar(View title,View... actions){
         LinearLayout bar=new LinearLayout(context);bar.setOrientation(LinearLayout.HORIZONTAL);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(20),dp(8),dp(20),0);
-        bar.addView(title,new LinearLayout.LayoutParams(0,-2,1));LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(dp(44),dp(44));ap.leftMargin=dp(12);bar.addView(action,ap);
+        bar.addView(title,new LinearLayout.LayoutParams(0,-2,1));
+        for(View action:actions){LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(dp(44),dp(44));ap.leftMargin=dp(12);bar.addView(action,ap);}
         bar.setMinimumHeight(dp(56));return bar;
     }
 
@@ -74,6 +74,12 @@ public final class SettingsHubUi {
     /** 44dp target with 22dp art and no fill (card header action). */
     public View iconButton(int res,String description,Runnable action){
         FrameLayout f=new FrameLayout(context);f.addView(image(res,22),new FrameLayout.LayoutParams(dp(22),dp(22),Gravity.CENTER));
+        pressable(f,0,0,22);f.setContentDescription(description);f.setOnClickListener(v->action.run());f.setLayoutParams(new LinearLayout.LayoutParams(dp(44),dp(44)));return f;
+    }
+
+    /** Same 44dp unfilled target for a non-Figma-asset glyph (the existing GlassIcon gear). */
+    public View iconButton(Drawable art,String description,Runnable action){
+        FrameLayout f=new FrameLayout(context);ImageView i=new ImageView(context);i.setImageDrawable(art);i.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);f.addView(i,new FrameLayout.LayoutParams(dp(22),dp(22),Gravity.CENTER));
         pressable(f,0,0,22);f.setContentDescription(description);f.setOnClickListener(v->action.run());f.setLayoutParams(new LinearLayout.LayoutParams(dp(44),dp(44)));return f;
     }
 
