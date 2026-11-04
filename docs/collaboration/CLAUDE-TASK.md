@@ -5,8 +5,7 @@ cards and actions. Do this yourself in the Kepler-Claude worktree with the
 existing bounded launcher. Read AGENTS.md, CLAUDE.md and the relevant parts of
 SettingsActivity and GlassUi. The app is Java/Android Views.
 
-Use the high-fidelity source at ../Kepler-Figma-v3/Settings/figma-reference.tsx
-and preview.png. Codex refreshed node 6:368 through Figma MCP and staged original
+Use the high-fidelity source at docs/ui/figma-v3/settings/figma-reference.tsx and preview.png in the same directory. All input files are inside this worktree. Codex refreshed node 6:368 through Figma MCP and staged original
 SVGs and Android PNGs in docs/ui/figma-v3/settings/manifest.json. Use those exact
 drawables without tint or substitution; reuse kepler_v3_nav_settings for white
 sliders and kepler_v3_nav_export for upload. Asset sizes are in the TSX slots.
