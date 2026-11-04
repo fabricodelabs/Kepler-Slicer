@@ -6,8 +6,12 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -119,6 +123,78 @@ public final class PresetRepositoryTest {
         File original=new File(root,"original.3mf"),modified=new File(root,"modified.3mf");byte[] geometry=new byte[1_048_577];for(int i=0;i<geometry.length;i++)geometry[i]=(byte)(i*31);byte[] unknown="unknown entry\u0000payload".getBytes(StandardCharsets.UTF_8);
         try(ZipOutputStream zip=new ZipOutputStream(Files.newOutputStream(original.toPath()))){entry(zip,"3D/3dmodel.model",geometry);entry(zip,"unknown/opaque.bin",unknown);entry(zip,ProjectConfigArchive.PROJECT_CONFIG,"{\"type\":\"project\",\"name\":\"project_settings\",\"layer_height\":\"0.2\",\"custom\":{\"a\":[null,true]}}".getBytes(StandardCharsets.UTF_8));entry(zip,"Metadata/process_settings_1.config","{\"type\":\"process\",\"name\":\"embedded\"}".getBytes(StandardCharsets.UTF_8));}
         JSONObject config=ProjectConfigArchive.readProjectConfig(original);config.put("layer_height","0.16");ProjectConfigArchive.replaceProjectConfig(original,modified,config);check(ProjectConfigArchive.readProjectConfig(modified).getString("layer_height").equals("0.16"),"3MF project JSON replaced");check(PresetJson.equal(config,ProjectConfigArchive.readProjectConfig(modified)),"Unknown 3MF configuration keys preserved");check(ProjectConfigArchive.readEmbeddedPresets(modified).size()==1,"Embedded preset JSON retained");try(ZipFile zip=new ZipFile(modified)){check(Arrays.equals(zip.getInputStream(zip.getEntry("3D/3dmodel.model")).readAllBytes(),geometry),"3MF geometry payload byte-identical");check(Arrays.equals(zip.getInputStream(zip.getEntry("unknown/opaque.bin")).readAllBytes(),unknown),"Unknown ZIP payload byte-identical");}rejects(()->ProjectConfigArchive.replaceProjectConfig(original,original,config),"In-place mutation must be rejected");rejects(()->ProjectConfigArchive.replaceProjectConfig(original,modified,config),"Existing output must not be overwritten");
+        testProjectIntegrity(root, original, config);
+    }
+    private static void testProjectIntegrity(File root, File original, JSONObject config) throws Exception {
+        File invalid = new File(root, "invalid.3mf");
+        File output = new File(root, "verified-output.3mf");
+        byte[] originalBytes = Files.readAllBytes(original.toPath());
+
+        // Change only central-directory fields. The DEFLATED payload still decompresses,
+        // so an unchecked ZIP copy would quietly give it a new, valid checksum.
+        Files.write(invalid.toPath(), corruptZipField(originalBytes, "3D/3dmodel.model", 16));
+        rejects(() -> ProjectConfigArchive.replaceProjectConfig(invalid, output, config), "Corrupt geometry CRC must prevent export");
+        check(!output.exists(), "A checksum failure must leave no output");
+        Files.write(invalid.toPath(), corruptZipField(originalBytes, "3D/3dmodel.model", 24));
+        rejects(() -> ProjectConfigArchive.replaceProjectConfig(invalid, output, config), "Incorrect geometry length must prevent export");
+        Files.write(invalid.toPath(), corruptZipField(originalBytes, ProjectConfigArchive.PROJECT_CONFIG, 16));
+        rejects(() -> ProjectConfigArchive.readProjectConfig(invalid), "Corrupt project settings CRC must prevent import");
+        rejects(() -> ProjectConfigArchive.replaceProjectConfig(invalid, output, config), "Replacing project settings must still verify original entry");
+        Files.write(invalid.toPath(), corruptZipField(originalBytes, "Metadata/process_settings_1.config", 16));
+        rejects(() -> ProjectConfigArchive.readEmbeddedPresets(invalid), "Corrupt embedded preset CRC must prevent import");
+
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(invalid.toPath()))) {
+            entry(zip, ProjectConfigArchive.PROJECT_CONFIG, "{}".getBytes(StandardCharsets.UTF_8));
+            entry(zip, "3D/model.model", new byte[]{1});
+            entry(zip, "3d/MODEL.model", new byte[]{2});
+        }
+        rejects(() -> ProjectConfigArchive.readProjectConfig(invalid), "Archive with case-alias paths must not be read");
+        rejects(() -> ProjectConfigArchive.readEmbeddedPresets(invalid), "Case-alias paths must not be accepted by the preset reader");
+        rejects(() -> ProjectConfigArchive.replaceProjectConfig(invalid, output, config), "Case-alias paths must not be exported");
+
+        Thread.currentThread().interrupt();
+        try {
+            rejects(() -> ProjectConfigArchive.replaceProjectConfig(original, output, config), "Canceled export must fail");
+        } finally {
+            Thread.interrupted();
+        }
+        check(!output.exists(), "Rejected and canceled exports must leave no output");
+
+        byte[] competingBytes = {42, 1, 3};
+        JSONObject competingWriter = new JSONObject(config.toString()) {
+            @Override public String toString() {
+                try {
+                    Files.write(output.toPath(), competingBytes, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+                return super.toString();
+            }
+        };
+        rejects(() -> ProjectConfigArchive.replaceProjectConfig(original, output, competingWriter), "A destination claimed during export must be kept");
+        check(Arrays.equals(Files.readAllBytes(output.toPath()), competingBytes), "A racing writer's output must remain byte-identical");
+        check(Arrays.equals(Files.readAllBytes(original.toPath()), originalBytes), "Rejected exports must preserve the source");
+        try (java.util.stream.Stream<java.nio.file.Path> entries = Files.list(root.toPath())) {
+            check(entries.noneMatch(path -> path.getFileName().toString().startsWith(".project-config-")), "Project staging files must be removed");
+        }
+    }
+    private static byte[] corruptZipField(byte[] original, String target, int fieldOffset) {
+        byte[] copy = original.clone();
+        ByteBuffer bytes = ByteBuffer.wrap(copy).order(ByteOrder.LITTLE_ENDIAN);
+        int end = copy.length - 22; // This small test fixture has no ZIP comment.
+        if (bytes.getInt(end) != 0x06054b50) throw new AssertionError("Invalid test ZIP ending");
+        int position = bytes.getInt(end + 16);
+        while (position < end && bytes.getInt(position) == 0x02014b50) {
+            int nameLength = Short.toUnsignedInt(bytes.getShort(position + 28));
+            String name = new String(copy, position + 46, nameLength, StandardCharsets.UTF_8);
+            if (name.equals(target)) {
+                copy[position + fieldOffset] ^= 1;
+                return copy;
+            }
+            position += 46 + nameLength + Short.toUnsignedInt(bytes.getShort(position + 30))
+                    + Short.toUnsignedInt(bytes.getShort(position + 32));
+        }
+        throw new AssertionError("Missing test ZIP entry " + target);
     }
     private static void entry(ZipOutputStream zip,String name,byte[] bytes)throws Exception{zip.putNextEntry(new ZipEntry(name));zip.write(bytes);zip.closeEntry();}
     private static void testOfficialProject(File root,File original) throws Exception {
