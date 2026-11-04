@@ -1,47 +1,49 @@
-# UI-006: settings search states and target highlight
+# UI-007 Figma v3 bottom navigation
 
-Status: bounded increment integrated at `b44b9ef` after actual APK visual QA.
-Sequential repair lease is closed. Claude remains stopped; this file is the
-completed assignment record, not an instruction to restart the capped run.
-See [acceptance and remaining limits](INCREMENT-2026-11-03-UI006.md).
+Implement this bounded Phase 2 presentation task in Kepler-Claude on claude/ui.
+Read AGENTS.md and CLAUDE.md. Use Java/Android Views. This is a new task, separate
+from the completed UI-006 run. Launcher remains Sonnet, medium, USD1, 12 turns.
+Codex builds, performs device QA and integrates. No shell, Git, device or MCP work.
 
-Continue Phase 2 of the existing Java/Views app from 258ebf2. Read AGENTS.md,
-CLAUDE.md, WORKFLOW.md, ownership.json and handoff SPEC sections 5.4 and 9.
-Sonnet, medium, USD1 estimated cap, 12 turns. No shell/Git/build/device work.
-UI-005 is completed; its MainActivity lease is closed.
+High-fidelity references are in sibling ../Kepler-Figma-v3, Library/figma-reference.tsx
+and Library/preview.png, Settings/figma-reference.tsx and Settings/preview.png.
+Library nav variants are nodes 2:234, 2:255, 2:276, 2:297. Settings is 6:368.
+The four source icon pairs are already staged. Use resource IDs
+R.drawable.kepler_v3_nav_workspace, _settings, _export, _preferences and
+each corresponding _selected suffix. These are exact whole-SVG renders from
+Figma with transparent padding and original aspect ratio, in drawable-nodpi.
+Use FIT_CENTER in 22dp-square ImageViews, no recoloring and no new assets.
+Originals and source mapping are in docs/ui/figma-v3/nav/manifest.json.
 
-Named presentation assignment to Claude Code, confined to:
-- SettingsActivity.java: hub/editor search presentation and empty/count UI only.
-- settings/SettingsOptionAdapter.java: visible search-target highlight only.
-- res/values*/glass_entry_strings.xml: localized new display strings.
-- docs/ui/UI-006-HANDOFF.md.
+Scope is GlassNavigation.java, nav-only fields in GlassTokens.java and
+app/src/main/assets/design/glass_tokens.json, footer layout only in
+SettingsActivity.java, PreferencesActivity.java and GlassGalleryActivity.java,
+and a short docs/ui/UI-007-HANDOFF.md. Preserve callers and all callbacks.
+Do not edit MainActivity, GlassIcon, GlassSurface, other shared palettes,
+other screen content, search/model/profile/state logic, manifests or build files.
 
-Current defects found by source inspection (await actual APK visual testing):
-hub search with zero matches hides cards and leaves a blank list; editor has
-only a zero count. The jumped-to row changes bold text only, because its drawable
-ignores activation. SPEC requires understandable empty states and visible highlight.
+Implement the four equal-width vertical tabs, ordered Workspace, Settings,
+Export, Preferences. Use existing localized captions and selected accessibility
+state. Icons above captions, 3dp vertical gap. Manrope semibold 600, 11sp,
+1.3 line height, centered, single-line END ellipsis with full accessible label.
+Respect Android font scale and maintain at least 44dp touch height. Keep existing
+haptics and callback ordering. Prefer retaining the views when selection changes
+so accessibility focus stays attached. Preserve the reduced transparency setting.
 
-Implement concise native empty states with a clear-search action in hub AND
-editor; show a result count for active hub search. Keep count/empty message
-accessible (polite live region), labels in English/default and Russian resources.
-Preserve the scrolling header strategy for landscape, short height and large font;
-never use an overlay obscuring controls/results/IME. Empty state must not hide
-ListView header/search in scrollHeader mode. Give actions >=44dp targets.
-Use existing tokens, typography and glass design. Add restrained tonal/border
-highlight for the target option, preserving rounded group joins and dynamic row
-height. Keep full accessibility descriptions and the existing default,
-approximate, override and project read-only value markers.
+At 390dp usable width the bar is 358dp by 68dp, outer radius 34dp, 1dp stroke
+rgba(255,255,255,.20), fill rgba(255,255,255,.11), outer content padding 6dp
+inside the stroke, 4dp between equal-width items. At reference scale the inner
+item height is 54dp and selected white pill radius 28dp. Active text #16181C,
+other text white, inactive items transparent. Use scoped nav tokens, preserve
+ordinary Android scrolling and existing background treatment. Report the
+reference's backdrop blur/overlay differences, keep the nav a measured footer
+with no overlap or keyboard clipping. Host inset 16dp horizontally and 24dp
+bottom beyond safe insets. Keep existing separation above nav. Keep dynamic
+width under other screen sizes. In the gallery reference mode, replace the
+fixed-height overlay with a measured footer, retaining other content spacing,
+scroll state and sample navigation routes. In Settings preserve the API35+
+IME inset union and resize behavior.
 
-Do not change query matching, filter semantics, advanced/developer visibility,
-schema/value handling, row callbacks, worker lifecycle/generation guards, draft
-restore/save, preset selection, config origins or read-only behavior. No new API,
-native, state, network, MainActivity or frozen Activity edits. Technical agent is
-updating NativeConfigValues independently; no dependency on its new enum is needed.
-
-Deliver implementation and docs/ui/UI-006-HANDOFF.md with changed files, behavior
-impact, static checks and required integrator QA. Do not claim build/visual pass.
-Codex will run scope/diff checks, compile, then computer-use hub/editor no-results,
-clear recovery, search->jump highlight, numeric/bool/read-only regression checks,
-portrait/landscape, default/enlarged font and keyboard/card-join inspections.
-
-Run stopped at its turn limit. Claude must not restart/edit; see UI-006-INTEGRATION-LEASE.md for sequential Codex repair and required acceptance.
+Provide the concise handoff with scope, asset IDs, remaining visual deviations
+and QA cases. Use the tool budget on implementation. Report compilation and
+actual emulator verification as pending Codex checks.

@@ -1,0 +1,87 @@
+{
+  "source": "https://www.figma.com/design/OBNMhh3YDB0kRzvPnSERYW?node-id=2-32",
+  "renderer": "sharp 0.35.5, librsvg 2.63.2",
+  "scale": 4,
+  "assets": [
+    {
+      "node": "2:37",
+      "file": "beebf.svg",
+      "original": "workspace.svg",
+      "svgSize": 24,
+      "svgSha256": "248968A8F7C46C6AE72680AE9BB39C9AA7ACB39B87332A209BD42D24654E0DFC",
+      "drawable": "kepler_v3_nav_workspace.png",
+      "pngSize": 96,
+      "pngSha256": "B78584B9212904E69361C67315E664BB5F976B888928A9AE814003BD829BAE0E"
+    },
+    {
+      "node": "2:236",
+      "file": "bf32e.svg",
+      "original": "workspace_selected.svg",
+      "svgSize": 22,
+      "svgSha256": "AD8FD4DD970524F8630B2B1E45C08DAAAA91E827D0A73A57C78D4E16883A459D",
+      "drawable": "kepler_v3_nav_workspace_selected.png",
+      "pngSize": 88,
+      "pngSha256": "18455EF561648AA703DFC0522BD9FAEECE29A0A17310C1FB99378A5FC600CA45"
+    },
+    {
+      "node": "2:49",
+      "file": "78e0b.svg",
+      "original": "settings.svg",
+      "svgSize": 24,
+      "svgSha256": "3E1640A82D65DD6D02B03D8E081B16988C9D7B77428FF99B7E1497DE62A139AA",
+      "drawable": "kepler_v3_nav_settings.png",
+      "pngSize": 96,
+      "pngSha256": "E6A828378B009D5112B8A643DE1EEE2C7D74929EA812D8103F32BB1595EA9533"
+    },
+    {
+      "node": "2:261",
+      "file": "b4ac6.svg",
+      "original": "settings_selected.svg",
+      "svgSize": 22,
+      "svgSha256": "473F36A16E5F4C74DF22B0B57F5A5C1A8F4E2E5B4CA801B39DE7A4E0B5CC5753",
+      "drawable": "kepler_v3_nav_settings_selected.png",
+      "pngSize": 88,
+      "pngSha256": "4576E103C05C86092825F292E2DE1D879806A39477632165CC4A83C93B8137AC"
+    },
+    {
+      "node": "2:52",
+      "file": "62afc.svg",
+      "original": "export.svg",
+      "svgSize": 24,
+      "svgSha256": "BD360E003F2ED359EF89BF4532C7FC9A7821DB36D11664EA69249FA410C1E6CD",
+      "drawable": "kepler_v3_nav_export.png",
+      "pngSize": 96,
+      "pngSha256": "973D5FD87FBACF576C03B879743B3C57CE82745A42667C101E436383D7E94521"
+    },
+    {
+      "node": "2:288",
+      "file": "3254c.svg",
+      "original": "export_selected.svg",
+      "svgSize": 22,
+      "svgSha256": "34FB240A80C48CBE8A7BF9AD686D194F7B61C2C3E5CB38DC15493E7EFC814D2F",
+      "drawable": "kepler_v3_nav_export_selected.png",
+      "pngSize": 88,
+      "pngSha256": "4A8B4FC6B25544B9479F90DE72E51D793DC402628DB8A7BC21C4DF26CAF7AA8A"
+    },
+    {
+      "node": "2:57",
+      "file": "a3818.svg",
+      "original": "preferences.svg",
+      "svgSize": 24,
+      "svgSha256": "1F63BBC4A2A12D320C3201F78400676D48EB2DF9986A6447035A91C31D7003E2",
+      "drawable": "kepler_v3_nav_preferences.png",
+      "pngSize": 96,
+      "pngSha256": "B83B94F673A9D331D80098CD1C2BC6EE7A80786823C5A84EB61A376516B445C3"
+    },
+    {
+      "node": "2:313",
+      "file": "41093.svg",
+      "original": "preferences_selected.svg",
+      "svgSize": 22,
+      "svgSha256": "CF646A08074B11097474DC403C60446DF63EC212EE87B8C4143C037EB38B9238",
+      "drawable": "kepler_v3_nav_preferences_selected.png",
+      "pngSize": 88,
+      "pngSha256": "472713EA2FB2046A53F7AA95D8BBAC0F27559CCE797625F05CE9D70892C54F4E"
+    }
+  ]
+}
