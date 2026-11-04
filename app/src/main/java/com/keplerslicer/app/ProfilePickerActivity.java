@@ -275,7 +275,7 @@ public class ProfilePickerActivity extends Activity {
             if (favouritesOnly && !favourites.contains(profileKey(p.vendor, p.name))) continue;
             visible.add(p);
         }
-        visible.sort(Comparator.<PrintProfileCatalog.Profile, String>comparing(p -> p.vendor.toLowerCase(Locale.ROOT))
+        visible.sort(Comparator.<PrintProfileCatalog.Profile, String>comparing(p -> EngineText.clean(p.vendor).toLowerCase(Locale.ROOT))
                 .thenComparingInt(p -> "yes".equals(compatibility.get(profileKey(p.vendor, p.name))) ? 0 : 1)
                 .thenComparing(p -> p.name.toLowerCase(Locale.ROOT)));
         rows.clear();
