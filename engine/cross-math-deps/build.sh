@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Cross-build only the official OrcaSlicer GMP/MPFR/CGAL dependencies, not libslic3r.
+# Cross-build only the official upstream GMP/MPFR/CGAL dependencies, not libslic3r.
 set -euo pipefail
 
 : "${ANDROID_NDK_ROOT:?Set ANDROID_NDK_ROOT to the Android NDK directory}"
-: "${ORCA_SOURCE:?Set ORCA_SOURCE to an official OrcaSlicer checkout}"
+: "${UPSTREAM_SOURCE:?Set UPSTREAM_SOURCE to an official upstream checkout}"
 : "${BUILD_ROOT:?Set BUILD_ROOT to a new, empty build directory without spaces}"
 : "${HOST_CC:?Set HOST_CC to a native host C compiler; on Windows initialize the MSVC SDK environment}"
 
 EXPECTED=6d2869c430284714f0a22570c38d3b359965a802
-[[ "$(git -C "$ORCA_SOURCE" rev-parse HEAD)" == "$EXPECTED" ]] || { echo 'OrcaSlicer revision mismatch' >&2; exit 1; }
-ORCA_SOURCE="$(cd "$ORCA_SOURCE" && pwd -P)"
+[[ "$(git -C "$UPSTREAM_SOURCE" rev-parse HEAD)" == "$EXPECTED" ]] || { echo 'upstream revision mismatch' >&2; exit 1; }
+UPSTREAM_SOURCE="$(cd "$UPSTREAM_SOURCE" && pwd -P)"
 case "$(uname -s)" in
   Linux*) host_tag=linux-x86_64; ext= ;;
   Darwin*) host_tag=darwin-x86_64; ext= ;;
@@ -36,7 +36,7 @@ fetch https://github.com/CGAL/cgal/releases/download/v6.2.1/CGAL-6.2.1.zip "$BUI
 tar -xf "$BUILD_ROOT/downloads/gmp.tar.xz" -C "$BUILD_ROOT/src"
 tar -xf "$BUILD_ROOT/downloads/mpfr.tar.bz2" -C "$BUILD_ROOT/src"
 unzip -q "$BUILD_ROOT/downloads/cgal.zip" -d "$BUILD_ROOT/src"
-(cd "$BUILD_ROOT/src/gmp-6.3.0" && patch -p1 < "$ORCA_SOURCE/deps/GMP/0001-GMP_GCC15.patch")
+(cd "$BUILD_ROOT/src/gmp-6.3.0" && patch -p1 < "$UPSTREAM_SOURCE/deps/GMP/0001-GMP_GCC15.patch")
 
 # The generated wrapper preserves a host compiler path containing spaces.
 printf '#!/usr/bin/env bash\nexec %q "$@"\n' "$HOST_CC" > "$BUILD_ROOT/tools/hostcc"

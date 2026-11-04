@@ -1,4 +1,4 @@
-# Audited dynamic Orca settings references
+# Audited dynamic upstream settings references
 
 The machine-readable evidence is in settings_dynamic_audit.json. These conclusions are valid only for its exact SHA-256 source bytes; the coverage checker refuses stale evidence. They identify source expressions, not Android runtime UI behavior, desktop parity, or printer-specific enablement.
 
@@ -245,7 +245,7 @@ The 179 source definitions below have not been classified as missing or unnecess
 | total_weight | src/libslic3r/PrintConfig.cpp:13442 | PrintStatisticsConfigDef::PrintStatisticsConfigDef | separate_config_definition_family |
 | total_wipe_tower_cost | src/libslic3r/PrintConfig.cpp:13446 | PrintStatisticsConfigDef::PrintStatisticsConfigDef | separate_config_definition_family |
 | total_wipe_tower_filament | src/libslic3r/PrintConfig.cpp:13450 | PrintStatisticsConfigDef::PrintStatisticsConfigDef | separate_config_definition_family |
-| tree_support_with_infill | src/libslic3r/PrintConfig.cpp:7967 | PrintConfigDef::init_fff_params; legacy_ignored_key; The legacy conversion ignore set explicitly identifies this option as obsolete; a definition still remains. Evidence: src/libslic3r/PrintConfig.cpp:7967, src/libslic3r/PrintConfig.cpp:10002 | Legacy migration/round-trip behavior should remain delegated to Orca. |
+| tree_support_with_infill | src/libslic3r/PrintConfig.cpp:7967 | PrintConfigDef::init_fff_params; legacy_ignored_key; The legacy conversion ignore set explicitly identifies this option as obsolete; a definition still remains. Evidence: src/libslic3r/PrintConfig.cpp:7967, src/libslic3r/PrintConfig.cpp:10002 | Legacy migration/round-trip behavior should remain delegated to upstream. |
 | uptodate | src/libslic3r/PrintConfig.cpp:12822 | CLIActionsConfigDef::CLIActionsConfigDef | separate_config_definition_family |
 | uptodate_filaments | src/libslic3r/PrintConfig.cpp:13131 | CLIMiscConfigDef::CLIMiscConfigDef | separate_config_definition_family |
 | uptodate_settings | src/libslic3r/PrintConfig.cpp:13125 | CLIMiscConfigDef::CLIMiscConfigDef | separate_config_definition_family |

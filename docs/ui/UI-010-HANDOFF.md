@@ -12,7 +12,7 @@ unless noted.
 | Library 2:32 | `res/drawable/kv3_*.xml` | All 52 Library icons + Switch states as VectorDrawables, converted path-for-path by `tools/SvgToVector.java`. |
 | Workspace 3:34 | `MainActivity` | Printer header (52dp thumb, 17/700 name, nozzle badge), mode toolbar, plate chip, add button, object card, white Slice button, v3 nav. |
 | Workspace · Tools 3:139 | `MainActivity` tools sheet | 12-tool grid; Move/Rotate/Scale edit the real `ModelTransform` through coloured X/Y/Z fields. The other nine tools show "not available yet". |
-| Workspace · Preview 3:300 | `MainActivity` preview sheet, `glass/LayerRail` | Sliced status pill, vertical layer rail, colour-mode chips, legend, Time/Filament/Cost read from Orca's G-code summary, layer scrubber with playback, Print → connections, Export. |
+| Workspace · Preview 3:300 | `MainActivity` preview sheet, `glass/LayerRail` | Sliced status pill, vertical layer rail, colour-mode chips, legend, Time/Filament/Cost read from upstream's G-code summary, layer scrubber with playback, Print → connections, Export. |
 | Import model 4:156 | `ImportActivity`, `KeplerScreen` | Format chips filter the real history; Files/Drive open the system picker; Recent scrolls to history; Quick Share/URL/Shapes are not wired. |
 | Device · printing 4:336 | new `DeviceActivity` (Workspace Wi-Fi button) | No live telemetry exists: camera, job, temperatures and controls show empty states; slot 1 is the active filament. |
 | Printers & profiles 5:245 | `PrinterPickerActivity` | Active printer card with real nozzle variants (tap = save selection), active process, Edit printer (opens the printer editor), Connection; catalogue moved to "Printer library". |
@@ -42,7 +42,7 @@ Slice screen; Workspace landscape. TalkBack was not run.
 
 ## Follow-up (same day): previously missing parts
 
-- Preview colour modes are real: `GcodeAnalysis` records Orca `;TYPE:` feature, feed (F), extrusion per mm and
+- Preview colour modes are real: `GcodeAnalysis` records upstream `;TYPE:` feature, feed (F), extrusion per mm and
   M104/M109 temperature per segment; `ToolpathGeometry.colors` builds per-vertex colours (Line type uses the
   Figma legend colours, Speed/Flow/Layer height/Temperature use a five-step scale shown in the legend);
   `StlView` draws them with a per-vertex colour shader.
@@ -64,7 +64,7 @@ Brim ears; Project 3MF export; camera stream; AMS sync; backdrop blur; plate lab
 ## Second follow-up (same day)
 
 - Tools: Lay on face (largest planar face down; keeps Z rotation/scale/offset), Measure (transformed size and
-  diagonal), Support / Seam / Fuzzy skin / Brim ears as per-object overrides (`ObjectSettingsStore`, Orca enum
+  diagonal), Support / Seam / Fuzzy skin / Brim ears as per-object overrides (`ObjectSettingsStore`, upstream enum
   values from `SettingsSchema`; applied by the next slice). Cut, Text and Assembly explain the missing engine support.
 - Device camera: MJPEG live view from `webcam/?action=stream` for OctoPrint/Moonraker (read-only, network policy).
 - Export Project 3MF: a 3MF source is copied unchanged; an STL source is written as a core 3MF with the transform

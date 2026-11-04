@@ -3,9 +3,9 @@
     <string name="phase2_picker_process">Process preset</string>
     <string name="phase2_picker_filament">Filament preset</string>
     <string name="phase2_picker_printer">Printer preset</string>
-    <string name="phase2_picker_title">Orca presets</string>
+    <string name="phase2_picker_title">Kepler presets</string>
     <string name="phase2_picker_search">Search by name, vendor or type</string>
-    <string name="phase2_picker_loading">Loading OrcaSlicer presets…</string>
+    <string name="phase2_picker_loading">Loading Kepler presets…</string>
     <string name="phase2_picker_empty">No presets found</string>
     <string name="phase2_picker_error">Could not load presets</string>
     <string name="phase2_picker_retry">Retry</string>

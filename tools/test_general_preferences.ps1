@@ -7,13 +7,13 @@ $generalRoot=Split-Path -Parent $PSScriptRoot
 $generalTest=Join-Path $generalRoot ('build\general-jvm-'+[guid]::NewGuid().ToString('N'))
 $generalClasses=Join-Path $generalTest 'classes'
 New-Item -ItemType Directory -Path $generalClasses -Force | Out-Null
-$generalJava=Join-Path $generalRoot 'app\src\main\java\com\orcamobile\app'
+$generalJava=Join-Path $generalRoot 'app\src\main\java\com\keplerslicer\app'
 $generalSources=@('GeneralBackupArchive.java','GeneralProjectPolicy.java','ProjectMaterialValidation.java','ModelTransform.java') | ForEach-Object {Join-Path $generalJava $_}
 $generalSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\general_stubs') -Recurse -Filter '*.java' | ForEach-Object FullName
 $generalSources+=Join-Path $PSScriptRoot 'tests\GeneralPreferencesTest.java'
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $generalClasses @generalSources
 if($LASTEXITCODE -ne 0){throw 'General preference host tests did not compile'}
-& (Join-Path $JavaHome 'bin\java.exe') -cp ($generalClasses+';'+$JsonJar) com.orcamobile.app.GeneralPreferencesTest (Join-Path $generalTest 'data')
+& (Join-Path $JavaHome 'bin\java.exe') -cp ($generalClasses+';'+$JsonJar) com.keplerslicer.app.GeneralPreferencesTest (Join-Path $generalTest 'data')
 if($LASTEXITCODE -ne 0){throw 'General preference host tests failed'}
 $restoreClasses=Join-Path $generalTest 'restore-classes'
 New-Item -ItemType Directory -Path $restoreClasses -Force | Out-Null
@@ -23,5 +23,5 @@ $restoreSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\mode
 $restoreSources+=Join-Path $PSScriptRoot 'tests\ModelRestoreTest.java'
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $restoreClasses @restoreSources
 if($LASTEXITCODE -ne 0){throw 'Model restore host tests did not compile'}
-& (Join-Path $JavaHome 'bin\java.exe') -cp ($restoreClasses+';'+$JsonJar) com.orcamobile.app.ModelRestoreTest (Join-Path $generalTest 'restore-data')
+& (Join-Path $JavaHome 'bin\java.exe') -cp ($restoreClasses+';'+$JsonJar) com.keplerslicer.app.ModelRestoreTest (Join-Path $generalTest 'restore-data')
 if($LASTEXITCODE -ne 0){throw 'Model restore host tests failed'}

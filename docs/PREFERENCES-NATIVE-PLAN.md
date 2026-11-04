@@ -24,7 +24,7 @@ Implementation inventory and remaining limits are tracked in [PREFERENCES-39-STA
 
 - Compare original and modified native behavior on identical STL/OBJ/3MF fixtures and presets; document G-code differences.
 - Test invalid projects, missing parents, all native value types, plate/object overrides and rollback on failed validation.
-- Test multi-material flush matrices and clone arrangement against the pinned desktop Orca build.
+- Test multi-material flush matrices and clone arrangement against the pinned desktop upstream build.
 - Test STEP import at two tessellation tolerances and validate the resulting mesh.
 - Build Android APK, install and inspect through computer use. No real print is started.
 

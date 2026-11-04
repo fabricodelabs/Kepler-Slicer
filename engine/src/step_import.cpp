@@ -65,7 +65,7 @@ void validate_step_snapshot(const std::string &derived_path) {
 }
 
 void place_step_geometry(Slic3r::Model &model,const Slic3r::BuildVolume &bed,const ModelTransform &transform) {
-    // Orca's STEP reader makes one object containing all CAD volumes, with a
+    // Upstream's STEP reader makes one object containing all CAD volumes, with a
     // default instance. Do not silently change behavior for a different layout.
     if(model.objects.size()!=1||!model.objects.front()||model.objects.front()->instances.size()!=1)
         throw std::runtime_error("STEP print placement requires one imported CAD object and one instance");
@@ -125,7 +125,7 @@ std::string convert_step_to_3mf(const std::string &source, const std::string &ou
 
     // No global preset/config object is passed: the source is CAD geometry, not
     // a print project. Source names, object/volume boundaries and transforms are
-    // retained by Orca's own exporter. Export into a partial before publication.
+    // retained by upstream's own exporter. Export into a partial before publication.
     if (!Slic3r::store_3mf(partial.path.string().c_str(), &model, nullptr, false) ||
         !std::filesystem::is_regular_file(partial.path) || std::filesystem::file_size(partial.path) == 0)
         throw std::runtime_error("Could not preserve STEP tessellation as a geometry 3MF");

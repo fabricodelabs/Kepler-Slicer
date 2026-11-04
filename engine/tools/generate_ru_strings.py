@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export non-fuzzy, context-free singular translations from pinned Orca PO."""
+"""Export non-fuzzy, context-free singular translations from pinned upstream PO."""
 import ast, json, pathlib, re, sys
 if len(sys.argv) != 3:
     raise SystemExit('usage: generate_ru_strings.py ORCA_CHECKOUT OUTPUT_JSON')

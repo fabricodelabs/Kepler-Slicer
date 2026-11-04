@@ -1,19 +1,19 @@
-# Static Orca settings inventory
+# Static upstream settings inventory
 
-The generator reads the local upstream checkout without running or modifying Orca. It writes `app/src/main/assets/orca_settings_schema.json`:
+The generator reads the local upstream checkout without running or modifying upstream. It writes `app/src/main/assets/kepler_settings_schema.json`:
 
 ```powershell
-python tools/build_settings_schema.py --orca ../../work/OrcaSlicer
-python tools/check_settings_coverage.py --orca ../../work/OrcaSlicer
+python tools/build_settings_schema.py --upstream ../../work/OrcaSlicer
+python tools/check_settings_coverage.py --upstream ../../work/OrcaSlicer
 ```
 
-Paths above are relative to `outputs/OrcaMobile`; alternatively pass absolute `--orca`, `--output` and `--schema` paths. The generated file identifies the expected upstream revision, explicitly marks revision verification as not performed, and records SHA-256 of the actual source bytes. It is deterministic for the same inputs.
+Paths above are relative to `outputs/OrcaMobile`; alternatively pass absolute `--upstream`, `--output` and `--schema` paths. The generated file identifies the expected upstream revision, explicitly marks revision verification as not performed, and records SHA-256 of the actual source bytes. It is deterministic for the same inputs.
 
-The same run also generates the compact `app/src/main/assets/orca_settings_runtime.json` for `SettingsSchema.load()`. It includes all section entries and UI metadata, but omits source proofs: consult the detailed file for provenance. `SettingsSchema.uiInventory()` identifies itself as a model inventory; it does not prove that the Android UI rendered or saved those keys. Missing pages/modes are presented under Other options/Expert with `pageKnown`/`modeKnown` false. Default nested values are immutable; `defaultJsonValue()` makes a fresh JSON copy.
+The same run also generates the compact `app/src/main/assets/kepler_settings_runtime.json` for `SettingsSchema.load()`. It includes all section entries and UI metadata, but omits source proofs: consult the detailed file for provenance. `SettingsSchema.uiInventory()` identifies itself as a model inventory; it does not prove that the Android UI rendered or saved those keys. Missing pages/modes are presented under Other options/Expert with `pageKnown`/`modeKnown` false. Default nested values are immutable; `defaultJsonValue()` makes a fresh JSON copy.
 
-Scalar numeric and boolean inputs receive local syntax, finite-number, literal min/max and known-enum checks. Vector inputs use strict structured JSON, preserve array members and are not fully validated against Orca-specific vector, nullable, cross-option or printer constraints. Unknown definitions/defaults stay unknown. Applying the source engine's own validation is still required; do not equate the static Android checks with full Orca validation.
+Scalar numeric and boolean inputs receive local syntax, finite-number, literal min/max and known-enum checks. Vector inputs use strict structured JSON, preserve array members and are not fully validated against Orca-specific vector, nullable, cross-option or printer constraints. Unknown definitions/defaults stay unknown. Applying the source engine's own validation is still required; do not equate the static Android checks with full upstream validation.
 
-For reproducible host checks, run `tools/test_native_config_values.ps1 -JsonJar <org.json.jar>` and `python tools/tests/test_settings_coverage.py --orca <pinned-OrcaSlicer-checkout>`. The first compiles the real Java normalization class with explicit Android/JNI stubs: it validates source labels, conversion and cleanup but does not execute the native engine. The second checks stale-audit rejection and missing UI-key reporting; a passing test confirms those checks work, not that the coverage audit is complete.
+For reproducible host checks, run `tools/test_native_config_values.ps1 -JsonJar <org.json.jar>` and `python tools/tests/test_settings_coverage.py --upstream <pinned-OrcaSlicer-checkout>`. The first compiles the real Java normalization class with explicit Android/JNI stubs: it validates source labels, conversion and cleanup but does not execute the native engine. The second checks stale-audit rejection and missing UI-key reporting; a passing test confirms those checks work, not that the coverage audit is complete.
 
 ## Contents
 
@@ -21,7 +21,7 @@ For reproducible host checks, run `tools/test_native_config_values.ps1 -JsonJar 
 
 Each option contains:
 
-- `key`, `base_key`, `index`, source labels, tooltip, raw Orca `co...` type, unit, literal min/max and `mode`. For a single resolved definition with no explicit mode assignment, `mode` comes from the `ConfigOptionDef` initializer in `Config.hpp`; an unconditional `comSimple`, `comAdvanced`, `comExpert`, or `comDevelop` assignment overrides it. Conditional, ambiguous and missing cases stay null. `mode_source` records where the value came from. Tab-specific mode overrides and runtime visibility still require separate review.
+- `key`, `base_key`, `index`, source labels, tooltip, raw upstream `co...` type, unit, literal min/max and `mode`. For a single resolved definition with no explicit mode assignment, `mode` comes from the `ConfigOptionDef` initializer in `Config.hpp`; an unconditional `comSimple`, `comAdvanced`, `comExpert`, or `comDevelop` assignment overrides it. Conditional, ambiguous and missing cases stay null. `mode_source` records where the value came from. Tab-specific mode overrides and runtime visibility still require separate review.
 - `default` with `value`, unmodified `expression`, and `resolved`; unresolved never means zero, empty or absent. The current preset can override any default.
 - `placements[]` in source order, each with method, line, page/group expressions, source condition snippets, preprocessor context, and `base_key`, numeric `index`, `index_expression`, `option_id`. A dynamic index stays unknown. `get_option` is a reference, not proof of attachment to a visible row.
 - `preset_membership[]` with FFF/SLA/machine/nozzle provenance; `definition_candidates[]` retains duplicate candidates, field assignment expressions, enum sources and completion flags. `resolution.fields` distinguishes literal, unresolved, missing or ambiguous fields.

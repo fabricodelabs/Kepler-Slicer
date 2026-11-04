@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.orcamobile.app'
+    namespace 'com.keplerslicer.app'
     compileSdk 36
 
     defaultConfig {

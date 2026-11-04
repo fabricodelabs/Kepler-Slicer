@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="phase2_settings_title">Настройки</string>
-    <string name="phase2_settings_loading">Загружаем настройки Orca…</string>
+    <string name="phase2_settings_loading">Загружаем настройки слайсера…</string>
     <string name="phase2_settings_loading_label">Загрузка</string>
     <string name="phase2_settings_draft_restore_error">Не удалось восстановить черновик: %1$s</string>
     <string name="phase2_settings_back">Назад</string>
@@ -9,7 +9,7 @@
     <string name="phase2_settings_printer">Принтер</string>
     <string name="phase2_settings_filament">Материал</string>
     <string name="phase2_settings_process">Процесс</string>
-    <string name="phase2_settings_search_all">Поиск по всем настройкам Orca</string>
+    <string name="phase2_settings_search_all">Поиск по всем настройкам слайсера</string>
     <string name="phase2_settings_network">Сетевые подключения</string>
     <string name="phase2_settings_category_settings">Настройки: %1$s</string>
     <string name="phase2_settings_choose">Выбрать: %1$s  ▾</string>
@@ -24,7 +24,7 @@
     <string name="phase2_settings_search_result">%1$s\n%2$s · %3$s · %4$s</string>
     <string name="phase2_settings_load_profile">Загружаем профиль и значения по умолчанию из ядра…</string>
     <string name="phase2_settings_defaults_unavailable">Значения по умолчанию из ядра недоступны: %1$s</string>
-    <string name="phase2_settings_choose_bundled">Для начала выберите встроенный профиль Orca.</string>
+    <string name="phase2_settings_choose_bundled">Для начала выберите встроенный профиль.</string>
     <string name="phase2_settings_choose_preset_kind">Выбрать профиль: %1$s</string>
     <string name="phase2_settings_save">Сохранить</string>
     <string name="phase2_settings_advanced">Расширенные</string>
@@ -51,7 +51,7 @@
     <string name="phase2_settings_user_suffix">%1$s — Kepler</string>
     <string name="phase2_settings_enter_name">Введите название</string>
     <string name="phase2_settings_cancel">Отмена</string>
-    <string name="phase2_settings_checking">Проверяем конфигурацию в Orca…</string>
+    <string name="phase2_settings_checking">Проверяем конфигурацию в движке…</string>
     <string name="phase2_settings_saved">Профиль «%1$s» сохранён</string>
     <string name="phase2_settings_unsaved_title">Несохранённые изменения</string>
     <string name="phase2_settings_save_or_reset">Сохраните или сбросьте изменения, прежде чем выбирать этот профиль.</string>
@@ -81,6 +81,6 @@
     <string name="phase2_settings_scope_object_no_plate">Объект 1</string>
     <string name="phase2_settings_detached_draft">Профиль или модель изменились. Предыдущий черновик остаётся во внутреннем хранилище приложения как %1$s и не применён к текущему выбору.</string>
     <string name="phase2_settings_origin_legend">† Значение из определения · ≈ Текстовое представление · Удерживайте для подробностей</string>
-    <string name="phase2_settings_definition_detail">Это значение по умолчанию из определения параметра Orca. Его фактическое значение для выбранного принтера не подтверждено. Оно показано для справки и сохраняется как переопределение только после явного изменения.</string>
-    <string name="phase2_settings_serialized_detail">Orca вернула это значение в текстовом формате, при котором числа могут округляться. Оно показано для справки и сохраняется как переопределение только после явного изменения.</string>
+    <string name="phase2_settings_definition_detail">Это значение по умолчанию из определения параметра движка. Его фактическое значение для выбранного принтера не подтверждено. Оно показано для справки и сохраняется как переопределение только после явного изменения.</string>
+    <string name="phase2_settings_serialized_detail">Движок вернул это значение в текстовом формате, при котором числа могут округляться. Оно показано для справки и сохраняется как переопределение только после явного изменения.</string>
 </resources>

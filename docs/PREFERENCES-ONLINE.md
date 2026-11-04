@@ -5,8 +5,8 @@ Snapshot: 2026-11-02. This work does not modify JNI, libslic3r, or the packaged 
 Implemented consumers:
 
 - `stealth_mode`: `NetworkPolicy` rejects public/cloud requests while permitting private/link-local/loopback LAN targets. LAN-looking DNS names are resolved on a worker; every returned address must be private. Every HTTP request checks the current policy before connecting and again after registration; changing offline/stealth cancels active HTTP operations. Offline remains a separate all-network gate.
-- Network test: tests the selected printer's actual protocol. With no selected printer, an explicit action tests HTTPS to the official Orca GitHub repository. It never uploads G-code or starts a print.
-- `check_stable_update_only`: chooses stable versus prerelease entries from the official Orca releases API. It checks desktop Orca releases; it neither installs a desktop binary on Android nor pretends to update built-in presets.
+- Network test: tests the selected printer's actual protocol. With no selected printer, an explicit action tests HTTPS to the official upstream GitHub repository. It never uploads G-code or starts a print.
+- `check_stable_update_only`: chooses stable versus prerelease entries from the official upstream releases API. It checks desktop upstream releases; it neither installs a desktop binary on Android nor pretends to update built-in presets.
 - `sync_user_preset`: explicitly enabled foreground synchronization performs real account-scoped repository transactions for user Printer/Filament/Process profiles, not only a disconnected cloud mirror. A five-minute debounce bounds attempts while the application is used. Manual synchronization in CloudSyncActivity explains both pull and push and asks for product confirmation before sending profiles. Existing system presets remain immutable.
 - `developer_mode`: the Preferences UI owns its actual diagnostics visibility consumer. The Java diagnostic helper reports the real Android/upstream version and policy state; it does not claim native developer APIs.
 - `log_severity_level`: filters structured, bounded local Java diagnostic events. Event data excludes endpoint URLs, account IDs, credentials, tokens and raw HTTP bodies. This is the Android application logger, not an unimplemented JNI setter for the desktop Boost logger.
@@ -26,7 +26,7 @@ Still blocked: **eight** original preferences have not gained their promised des
 
 | Preference | Dependency / reason |
 |---|---|
-| Login region | The original preference routes the Bambu network agent. Orca Cloud in this port uses one global API. Storing a region or rerouting the global API would not implement region selection. |
+| Login region | The original preference routes the Bambu network agent. Upstream Cloud in this port uses one global API. Storing a region or rerouting the global API would not implement region selection. |
 | Filament sync mode | Requires real Bambu/AMS device state and a compatible filament/color mapping path. |
 | Enable Bambu network plug-in | No Android Bambu library or JNI provider is present. The generic Kepler HTTP transport is not this plug-in. |
 | Network plug-in version | Requires compatible plug-in distributions, ABI/version validation and installation lifecycle. |
@@ -37,7 +37,7 @@ Still blocked: **eight** original preferences have not gained their promised des
 
 Bambu feasibility evidence:
 
-- Pinned Orca `src/slic3r/GUI/Preferences.cpp`: 587–657 region; 2246–2251 filament sync mode; 2262–2268 plug-in enable/version; 2348 AMS blacklist; 2376 abnormal storage; 1325–1442 plug-in version/reload workflow.
+- Pinned upstream `src/slic3r/GUI/Preferences.cpp`: 587–657 region; 2246–2251 filament sync mode; 2262–2268 plug-in enable/version; 2348 AMS blacklist; 2376 abnormal storage; 1325–1442 plug-in version/reload workflow.
 - Pinned `src/slic3r/Utils/BBLNetworkPlugin.cpp`: 85–203 versioned native library loading, desktop platform names and `LoadLibrary`/`dlopen`; 658 onwards native symbol binding. `PresetUpdater.cpp:806–816` expects Windows DLL, macOS dylib or Linux `.so` plus Bambu media libraries. This is not a Java Android provider.
 - The official [Bambu Studio README](https://github.com/bambulab/BambuStudio/blob/master/README.md) lists Windows/macOS/Linux build targets and describes the optional networking plug-in as based on non-free libraries. Its documentation does not provide an Android plug-in distribution. This search finding is not proof that a private/vendor Android SDK does not exist.
 - An ARM64 Linux binary is not evidence of Android NDK/Bionic/C++ ABI compatibility. A supported Android build and its API/license/distribution contract must be established before a loader can advertise successful installation.

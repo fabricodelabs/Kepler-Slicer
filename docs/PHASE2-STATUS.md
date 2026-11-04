@@ -20,7 +20,7 @@
 
 Дата среза: 2026-11-01. Основание: `SPEC.md` в `Desktop/orca-mobile-handoff`, разделы 0.5, 5, 9–11; копия [ТЗ](handoff/SPEC.md) хранится в проекте и обновлена побайтно с оригинала (SHA-256 `994F8399BCAD8655C2767BE4454CA5BE7A51EBB4BBD363C8D49D48FCAA052168`). Разрешена Фаза 2: Settings, Process, Filament, Printer, Preferences, поиск, пресеты и проверка покрытия. iOS отложен. Фазы 3–7 не разрешены этим отчётом.
 
-**Фаза 2 не объявляется завершённой.** Текущий 61C9… с исправлением identity установлен с разрешения владельца через Android Studio; новый Save As и JSON export проверены через CU и извлечение файла. Исторические E327… проверки picker, выбранного контраста, JSON conflict и 3MF сохранены отдельно. Полная приёмка Фазы 2, успешный импорт нового профиля, ZIP UI и сравнение с настольной Orca остаются открытыми.
+**Фаза 2 не объявляется завершённой.** Текущий 61C9… с исправлением identity установлен с разрешения владельца через Android Studio; новый Save As и JSON export проверены через CU и извлечение файла. Исторические E327… проверки picker, выбранного контраста, JSON conflict и 3MF сохранены отдельно. Полная приёмка Фазы 2, успешный импорт нового профиля, ZIP UI и сравнение с настольной upstream остаются открытыми.
 
 Основной `Kepler-Slicer-Glass-Phase2.apk` соответствует **61C9…**, code commit `1835779`. Исторический E327… сохранён отдельным `Kepler-Slicer-Glass-Phase2-E327.apk`. Восемь прежних снимков не переобозначены; дополнительный Save As/export proof 61C9… указан отдельно. Source archive упаковывается после фиксации code/docs snapshot; его метаданные находятся в [release.json](../../Kepler-Glass-Phase2-review/release.json), hash архива не встраивается в его собственные документы.
 
@@ -44,10 +44,10 @@
 
 ## Исторический путь настроек к неизменённому ядру
 
-1. `PresetRepository` читает оригинальные JSON из неизменяемого `orca_profiles.zip`, разрешает цепочку наследования и сохраняет неизвестные поля, массивы, null и типы JSON. Значение дочерней опции заменяет значение родителя целиком. Произвольные значения по умолчанию при разрешении JSON не придумываются.
+1. `PresetRepository` читает оригинальные JSON из неизменяемого `kepler_profiles.zip`, разрешает цепочку наследования и сохраняет неизвестные поля, массивы, null и типы JSON. Значение дочерней опции заменяет значение родителя целиком. Произвольные значения по умолчанию при разрешении JSON не придумываются.
 2. `SettingsState.capture()` фиксирует выбранные Printer / Process / Filament и ближайших system ancestors. Snapshot содержит замороженные копии и стабильный fingerprint; повторное чтение защищает от смены выбранного профиля во время подготовки.
 3. `CompatibilityResources` копирует нужные vendor directories, включая vendor каждого overlay, в закрытый кэш. Проверяются kind/path, выход за каталог и наличие исходного файла. Оригинальный asset не перезаписывается.
-4. Overlay устанавливается только вместо leaf JSON его доверенного system ancestor в частной копии. Исходные name/type/inherits и другие поля идентичности сохраняются; options и неизвестные JSON-поля передаются оригинальному Orca JSON loader. Валидация и нарезка используют тот же зафиксированный набор профилей.
+4. Overlay устанавливается только вместо leaf JSON его доверенного system ancestor в частной копии. Исходные name/type/inherits и другие поля идентичности сохраняются; options и неизвестные JSON-поля передаются оригинальному upstream JSON loader. Валидация и нарезка используют тот же зафиксированный набор профилей.
 5. Изменённые настройки Process проходят существующую native-валидацию. Один объект может наложить свои Process values поверх глобального профиля; результат нарезки связан с fingerprint профилей, overrides и выбранной модели/пластины. Несовпадение scope приводит к ошибке, а не к применению настроек к другой модели.
 6. `ObjectSettingsStore.current()` получает native metadata на worker. После save рядом с hash(file + plate) атомарно хранится доказательство `native_object_count=1`. UI-safe `snapshot()` не импортирует OBJ/3MF/mesh; старые или повреждённые непустые записи без доказательства требуют снова открыть и сохранить настройки объекта. Очистка и rollback затрагивают и data, и count.
 
@@ -57,11 +57,11 @@
 
 `28EBDE4D17FFA8D5EAF53C244C49DC9B3DEC46C02068FCDE0D7479EC0F4B18E3`
 
-Текущие native guards сохраняются: 3MF с непустым project config, embedded presets/assets, заменёнными/нераспознанными настройками, активным plate config, custom plate G-code, неподдержанными единицами/transform или несколькими пластинами не выдаётся за корректно нарезанный проект. Исходный проект сохраняется. Успешный пример geometry-only 3MF не доказывает поддержку произвольного Orca project.
+Текущие native guards сохраняются: 3MF с непустым project config, embedded presets/assets, заменёнными/нераспознанными настройками, активным plate config, custom plate G-code, неподдержанными единицами/transform или несколькими пластинами не выдаётся за корректно нарезанный проект. Исходный проект сохраняется. Успешный пример geometry-only 3MF не доказывает поддержку произвольного upstream project.
 
 ## Пресеты и форматы обмена
 
-Источник закреплён на Orca revision `6d2869c430284714f0a22570c38d3b359965a802`. В индексе **14 158** preset JSON; 458 JSON-документов моделей/ID maps и других непрофильных данных исключены явно.
+Источник закреплён на upstream revision `6d2869c430284714f0a22570c38d3b359965a802`. В индексе **14 158** preset JSON; 458 JSON-документов моделей/ID maps и других непрофильных данных исключены явно.
 
 | Kind | Все индексированные JSON, включая bases | Instantiated профили |
 |---|---:|---:|
@@ -72,7 +72,7 @@
 
 Для индексированных цепочек проверено 0 missing / ambiguous / cyclic parents. Старый printer catalog содержал 1 100 instantiated entries; ещё 88, включая вложенные vendor paths, доступны через доверенный system-ancestor factory. Это не разрешает импорт произвольного JSON как системного принтера.
 
-Один preset экспортируется в исходной Orca JSON-схеме. JSON wrapper `kepler-presets-v1` обозначен как собственный формат обмена Kepler; он **не называется** desktop Orca JSON-bundle. Orca ZIP содержит отдельные preset JSON и пользовательских ancestors для оригинального ZIP-import route. ZIP с companion bed models/textures или иными non-JSON entries отклоняется целиком: эти assets пока не переносятся и не отбрасываются молча.
+Один preset экспортируется в исходной upstream JSON-схеме. JSON wrapper `kepler-presets-v1` обозначен как собственный формат обмена Kepler; он **не называется** desktop upstream JSON-bundle. Upstream ZIP содержит отдельные preset JSON и пользовательских ancestors для оригинального ZIP-import route. ZIP с companion bed models/textures или иными non-JSON entries отклоняется целиком: эти assets пока не переносятся и не отбрасываются молча.
 
 `ProjectConfigArchive` читает `Metadata/project_settings.config` и embedded preset JSON существующего проекта. Сохранение создаёт новую 3MF; содержимое всех остальных ZIP entries, включая геометрию, thumbnails, plate data и неизвестные entries, сохраняется побайтно после распаковки. Байт-в-байт совпадение сжатого ZIP, всех ZIP attributes или подписи архива не обещается. Нет пересоздания геометрии. Подробнее: [PRESET-REPOSITORY.md](PRESET-REPOSITORY.md).
 
@@ -85,9 +85,9 @@
 | `tools/test_presets.ps1` с официальной OrcaBadge.3mf | 81 assertions после identity fix (ранее 59) | Прежние проверки и 22 regression assertions: system/user → новый Save As очищает ASCII-case `setting_id`; existing Save/import/export сохраняют identity; unknown Unicode keys и parent links не теряются |
 | `tools/test_settings_state.ps1` | 87 assertions | Immutable overlays/fingerprints, path/vendor safety, selection/rollback, однообъектный scope и proof, отсутствие native mesh load на UI fingerprint path |
 | `tools/test_process_overrides.ps1` | 26 assertions | Привязка overrides и результата к выбору/идентичности, конкурентные изменения, транзакционные отказы |
-| `tools/test_settings_schema.ps1` | Settings schema host checks passed; Orca INI codec checks passed | Схема 431/168/230, typed parsing/validation, immutable metadata, строки/векторы/percent/nullable и экранирование INI |
+| `tools/test_settings_schema.ps1` | Settings schema host checks passed; upstream INI codec checks passed | Схема 431/168/230, typed parsing/validation, immutable metadata, строки/векторы/percent/nullable и экранирование INI |
 | `tools/test_native_config_values.ps1` | 32 checks, **JNI not executed** | Источники значений, fallback/ошибки, сериализованные типы и отсутствие ложного утверждения о precise effective defaults; реальные JNI/device этим набором не проверяются |
-| `tools/tests/test_settings_coverage.py --orca work/OrcaSlicer` | Host checks passed; overall audit remains incomplete | Обнаружение устаревшего audit и отсутствующего UI key на искусственном inventory; отдельный прогон с реальным runtime inventory описан ниже |
+| `tools/tests/test_settings_coverage.py --upstream work/OrcaSlicer` | Host checks passed; overall audit remains incomplete | Обнаружение устаревшего audit и отсутствующего UI key на искусственном inventory; отдельный прогон с реальным runtime inventory описан ниже |
 | `:app:compileDebugJavaWithJavac` | BUILD SUCCESSFUL | Компиляция Android Java на текущем срезе; не замена runtime-проверке |
 | `:app:assembleDebug` | BUILD SUCCESSFUL; текущий 61C9… установлен | Ограниченные runtime-проверки разных сборок описаны ниже; весь объём Фазы 2 не закрыт |
 | `:app:lintDebug` | Не проходит: 8 существующих ошибок | Три старых обработчика Back, два API 27 атрибута при minSdk 26 и три старых WrongConstant. Новых ошибок Фазы 2 в этом запуске не найдено; lint нельзя считать зелёным |
@@ -179,7 +179,7 @@ Picker снят как `Screenshot_20261101_111754` → `preset-picker.png`; tra
 
 Промежуточный кандидат `50E01266175A2DDF9648A89EC767E792292645765A01CD3FFBD389A9985F5E91` **не устанавливался**. Остаются не проверены через CU: успешный импорт нового JSON-профиля, ZIP import/export, изменение/save object overrides, редактирование валидного project config с проверкой полученного файла, все типы редакторов, поворот и остальные error/cancel-сценарии. Проверки на D5D3… и 30B9… сохраняются как исторические результаты.
 
-Остаются не подтверждены реальным desktop UI: двусторонний JSON/ZIP/3MF round-trip без потерь и одинаковый G-code на одинаковых моделях/настройках. Нужны выбранные владельцем версия desktop Orca и критерий сравнения. Перечисленные runtime-сценарии E327… проверены; **Фаза 2 остаётся incomplete**, не phase complete.
+Остаются не подтверждены реальным desktop UI: двусторонний JSON/ZIP/3MF round-trip без потерь и одинаковый G-code на одинаковых моделях/настройках. Нужны выбранные владельцем версия desktop upstream и критерий сравнения. Перечисленные runtime-сценарии E327… проверены; **Фаза 2 остаётся incomplete**, не phase complete.
 
 ### Исторический установленный 61C9…: новый Save As и export проверены
 
@@ -191,7 +191,7 @@ Picker снят как `Screenshot_20261101_111754` → `preset-picker.png`; tra
 
 Host-проверки нового кода: **81** preset assertions с официальной OrcaBadge, **87** SettingsState assertions, `assembleDebug` — успешно. Native SHA-256 остаётся `28EBDE4D17FFA8D5EAF53C244C49DC9B3DEC46C02068FCDE0D7479EC0F4B18E3`. Перед исправлением regression воспроизводил копирование parent ID; после исправления проходит.
 
-61C9… успешно установлен через Android Studio **Shift+F10** после нового разрешения владельца. geometry.3mf, CORE One 0.6 и прежний user Process 0.24 восстановились; Process загрузился без INI error. Save As из старого user в `0.20mm SPEED @CORE One 0.6 — Kepler — Kepler` прошёл Orca validation, сохранил 0.24; JSON экспортирован через SAF, показан `Document saved.`
+61C9… успешно установлен через Android Studio **Shift+F10** после нового разрешения владельца. geometry.3mf, CORE One 0.6 и прежний user Process 0.24 восстановились; Process загрузился без INI error. Save As из старого user в `0.20mm SPEED @CORE One 0.6 — Kepler — Kepler` прошёл upstream validation, сохранил 0.24; JSON экспортирован через SAF, показан `Document saved.`
 
 Извлечённый [61c9-saveas-process-024.json](../../Kepler-Glass-Phase2-review/evidence/61c9-saveas-process-024.json), **1 028 bytes**, SHA-256 `DD1E6959208EAF7180C4060D01D8828EC5A32FD9B3FEACE8407987898EFC8F84`, подтверждает: `setting_id` и его ASCII-case aliases отсутствуют, `layer_height` — строка `"0.24"`, новое `name` равно `print_settings_id`, `inherits` — имя предыдущего пользовательского профиля. Это ожидаемый parent link, а не замена его новым system profile. [61c9-saveas-verification.json](../../Kepler-Glass-Phase2-review/evidence/61c9-saveas-verification.json), SHA-256 `9582F28542566B2F74EFDE50BEEFE8A6C041A171F381CB1BAB112CF5711548F5`, подтверждает сохранность всех **22 non-identity полей и их JSON-типов** по сравнению с предыдущим export. Такое сравнение не проверяет состояние старого preset в storage. Creation-only fix не выполняет автоматическую миграцию старых identities; desktop/cloud совместимость не заявляется.
 
@@ -216,7 +216,7 @@ Host-проверки нового кода: **81** preset assertions с офи�
 Чтобы снять ограничение одного объекта корректно, нужен типизированный API исходной модели и конфигураций, а не подмена глобального Process для нескольких объектов:
 
 1. `openModelSession(sourceHash, file, selectedPlate)` → session/revision и стабильные ID исходных `ModelObject`, `ModelVolume`, `ModelInstance`, пластин и связей object/instance → plate. Сохранять исходные геометрию, единицы, transform, modifiers и embedded config; stale revision/ID отклонять.
-2. `applyScopedConfig(session, expectedRevision, target, ConfigOptionJSON)` → validated snapshot / structured errors. Target явно различает project, plate, object, volume, instance. JSON проходит **существующий Orca config loader**, ConfigOptionDef/type/allowed-scope validation и наследование, с сохранением неизвестных полей для transport. Неверный тип/неподдержанный scope не должен тихо превращаться в глобальное значение.
+2. `applyScopedConfig(session, expectedRevision, target, ConfigOptionJSON)` → validated snapshot / structured errors. Target явно различает project, plate, object, volume, instance. JSON проходит **существующий upstream config loader**, ConfigOptionDef/type/allowed-scope validation и наследование, с сохранением неизвестных полей для transport. Неверный тип/неподдержанный scope не должен тихо превращаться в глобальное значение.
 3. Привязывать загруженные ConfigOptionJSON к native `ModelObject.config` / `ModelVolume.config`; plate config — к исходной plate mapping. Для `ModelInstance` нужна отдельно согласованная mapping и семантика приоритетов: в текущем upstream `ModelInstance` нет собственного поля `config`, поэтому его нельзя считать готовой точкой применения. Хранить исходный target/instance ID и не терять эту связь при выборе/копировании модели. Проверить приоритеты project → plate → object → volume/instance на desktop fixtures, прежде чем включать UI.
 4. `dumpEffectiveConfig(kind, selectionSnapshot, optionalTarget)` для **process / filament / printer** → точные typed JSON значения и definition metadata/defaults с источником каждого значения. Сохранять различие percent / абсолютного float-or-percent, nullable values, vectors, enum keys и double precision; не получать точные defaults обратным разбором форматированного INI. Это заменило бы нынешние display-only/приблизительные fallback values.
 5. `sliceModelSession(session, expectedRevision, configSnapshot)` должен использовать эти же scope mappings и settings revision, отдавать результат с fingerprint; экспорт новой 3MF должен сохранять конфигурации по их исходным scope и все остальные entries. Нужны desktop round-trip fixtures с несколькими object/volume/instances и plate configs, сравнение effective configs и G-code до снятия существующих guards.

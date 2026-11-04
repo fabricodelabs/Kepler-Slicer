@@ -9,7 +9,7 @@ struct ImportedModelInfo {
     std::string metadata_json;
     std::vector<float> preview_xyz; // world coordinates in millimetres, triangle soup
 };
-// Caller must hold the shared Orca engine mutex and initialize private data,
+// Caller must hold the shared upstream engine mutex and initialize private data,
 // resources and temporary directories. path must be a stable, private copy of
 // the ORIGINAL file. Preview is sampled; never slice from the returned vertices.
 // -1 chooses the first embedded plate or all geometry when no plate is present.

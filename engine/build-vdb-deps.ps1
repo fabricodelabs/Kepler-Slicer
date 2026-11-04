@@ -2,13 +2,13 @@
 Build Blosc, OpenEXR/IlmBase and OpenVDB for Android arm64, from the
 upstream-pinned archives described in README.md. This is experimental and
 does not build libslic3r. Supply clean, extracted sources; OpenVDB is patched
-with the patch from the pinned official OrcaSlicer checkout.
+with the patch from the pinned official upstream checkout.
 #>
 param(
     [Parameter(Mandatory=$true)][string]$Ndk,
     [Parameter(Mandatory=$true)][string]$Cmake,
     [Parameter(Mandatory=$true)][string]$Ninja,
-    [Parameter(Mandatory=$true)][string]$OrcaSource,
+    [Parameter(Mandatory=$true)][string]$UpstreamSource,
     [Parameter(Mandatory=$true)][string]$Sources,
     [Parameter(Mandatory=$true)][string]$BoostPrefix,
     [Parameter(Mandatory=$true)][string]$Work,
@@ -28,7 +28,7 @@ $cmakeExe = Resolve-Required $Cmake
 $ninjaExe = Resolve-Required $Ninja
 $sourceRoot = Resolve-Required $Sources
 $boost = Resolve-Required $BoostPrefix
-$orca = Resolve-Required $OrcaSource
+$upstream = Resolve-Required $UpstreamSource
 New-Item -ItemType Directory -Force -Path $Work, $Prefix | Out-Null
 $workPath = Resolve-Required $Work
 $prefixPath = Resolve-Required $Prefix
@@ -49,7 +49,7 @@ Build-Cmake 'blosc' 'c-blosc-1.17.0_tm' @('-DBUILD_SHARED=OFF', '-DBUILD_STATIC=
 Build-Cmake 'openexr' 'openexr-2.5.5' @('-DBUILD_SHARED_LIBS=OFF', '-DBUILD_TESTING=OFF',
     '-DPYILMBASE_ENABLE=OFF', '-DOPENEXR_VIEWERS_ENABLE=OFF', '-DOPENEXR_BUILD_UTILS=OFF')
 $vdb = Resolve-Required "$sourceRoot/openvdb-a68fd58d0e2b85f01adeb8b13d7555183ab10aa5"
-$patch = Resolve-Required "$orca/deps/OpenVDB/0001-clang19.patch"
+$patch = Resolve-Required "$upstream/deps/OpenVDB/0001-clang19.patch"
 & git -C $vdb apply --check --ignore-space-change --whitespace=fix $patch
 if ($LASTEXITCODE -eq 0) { Run-Checked 'git' @('-C', $vdb, 'apply', '--ignore-space-change', '--whitespace=fix', $patch) }
 else {

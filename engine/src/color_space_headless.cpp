@@ -1,4 +1,4 @@
-// Exact RGB2HSV implementation from OrcaSlicer
+// Exact RGB2HSV implementation from upstream
 // src/slic3r/Utils/ColorSpaceConvert.cpp at
 // 6d2869c430284714f0a22570c38d3b359965a802 (AGPL-3.0).
 // FlushVolCalc in libslic3r depends on this global function. The desktop source

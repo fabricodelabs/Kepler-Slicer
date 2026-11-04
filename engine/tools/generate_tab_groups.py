@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract literal option placements from pinned Orca GUI TabPrint::build.
+"""Extract literal option placements from pinned upstream GUI TabPrint::build.
 
 Dynamic keys and options not present in the six desktop pages are deliberately
 left unclassified; the mobile metadata bridge displays them under Others.
@@ -29,7 +29,7 @@ for line in source.splitlines():
 def literal(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
 out = pathlib.Path(sys.argv[2])
-out.write_text('// Generated from pinned Orca TabPrint::build; see tools/generate_tab_groups.py.\n' +
+out.write_text('// Generated from pinned upstream TabPrint::build; see tools/generate_tab_groups.py.\n' +
                ''.join('{' + ', '.join(map(literal, (key, page, group))) + '},\n'
                        for key, (page, group) in entries.items()), encoding='utf-8')
 print(f'{len(entries)} literal option mappings across {len({v[0] for v in entries.values()})} pages')

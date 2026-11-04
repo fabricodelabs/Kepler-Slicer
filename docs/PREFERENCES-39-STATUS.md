@@ -28,10 +28,10 @@ All 39 entries remain visible in their desktop sections and order. A missing cap
 | 20 | Clear unsaved project choice | Removes remembered replace / backup-and-replace answer only. |
 | 21 | Clear unsaved preset choice | Removes remembered Save / Discard answer only; successful saves and canceled Save As are distinguished. |
 | 22 | Clear printer sync choice | Removes the remembered selected-printer / embedded-printer answer used by the actual 3MF import decision. This does not clear a cloud account, device state or a selected library preset. |
-| 23 | Online: region | Blocked: original Bambu network agent is absent. Global Orca Cloud is not falsely assigned regional routes. |
+| 23 | Online: region | Blocked: original Bambu network agent is absent. Global upstream Cloud is not falsely assigned regional routes. |
 | 24 | Stealth | Dynamic cloud/public HTTP gate, permits validated LAN targets, cancels active HTTP work on policy changes. |
 | 25 | Network test | Selected printer protocol test; explicit official HTTPS reachability test when no printer is selected. |
-| 26 | Stable updates only | Real stable/prerelease selection for official Orca release checks. No automatic desktop binary installation. |
+| 26 | Stable updates only | Real stable/prerelease selection for official upstream release checks. No automatic desktop binary installation. |
 | 27 | Automatic profile sync | Explicit opt-in, account-scoped pull/merge/push through the actual user preset repository; conflict handling and tombstones. Real cloud account verification remains outstanding. |
 | 28 | Built-in profile updates | Blocked: compatible profile-pack validation/catalog rebuild/rollback is absent. Release checking is separate. |
 | 29 | Filament sync mode | Blocked: Bambu/AMS device state and mappings unavailable. |

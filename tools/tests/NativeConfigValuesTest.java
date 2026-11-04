@@ -1,8 +1,8 @@
-package com.orcamobile.app;
+package com.keplerslicer.app;
 
 import android.content.Context;
 import com.keplerslicer.engine.ExperimentalSlicer;
-import com.orcamobile.app.settings.SettingsSchema;
+import com.keplerslicer.app.settings.SettingsSchema;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
@@ -97,9 +97,9 @@ public final class NativeConfigValuesTest {
         NativeConfigValues.Result process=NativeConfigValues.loadDetailed(context,schema,"process",id);
         check(process.resolvedConfigurationAvailable,"process metadata available");
         check(process.optionalDiagnostic.contains("API is unavailable"),"Missing typed JNI is distinguished from malformed available typed data");
-        check(process.values.getString("layer_height").equals("0.3"),"float is an Orca JSON string");
+        check(process.values.getString("layer_height").equals("0.3"),"float is an upstream JSON string");
         check(process.values.getString("sparse_infill_density").equals("15.5%"),"percent retains %");
-        check(process.values.getString("enable_support").equals("1"),"bool uses Orca 1/0");
+        check(process.values.getString("enable_support").equals("1"),"bool uses upstream 1/0");
         check(process.values.getString("filename_format").equals("prefix\nname"),"already decoded macro preserved");
         check(process.values.getJSONArray("post_process").toString().equals("[\"a;b\",\"script\"]"),"string-vector serialization");
         check(process.sources.get("layer_height")==NativeConfigValues.Source.PROCESS_METADATA,"direct origin");
@@ -118,7 +118,7 @@ public final class NativeConfigValuesTest {
         check(!processFallback.values.has("layer_height"),"unresolved definition default stays absent");
         ExperimentalSlicer.metadataFails=false;
 
-        ExperimentalSlicer.ini="# Orca settings\nnozzle_diameter = 0.6\n";
+        ExperimentalSlicer.ini="# upstream settings\nnozzle_diameter = 0.6\n";
         NativeConfigValues.Result printer=NativeConfigValues.loadDetailed(context,schema,"printer",id);
         check(printer.resolvedConfigurationAvailable,"validated INI reported");
         check(printer.values.getJSONArray("nozzle_diameter").getString(0).equals("0.6"),"numeric vector in INI");
@@ -134,7 +134,7 @@ public final class NativeConfigValuesTest {
         check(failed.count(NativeConfigValues.Source.VALIDATED_INI)==0,"no values claim an INI origin on failure");
         noJob();
 
-        ExperimentalSlicer.iniFails=false;ExperimentalSlicer.ini="# Orca settings\nfilament_diameter = 1.75\n";
+        ExperimentalSlicer.iniFails=false;ExperimentalSlicer.ini="# upstream settings\nfilament_diameter = 1.75\n";
         NativeConfigValues.Result filament=NativeConfigValues.loadDetailed(context,schema,"filament",id);
         check(filament.values.getJSONArray("filament_diameter").getString(0).equals("1.75"),"filament value");
         check(filament.sources.get("filament_diameter")==NativeConfigValues.Source.VALIDATED_INI,"filament origin");

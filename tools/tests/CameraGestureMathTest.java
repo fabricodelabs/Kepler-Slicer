@@ -1,4 +1,4 @@
-package com.orcamobile.app;
+package com.keplerslicer.app;
 public final class CameraGestureMathTest {
     static int checks;
     static void check(boolean value,String message){checks++;if(!value)throw new AssertionError(message);}

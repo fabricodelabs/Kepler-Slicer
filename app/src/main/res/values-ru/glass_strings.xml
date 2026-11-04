@@ -110,7 +110,7 @@
   <string name="glass_reference_process">Предпросмотр образца: процесс</string>
   <string name="glass_reference_preferences">Предпросмотр образца: настройки</string>
   <string name="glass_back">Назад к галерее компонентов</string>
-  <string name="glass_single_instance">Разрешить только один экземпляр OrcaSlicer</string>
+  <string name="glass_single_instance">Разрешить только один экземпляр Kepler Slicer</string>
   <string name="glass_recent_models">Добавлять файлы STL/STEP в список недавних</string>
   <string name="glass_no_warning">Не предупреждать при загрузке 3MF с изменённым G-code</string>
   <string name="glass_import_step">Показывать параметры при импорте файла STEP</string>

@@ -125,7 +125,7 @@ worktree is `Kepler-Codex` on `codex/core`. Ownership remains defined by
 mixed file for a given task; integration is performed by Codex.
 
 Paths below are relative to the integration root. Java class names in the first
-table are under `app/src/main/java/com/orcamobile/app/`.
+table are under `app/src/main/java/com/keplerslicer/app/`.
 
 | Figma concern | Existing reusable implementation | Current ownership |
 | --- | --- | --- |

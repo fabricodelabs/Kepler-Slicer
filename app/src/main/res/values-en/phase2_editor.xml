@@ -19,5 +19,5 @@
     <string name="phase2_editor_details_max">Maximum: %1$s</string>
     <string name="phase2_editor_details_sources">Sources:</string>
     <string name="phase2_editor_details_unknown">Not defined</string>
-    <string name="phase2_editor_vector_validation">The array is validated as JSON; Orca defines any additional restrictions.</string>
+    <string name="phase2_editor_vector_validation">The array is validated as JSON; the engine defines any additional restrictions.</string>
 </resources>

@@ -1,6 +1,6 @@
 # Native Preferences control contracts
 
-Implemented in `src/native_preferences.hpp/.cpp` against Orca commit
+Implemented in `src/native_preferences.hpp/.cpp` against upstream commit
 `6d2869c430284714f0a22570c38d3b359965a802`. The owner approved this extension on
 2026-11-02; it does not open later UI phases or supply a Bambu provider.
 
@@ -21,7 +21,7 @@ with the same per-index bounds rule as `PresetBundle::is_mixed_filament`.
 A changed slot updates only that row and column in the selected nozzle matrix.
 Other manual values and the diagonal stay unchanged. `changed_slot == -1` means
 all physical pairs; `extruder == -1` means all physical nozzles. The stored
-`flush_multiplier` is not multiplied into the matrix: Orca applies it later.
+`flush_multiplier` is not multiplied into the matrix: Upstream applies it later.
 
 Colours are `#RRGGBB` or explicitly CSS `#RRGGBBAA`. Matrix dimensions, finite
 values, nozzle/material counts and cutter-path values are validated before a
@@ -100,7 +100,7 @@ controls this real operation and defaults to true.
 
 `set_native_log_level` invokes the actual upstream Boost severity setter and
 returns `get_logging_level`. The UI stores the requested Java level and actual
-native level separately: prerelease Orca may force a more verbose native minimum.
+native level separately: prerelease upstream may force a more verbose native minimum.
 The setter does not create a log file or upload diagnostics.
 
 The native self-test executes **32 assertions** against real library functions:

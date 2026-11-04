@@ -1,6 +1,6 @@
 # Cloud preset name fallback
 
-Orca Cloud can return a profile name in the response envelope while omitting
+Upstream Cloud can return a profile name in the response envelope while omitting
 `content.name`. The pinned desktop source explicitly chooses `content.name`, then
 the envelope `name`, then the profile UUID
 (`OrcaCloudServiceAgent.cpp:1162`, revision

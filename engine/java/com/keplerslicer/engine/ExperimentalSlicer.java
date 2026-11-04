@@ -1,6 +1,6 @@
 package com.keplerslicer.engine;
 
-/** Android JNI bridge to the pinned OrcaSlicer engine. Calls run on serialized workers. */
+/** Android JNI bridge to the pinned slicing engine. Calls run on serialized workers. */
 public final class ExperimentalSlicer {
     static { System.loadLibrary("kepler_slicer_experimental"); }
     private ExperimentalSlicer() {}

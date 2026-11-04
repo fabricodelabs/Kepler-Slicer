@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate a tiny labelled 3MF test project; no user model or print target.
 
-The cube mesh is generated here. XML structures follow the pinned Orca
+The cube mesh is generated here. XML structures follow the pinned upstream
 bbs_3mf writer/reader contract; all settings are deliberately test values.
 Successful native import/slicing must be verified separately on Android.
 """

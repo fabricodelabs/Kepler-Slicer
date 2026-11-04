@@ -1,5 +1,5 @@
 package com.keplerslicer.engine;
-/** Native model inspection uses the same Orca engine lock as slicing. */
+/** Native model inspection uses the same slicing engine lock as slicing. */
 public final class NativeModelIO {
     static { System.loadLibrary("kepler_slicer_experimental"); }
     private NativeModelIO() {}

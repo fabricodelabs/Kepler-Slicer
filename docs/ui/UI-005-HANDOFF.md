@@ -1,7 +1,7 @@
 # UI-005 handoff: workspace navigation and bed-caption spacing
 
 ## Changed paths
-- `app/src/main/java/com/orcamobile/app/MainActivity.java`
+- `app/src/main/java/com/keplerslicer/app/MainActivity.java`
   - `navigation()`: label `setMaxLines(2)` -> `setMaxLines(1)` (END ellipsis kept, so
     "Параметры" can no longer wrap mid-word); `item.setMinimumHeight(dp(44))` so each
     item keeps a >=44dp touch target, including compact landscape (26dp pill + 2dp gap

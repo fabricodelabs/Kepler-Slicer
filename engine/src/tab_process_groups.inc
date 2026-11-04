@@ -1,4 +1,4 @@
-// Generated from pinned Orca TabPrint::build; see tools/generate_tab_groups.py.
+// Generated from pinned upstream TabPrint::build; see tools/generate_tab_groups.py.
 {"layer_height", "Quality", "Layer height"},
 {"initial_layer_print_height", "Quality", "Layer height"},
 {"enable_mixed_color_sublayer", "Quality", "Layer height"},

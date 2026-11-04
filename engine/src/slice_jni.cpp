@@ -32,7 +32,7 @@
 #include <nlohmann/json.hpp>
 
 // Experimental proof of the upstream API, not integrated into the app.
-// Orca's resource and data directories are process-global, so calls are serialized.
+// Upstream's resource and data directories are process-global, so calls are serialized.
 namespace {
 std::mutex engine_mutex;
 
@@ -85,7 +85,7 @@ void validate_stl_before_import(const std::string &path)
             for (int i = 0; i < 9; i += 3) bounds.add(xyz[i], xyz[i+1], xyz[i+2]);
         }
     } else {
-        // Parse the same ordered ASCII facet structure expected by Orca's
+        // Parse the same ordered ASCII facet structure expected by upstream's
         // reader. Deliberately reject malformed input before it reaches that reader.
         in.clear(); in.seekg(0); in.imbue(std::locale::classic());
         std::istream &text = in; std::string token;

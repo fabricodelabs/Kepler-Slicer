@@ -259,7 +259,7 @@ void validate_compatibility(const ProjectInspection &project,const DynamicPrintC
 void validate_project(const ProjectInspection &project,const json &description,const PlateData *plate,int plate_index,const DynamicPrintConfig &config) {
     if(description.value("unknown_unit_requires_validation",false) || description.value("non_mm_transform_requires_validation",false))
         throw std::runtime_error("3MF units/transforms require validation before applying project settings");
-    // Orca's GUI places plates in a grid whose origin is not stored in PlateData.
+    // Upstream's GUI places plates in a grid whose origin is not stored in PlateData.
     // Do not guess its layout from object bounds and silently relocate the model.
     if(project.plates().size()>1 || (plate && plate_index!=0))
         throw std::runtime_error("Multi-plate project origins are not yet supported; original project has been retained");

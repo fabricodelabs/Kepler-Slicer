@@ -34,7 +34,7 @@ $buildPath = Existing $Build
 $toolchain = Existing "$ndkPath/build/cmake/android.toolchain.cmake"
 $commit = & git -C $sourcePath rev-parse HEAD
 if ($LASTEXITCODE -ne 0 -or $commit -ne '6d2869c430284714f0a22570c38d3b359965a802') {
-    throw 'Use the pinned official OrcaSlicer checkout with android-headless.patch applied.'
+    throw 'Use the pinned official upstream checkout with android-headless.patch applied.'
 }
 if (-not (Select-String -LiteralPath "$sourcePath/CMakeLists.txt" -SimpleMatch 'ORCA_ANDROID_ENGINE_ONLY' -Quiet)) {
     throw 'Apply android-headless.patch to the checkout before configuring.'

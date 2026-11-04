@@ -2,7 +2,7 @@
     <string name="glass_open_gallery">Галерея Glass UI</string>
     <string name="glass_open_gallery_detail">Фаза 1 · компоненты нового интерфейса</string>
     <string name="glass_search_empty_title">Настройки не найдены</string>
-    <string name="glass_search_empty_hub">По запросу «%1$s» ничего не найдено. Попробуйте название или ключ Orca.</string>
+    <string name="glass_search_empty_hub">По запросу «%1$s» ничего не найдено. Попробуйте название или ключ настройки.</string>
     <string name="glass_search_empty_editor">В этом разделе нет настроек по запросу «%1$s».</string>
     <string name="glass_search_empty_editor_simple">Базовых настроек по запросу «%1$s» нет. Включите расширенные или очистите поиск.</string>
     <string name="glass_search_clear">Очистить поиск</string>

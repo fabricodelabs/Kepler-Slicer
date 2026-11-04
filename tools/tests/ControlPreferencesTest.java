@@ -1,4 +1,4 @@
-package com.orcamobile.app;
+package com.keplerslicer.app;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.os.Handler;

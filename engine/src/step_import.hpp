@@ -10,7 +10,7 @@ namespace kepler {
 struct ModelTransform;
 
 struct StepImportOptions {
-    // The pinned Orca STEP importer uses millimetres and radians.
+    // The pinned upstream STEP importer uses millimetres and radians.
     double linear_deflection_mm = 0.003;
     double angular_deflection_rad = 0.5;
     bool split_compounds = false;
@@ -24,7 +24,7 @@ struct StepImportOptions {
     }
 };
 
-// Caller holds the shared Orca engine mutex and configures its private resource,
+// Caller holds the shared upstream engine mutex and configures its private resource,
 // data and temporary directories. source is a stable private copy of the
 // ORIGINAL STEP/STP file. output must be a new private job's nonexistent .3mf.
 // The source is never modified. The derived file contains tessellated geometry

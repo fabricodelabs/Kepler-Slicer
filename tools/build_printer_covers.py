@@ -1,15 +1,15 @@
-"""Extract exact upstream printer covers for the indexed OrcaSlicer revision.
-Usage: python tools/build_printer_covers.py <orca-checkout> <project-root>
+"""Extract exact upstream printer covers for the indexed upstream revision.
+Usage: python tools/build_printer_covers.py <upstream-checkout> <project-root>
 """
 import hashlib, json, pathlib, shutil, subprocess, sys
 
 checkout = pathlib.Path(sys.argv[1]).resolve()
 project = pathlib.Path(sys.argv[2]).resolve()
 assets = project / "app/src/main/assets"
-catalog = json.loads((assets / "orca_machine_catalog.json").read_text(encoding="utf-8"))
+catalog = json.loads((assets / "kepler_printer_catalog.json").read_text(encoding="utf-8"))
 revision = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
 if revision != catalog["revision"]:
-    raise SystemExit("Orca checkout and machine catalog revisions do not match")
+    raise SystemExit("upstream checkout and machine catalog revisions do not match")
 root = checkout / "resources/profiles"
 dest = assets / "printer_covers"
 dest.mkdir(exist_ok=True)
@@ -23,5 +23,5 @@ for vendor, model in groups:
         cover = hashlib.sha256((vendor + "/" + model).encode("utf-8")).hexdigest() + ".png"
         shutil.copyfile(path, dest / cover)
     models.append({"vendor": vendor, "model": model, "cover": cover})
-(assets / "orca_machine_models.json").write_text(json.dumps({"revision": revision, "models": models}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+(assets / "kepler_printer_models.json").write_text(json.dumps({"revision": revision, "models": models}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 print(f"{len(models)} models, {sum(bool(m['cover']) for m in models)} exact upstream covers")

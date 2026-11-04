@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Index instantiated Orca process/filament profiles from the bundled upstream ZIP.
+"""Index instantiated upstream process/filament profiles from the bundled upstream ZIP.
 
 This is a discovery index, not a compatibility evaluator: inheritance, includes,
-and Orca condition expressions are resolved by libslic3r at slicing time.
+and upstream condition expressions are resolved by libslic3r at slicing time.
 """
 import json
 import sys
@@ -10,8 +10,8 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ZIP = ROOT / 'app/src/main/assets/orca_profiles.zip'
-OUT = ROOT / 'app/src/main/assets/orca_print_profile_catalog.json'
+ZIP = ROOT / 'app/src/main/assets/kepler_profiles.zip'
+OUT = ROOT / 'app/src/main/assets/kepler_print_profile_catalog.json'
 REV = '6d2869c430284714f0a22570c38d3b359965a802'
 
 

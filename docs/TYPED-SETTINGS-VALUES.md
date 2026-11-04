@@ -8,7 +8,7 @@ unresolved values could fall through to clearly marked definition defaults.
 
 `NativeConfigValues` now uses the existing typed API for all three schema kinds.
 `NativeTypedConfigSnapshot` validates the response and converts direct values to
-the editor's existing Orca string/string-array representation. It does not feed
+the editor's existing upstream string/string-array representation. It does not feed
 raw typed objects or numeric arrays into the editor. Examples:
 
 | Native data | Editor value |

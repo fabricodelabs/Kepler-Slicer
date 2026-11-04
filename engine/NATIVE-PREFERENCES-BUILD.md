@@ -56,13 +56,13 @@ before calling `convert_step_to_3mf`. The helper uses the desktop's implemented
 `Model::read_from_step`, which calls OCCT `Step::load` / `Step::mesh`; the old
 `load_step` function is merely declared in this pinned revision.
 
-- Defaults are Orca's 0.003 mm linear and 0.5 rad angular deflection.
+- Defaults are upstream's 0.003 mm linear and 0.5 rad angular deflection.
 - Linear tolerance must be finite and positive; angular tolerance must be finite,
   greater than zero and at most pi radians. No arbitrary input file-size cap is
   introduced.
 - The importer retains OCCT units, assembly transforms, object/volume boundaries
   and names. It validates finite vertices/bounds and triangle indices.
-- A geometry-only 3MF is exported by Orca `store_3mf`, with no invented print
+- A geometry-only 3MF is exported by upstream `store_3mf`, with no invented print
   configuration. A partial file is renamed only after a successful nonempty
   export. Existing output/partial paths are rejected, never replaced/deleted.
 - The original STEP must remain a separate immutable source in the Java model
