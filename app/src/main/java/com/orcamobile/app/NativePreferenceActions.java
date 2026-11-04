@@ -2,20 +2,27 @@ package com.orcamobile.app;
 
 import android.content.Context;
 import android.os.Looper;
-import android.util.AtomicFile;
 import com.keplerslicer.engine.ExperimentalSlicer;
+import com.orcamobile.app.settings.PresetRepository;
+import com.orcamobile.app.settings.SettingsSchema;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.Collections;
 import java.util.Locale;
+import java.util.concurrent.locks.ReentrantLock;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /** Worker operations connecting Preferences to detached native model/config work. */
 final class NativePreferenceActions {
+    private static final ReentrantLock SELF_TEST_LOCK = new ReentrantLock();
+
     private NativePreferenceActions() {}
 
     /**
@@ -74,29 +81,143 @@ final class NativePreferenceActions {
     static String runSelfTest(Context context) throws IOException {
         requireWorker();
         final Context app = context.getApplicationContext();
-        interrupted(app);
+        try {
+            SELF_TEST_LOCK.lockInterruptibly();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedIOException(app.getString(R.string.native_actions_canceled));
+        }
+        try {
+            interrupted(app);
+            String nativeSummary = runNativeSelfTest(app);
+            return nativeSummary + "\n\n" + runPrecisionSelfTest(app);
+        } finally {
+            SELF_TEST_LOCK.unlock();
+        }
+    }
+
+    private static String runNativeSelfTest(Context app) throws IOException {
         EngineProfileSession session = EngineProfileSession.capture(app);
         try {
             byte[] result = ExperimentalSlicer.runNativePreferencesSelfTest(
                 session.resources.getAbsolutePath(), session.data.getAbsolutePath());
             if (result == null || result.length == 0) throw new IOException(app.getString(R.string.native_actions_invalid_result));
             interrupted(app);
-            JSONObject report=new JSONObject(new String(result,StandardCharsets.UTF_8));JSONArray checks=report.getJSONArray("checks");int count=report.getInt("count");
-            if(!report.getBoolean("passed")||count!=checks.length())throw new IOException(app.getString(R.string.native_actions_invalid_result));
-            StringBuilder readable=new StringBuilder(app.getString(R.string.native_preferences_test_passed,count)).append("\n\n");
-            for(int i=0;i<count;i++){JSONObject check=checks.getJSONObject(i);if(!check.getBoolean("passed")||check.getString("name").isEmpty())throw new IOException(app.getString(R.string.native_actions_invalid_result));readable.append("✓ ").append(check.getString("name")).append('\n');}
-            File directory=new File(app.getFilesDir(),"slicer-engine");if(!directory.isDirectory()&&!directory.mkdirs())throw new IOException(app.getString(R.string.native_preferences_test_report_failed));
-            AtomicFile saved=new AtomicFile(new File(directory,"native-preferences-checks.json"));FileOutputStream output=null;
-            try{output=saved.startWrite();output.write(result);interrupted(app);saved.finishWrite(output);output=null;}
-            catch(IOException|RuntimeException failure){if(output!=null)saved.failWrite(output);throw failure;}
-            return readable.append('\n').append(app.getString(R.string.native_preferences_test_report_saved)).toString();
-        } catch (org.json.JSONException e) {
+            JSONObject report = new JSONObject(new String(result, StandardCharsets.UTF_8));
+            JSONArray checks = report.getJSONArray("checks");
+            if (!report.getBoolean("passed") || report.getInt("count") != checks.length())
+                throw new IOException(app.getString(R.string.native_actions_invalid_result));
+            String summary = describeChecks(app, R.string.native_preferences_test_passed, checks);
+            writeReport(app, "native-preferences-checks.json", result);
+            return summary;
+        } catch (JSONException e) {
             throw new IOException(app.getString(R.string.native_actions_invalid_result),e);
         } catch (LinkageError e) {
             throw new IOException(app.getString(R.string.native_actions_engine_unavailable), e);
         } catch (RuntimeException e) {
             throw new IOException(app.getString(R.string.native_actions_native_error, message(e)), e);
         }
+    }
+
+    private static String runPrecisionSelfTest(Context app) throws IOException {
+        try {
+            interrupted(app);
+            JSONArray checks = new JSONArray();
+            checkResolvedSettingsPrecision(app, checks);
+            JSONObject report = new JSONObject().put("version", 1).put("passed", true)
+                    .put("count", checks.length()).put("checks", checks);
+            String summary = describeChecks(app, R.string.native_precision_test_passed, checks);
+            writeReport(app, "resolved-settings-precision-checks.json", report.toString().getBytes(StandardCharsets.UTF_8));
+            return summary;
+        } catch (InterruptedIOException e) {
+            throw e;
+        } catch (IOException | JSONException | RuntimeException | LinkageError e) {
+            interrupted(app);
+            return app.getString(R.string.native_precision_test_failed, message(e));
+        }
+    }
+
+    private static String describeChecks(Context app, int heading, JSONArray checks) throws IOException, JSONException {
+        StringBuilder readable = new StringBuilder(app.getString(heading, checks.length())).append("\n\n");
+        for (int i = 0; i < checks.length(); i++) {
+            JSONObject check = checks.getJSONObject(i);
+            String name = check.getString("name");
+            if (!check.getBoolean("passed") || name.isEmpty())
+                throw new IOException(app.getString(R.string.native_actions_invalid_result));
+            readable.append("✓ ").append(name).append('\n');
+        }
+        return readable.append('\n').append(app.getString(R.string.native_preferences_test_report_saved)).toString();
+    }
+
+    private static void writeReport(Context app, String name, byte[] data) throws IOException {
+        File directory = new File(app.getFilesDir(), "slicer-engine");
+        if (!directory.isDirectory() && !directory.mkdirs() && !directory.isDirectory())
+            throw new IOException(app.getString(R.string.native_preferences_test_report_failed));
+        File staging = File.createTempFile(".native-checks-", ".tmp", directory);
+        try {
+            try (FileOutputStream output = new FileOutputStream(staging)) {
+                output.write(data);
+                output.getFD().sync();
+            }
+            interrupted(app);
+            Files.move(staging.toPath(), new File(directory, name).toPath(),
+                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            staging.delete();
+        }
+    }
+
+    private static void checkResolvedSettingsPrecision(Context app, JSONArray checks) throws IOException, JSONException {
+        // Fixed bundled triple. The overlay is installed only in the fingerprinted
+        // compatibility cache, independently of the user's active presets or drafts.
+        final String vendor = "Prusa", printerName = "Prusa CORE One 0.6 nozzle";
+        final String processName = "0.20mm SPEED @CORE One 0.6", filamentName = "Prusament PLA @CORE One 0.6";
+        final String height = "269.9876543210987", diameter = "1.750000000000017";
+        final String layer = "0.234567891234567", infill = "15.12345678912345";
+        final String relativeWidth = "110.23456789123456", absoluteWidth = "0.6543210987654321";
+        PresetRepository repository = SettingsState.repository(app);
+        PresetRepository.Preset printer = repository.load(PresetRepository.systemId("printer", vendor, printerName));
+        PresetRepository.Preset filament = repository.load(PresetRepository.systemId("filament", vendor, filamentName));
+        JSONObject printerValues = SettingsState.copy(printer.effective).put("printable_height", height);
+        JSONObject filamentValues = SettingsState.copy(filament.effective).put("filament_diameter", new JSONArray().put(diameter));
+        SettingsState.Snapshot fixture = new SettingsState.Snapshot(Collections.emptyMap())
+                .replacing("printer", printer, printerValues)
+                .replacing("filament", filament, filamentValues);
+        CompatibilityResources prepared = CompatibilityResources.prepareTriple(app, vendor, vendor, vendor, fixture);
+        interrupted(app);
+        // Numeric overrides enter the same JNI resolver as production. This fixture
+        // supplies digits that Orca's formatted preset wire values would round.
+        String overrides = new JSONObject()
+                .put("layer_height", Double.parseDouble(layer))
+                .put("sparse_infill_density", Double.parseDouble(infill))
+                .put("line_width", relativeWidth + "%")
+                .put("outer_wall_line_width", absoluteWidth)
+                .toString();
+        byte[] snapshot = ExperimentalSlicer.resolvedSettingsSnapshot(vendor, vendor, vendor,
+                printerName, processName, filamentName, prepared.resources.getAbsolutePath(),
+                prepared.data.getAbsolutePath(), overrides);
+        SettingsSchema schema = SettingsSchema.load(app);
+        JSONObject process = NativeTypedConfigSnapshot.read(snapshot, schema.options("process"));
+        requirePreciseValue(checks, "layer_height", process.getString("layer_height"), layer, false);
+        requirePreciseValue(checks, "sparse_infill_density", process.getString("sparse_infill_density"), infill, true);
+        requirePreciseValue(checks, "line_width", process.getString("line_width"), relativeWidth, true);
+        requirePreciseValue(checks, "outer_wall_line_width", process.getString("outer_wall_line_width"), absoluteWidth, false);
+        JSONObject filamentConfig = NativeTypedConfigSnapshot.read(snapshot, schema.options("filament"));
+        JSONArray diameters = filamentConfig.getJSONArray("filament_diameter");
+        if (diameters.length() != 1) throw new IOException("Expected one native test filament diameter");
+        requirePreciseValue(checks, "filament_diameter", diameters.getString(0), diameter, false);
+        JSONObject printerConfig = NativeTypedConfigSnapshot.read(snapshot, schema.options("printer"));
+        requirePreciseValue(checks, "printable_height", printerConfig.getString("printable_height"), height, false);
+    }
+
+    private static void requirePreciseValue(JSONArray checks, String key, String actual, String expected, boolean percent)
+            throws IOException, JSONException {
+        boolean hasPercent = actual.endsWith("%");
+        String number = hasPercent ? actual.substring(0, actual.length() - 1) : actual;
+        if (hasPercent != percent || Double.parseDouble(number) != Double.parseDouble(expected))
+            throw new IOException("JNI precision mismatch for " + key + ": " + actual);
+        checks.put(new JSONObject().put("name", "resolved_jni_precision_" + key).put("passed", true)
+                .put("expected", expected + (percent ? "%" : "")).put("actual", actual));
     }
 
     /** The UI saves the returned actual level, because Orca may enforce a minimum. */
