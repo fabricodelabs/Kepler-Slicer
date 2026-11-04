@@ -56,7 +56,11 @@ public final class SettingsActivity extends Activity implements SettingsOptionAd
         if(android.os.Build.VERSION.SDK_INT>=35)root.setOnApplyWindowInsetsListener((v,in)->{android.graphics.Insets safe=in.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout()|android.view.WindowInsets.Type.ime());v.setPadding(safe.left,safe.top,safe.right,safe.bottom);return in;});
         ui=new GlassUi(this,root,false);page=ui.vertical();ui.pad(page,20,28,20,0);LinearLayout column=new LinearLayout(this);column.setOrientation(LinearLayout.VERTICAL);root.addView(column,new FrameLayout.LayoutParams(-1,-1));column.addView(page,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout header=ui.horizontal();header.addView(icon("back",getString(R.string.phase2_settings_back),this::back),new LinearLayout.LayoutParams(ui.dp(44),ui.dp(44)));title=ui.heading(getString(R.string.phase2_settings_title));title.setGravity(Gravity.CENTER);header.addView(title,new LinearLayout.LayoutParams(0,-2,1));header.addView(icon("settings",getString(R.string.phase2_settings_menu),this::menu),new LinearLayout.LayoutParams(ui.dp(44),ui.dp(44)));page.addView(header);
-        GlassNavigation nav=new GlassNavigation(this,1,false,index->{if(index!=1)leave(()->{if(index==3)startActivity(new Intent(this,PreferencesActivity.class));else startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("kepler_nav",index));});});LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);np.setMargins(ui.dp(20),ui.dp(8),ui.dp(20),ui.dp(24));column.addView(nav,np);
+        GlassNavigation nav=new GlassNavigation(this,1,false,index->{if(index!=1)leave(()->{if(index==3)startActivity(new Intent(this,PreferencesActivity.class));else startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("kepler_nav",index));});});
+        LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);
+        int navInset=ui.dp(ui.tokens.navInset);
+        np.setMargins(navInset,ui.dp(8),navInset,ui.dp(ui.tokens.navBottom));
+        column.addView(nav,np);
     }
     private void message(String text){status=ui.text(text,12,400,ui.tokens.textSecondary);ui.space(page,8);page.addView(status);}
     private String label(String k){return getString(k.equals("printer")?R.string.phase2_settings_printer:k.equals("filament")?R.string.phase2_settings_filament:R.string.phase2_settings_process);}
