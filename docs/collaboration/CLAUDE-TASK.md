@@ -1,51 +1,66 @@
-# UI-007 Figma v3 bottom navigation
+# UI-008 — Figma v3 Settings hub (6:368)
 
-Completed and integrated at `180e64b`. See the [QA report](INCREMENT-2026-11-04-UI007.md). The assignment below records the original handoff.
+Implement only the native Settings hub visual layout, including its scrolling
+cards and actions. Do this yourself in the Kepler-Claude worktree with the
+existing bounded launcher. Read AGENTS.md, CLAUDE.md and the relevant parts of
+SettingsActivity and GlassUi. The app is Java/Android Views.
 
-Implement this bounded Phase 2 presentation task in Kepler-Claude on claude/ui.
-Read AGENTS.md and CLAUDE.md. Use Java/Android Views. This is a new task, separate
-from the completed UI-006 run. Launcher remains Sonnet, medium, USD1, 12 turns.
-Codex builds, performs device QA and integrates. No shell, Git, device or MCP work.
+Use the high-fidelity source at ../Kepler-Figma-v3/Settings/figma-reference.tsx
+and preview.png. Codex refreshed node 6:368 through Figma MCP and staged original
+SVGs and Android PNGs in docs/ui/figma-v3/settings/manifest.json. Use those exact
+drawables without tint or substitution; reuse kepler_v3_nav_settings for white
+sliders and kepler_v3_nav_export for upload. Asset sizes are in the TSX slots.
+Use all three original glows at the Figma positions, base #383d46, as a native
+scoped backdrop. Avoid repeating a legacy GlassBackground behind the new
+glows. Apply Figma fills, strokes, radii, typography and spacing from TSX.
+Use matching bundled Manrope 800 (weight XML if needed), 700/600/500.
+Keep Android system bars and the bottom inset; Figma frame corner masking is
+device presentation. In normal portrait target the overlay geometry (x16,
+bottom24, 68dp) with scroll bottom clearance, so every row stays reachable.
+Keep IME and short-screen navigation unobscured. Document any blur gap; keep
+content sharp. Use measured responsive layouts with weights/wrap or scroll as
+needed; do not introduce text/icon overlaps at larger system font.
 
-High-fidelity references are in sibling ../Kepler-Figma-v3, Library/figma-reference.tsx
-and Library/preview.png, Settings/figma-reference.tsx and Settings/preview.png.
-Library nav variants are nodes 2:234, 2:255, 2:276, 2:297. Settings is 6:368.
-The four source icon pairs are already staged. Use resource IDs
-R.drawable.kepler_v3_nav_workspace, _settings, _export, _preferences and
-each corresponding _selected suffix. These are exact whole-SVG renders from
-Figma with transparent padding and original aspect ratio, in drawable-nodpi.
-Use FIT_CENTER in 22dp-square ImageViews, no recoloring and no new assets.
-Originals and source mapping are in docs/ui/figma-v3/nav/manifest.json.
+At reference width 390, header x20 y52 h48 with 24sp/800 title and circular
+44dp search with 22dp icon; content x20/y112. Cards r24, 11% white fill, 20%
+white stroke, gap10, headers left16/right8/top8/bottom4 with icon20 and
+title16/700. Right buttons have 44dp targets and 22dp art. Dark pickers r18,
+black22%/white18% stroke, horizontal12/vertical10 inset and gap12, 15sp/600
+name and 12sp/500 subtitle, trailing chevron20. Printer thumbnail 44/r12 with
+printer icon24. Process scope group r16/p3 with 32dp selected white r13 and
+13sp/700 captions. Advanced control uses the source 46x28 switch states, a
+real accessible checkable target >=44dp, and the existing advanced boolean.
+Process rows >=52 with icon tile32/r10 and icon18, caption15/600, trailing
+original arrow and 12% divider. Implement calibration and import/export
+rows from the reference with live existing click handlers. Use TSX for exact
+details and lower content.
 
-Scope is GlassNavigation.java, nav-only fields in GlassTokens.java and
-app/src/main/assets/design/glass_tokens.json, footer layout only in
-SettingsActivity.java, PreferencesActivity.java and GlassGalleryActivity.java,
-and a short docs/ui/UI-007-HANDOFF.md. Preserve callers and all callbacks.
-Do not edit MainActivity, GlassIcon, GlassSurface, other shared palettes,
-other screen content, search/model/profile/state logic, manifests or build files.
+Scope: hub section of SettingsActivity.java, new scoped presentation helper
+in glass/ if needed, targeted GlassTypography/font addition if needed,
+glass_strings.xml in relevant locales if needed, docs/ui/UI-008-HANDOFF.md.
+Do not redesign editor, Preferences, gallery, shared navigation, or frozen
+MainActivity. Do not change persistence, slicing, draft or search matching,
+worker/freshness/lifecycle gates, editor actions, read-only checks, or
+repository contracts. You may scope a shell variant to the hub; preserve its
+status bar/IME insets, startup and existing editor shell. Native Back remains
+available. Search icon should reveal existing hub search directly while
+retaining transfer and inventory through discoverable existing routes
+(transfer row and search-mode overflow, or equivalent). Preserve the
+search TextWatcher, match results, no-results, clear and row callbacks.
 
-Implement the four equal-width vertical tabs, ordered Workspace, Settings,
-Export, Preferences. Use existing localized captions and selected accessibility
-state. Icons above captions, 3dp vertical gap. Manrope semibold 600, 11sp,
-1.3 line height, centered, single-line END ellipsis with full accessible label.
-Respect Android font scale and maintain at least 44dp touch height. Keep existing
-haptics and callback ordering. Prefer retaining the views when selection changes
-so accessibility focus stays attached. Preserve the reduced transparency setting.
+Use real active profile names from the existing worker and preserve printer
+Wi-Fi and settings actions, nozzle value, material and process selection,
+Global/Objects, all category routes, calibration info, transfer/inventory.
+Use actual nozzle, vendor or preset type when available; omit unknown
+metadata and do not fabricate changed counts, slot 2, color, calibration
+capabilities or connection state. If a Figma icon has no legitimate route
+(such as add slot or sync here), keep only truthful supported actions or
+accessible disabled states and document the backend gap. An existing
+single-material picker is not a create-slot action. The reference is an
+English design; preserve localization and dynamic data, and keep long
+translations and user names clear of controls.
 
-At 390dp usable width the bar is 358dp by 68dp, outer radius 34dp, 1dp stroke
-rgba(255,255,255,.20), fill rgba(255,255,255,.11), outer content padding 6dp
-inside the stroke, 4dp between equal-width items. At reference scale the inner
-item height is 54dp and selected white pill radius 28dp. Active text #16181C,
-other text white, inactive items transparent. Use scoped nav tokens, preserve
-ordinary Android scrolling and existing background treatment. Report the
-reference's backdrop blur/overlay differences, keep the nav a measured footer
-with no overlap or keyboard clipping. Host inset 16dp horizontally and 24dp
-bottom beyond safe insets. Keep existing separation above nav. Keep dynamic
-width under other screen sizes. In the gallery reference mode, replace the
-fixed-height overlay with a measured footer, retaining other content spacing,
-scroll state and sample navigation routes. In Settings preserve the API35+
-IME inset union and resize behavior.
-
-Provide the concise handoff with scope, asset IDs, remaining visual deviations
-and QA cases. Use the tool budget on implementation. Report compilation and
-actual emulator verification as pending Codex checks.
+Prioritize a compiling complete hub, exact visible assets, responsive
+geometry and preserving functionality. Do not run shell/Git/build/device
+tools. Short handoff with visual decisions, asset usage, deviations and
+behavior to verify. Codex checks compile, builds and visual acceptance.
