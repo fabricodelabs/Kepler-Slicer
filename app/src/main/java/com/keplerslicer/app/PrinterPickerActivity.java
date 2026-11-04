@@ -125,12 +125,15 @@ public class PrinterPickerActivity extends Activity {
     private boolean library;
     private KeplerScreen screen;
     private com.keplerslicer.app.glass.KeplerUi ui;
+    @Override protected void onResume() { super.onResume(); if (!library && chosenModel == null) render(); }
+    /** Process of the current slicing selection (also for user printer profiles, which the catalog does not track). */
+    private String activeProcessName() { try { return ProcessOverridesStore.Identity.capture(this).processName; } catch (Exception e) { return null; } }
     private void render() {
         String title = chosenModel != null ? chosenModel.name : library ? getString(R.string.kv3_printer_library) : getString(R.string.kv3_printers);
         View plus = new com.keplerslicer.app.glass.KeplerUi(this).glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.kv3_add_printer), () -> { library = true; chosenModel = null; render(); });
         screen = new KeplerScreen(this, title, this::handleBack, library || chosenModel != null ? null : plus, 1); ui = screen.ui;
         root = screen.column; content = screen.content;
-        if (models == null) { TextView state = ui.text(error == null ? "Загружаем каталог принтеров…" : "Не удалось загрузить каталог: " + error, 14, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY); content.addView(state); return; }
+        if (models == null) { TextView state = ui.text(error == null ? getString(R.string.l10n_pp_loading) : getString(R.string.l10n_pp_load_failed) + error, 14, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY); content.addView(state); return; }
         if (chosenModel != null) renderDetails(); else if (library) renderList(); else renderPrinters();
     }
 
@@ -167,7 +170,8 @@ public class PrinterPickerActivity extends Activity {
             }
             card.addView(ui.hairline());
             PrintProfileCatalog.Profile process = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.PROCESS);
-            card.addView(ui.listRow(0, process == null ? getString(R.string.kv3_choose_process) : process.name, getString(R.string.kv3_process_system), process == null ? null : selectedBadge(), () -> startActivity(new Intent(this, ProfilePickerActivity.class).putExtra(ProfilePickerActivity.EXTRA_KIND, PrintProfileCatalog.PROCESS))));
+            String processName = process != null ? process.name : activeProcessName();
+            card.addView(ui.listRow(0, processName == null ? getString(R.string.kv3_choose_process) : processName, getString(R.string.kv3_process_system), processName == null ? null : selectedBadge(), () -> startActivity(new Intent(this, ProfilePickerActivity.class).putExtra(ProfilePickerActivity.EXTRA_KIND, PrintProfileCatalog.PROCESS))));
             card.addView(ui.hairline());
             card.addView(ui.listRow(0, getString(R.string.kv3_other_processes), getString(R.string.kv3_other_processes_detail), ui.image(R.drawable.kv3_chevron_right, 20, white), () -> startActivity(new Intent(this, ProfilePickerActivity.class).putExtra(ProfilePickerActivity.EXTRA_KIND, PrintProfileCatalog.PROCESS))));
             card.addView(ui.hairline());
@@ -199,7 +203,7 @@ public class PrinterPickerActivity extends Activity {
             if (changed) ProcessOverridesStore.changeSelection(this, () -> PrinterProfileCatalog.saveSelection(this, variant));
             setResult(RESULT_OK, new Intent());
             if (close) finish(); else render();
-        } catch (Exception e) { screen.info("Не удалось сохранить профиль", e.getMessage()); }
+        } catch (Exception e) { screen.info(getString(R.string.l10n_profile_save_failed), e.getMessage()); }
     }
 
     private void renderList() {
@@ -208,7 +212,7 @@ public class PrinterPickerActivity extends Activity {
         LinearLayout top = ui.column(); top.setPadding(0, ui.dp(8), 0, ui.dp(4)); top.addView(screen.takeTopBar());
         LinearLayout searchBox = ui.row(); searchBox.setBackground(ui.field(22)); searchBox.setPadding(ui.dp(14), 0, ui.dp(12), 0);
         searchBox.addView(ui.image(R.drawable.kv3_search, 20, secondary));
-        EditText input = new EditText(this); input.setSingleLine(true); input.setTextSize(14); input.setTextColor(white); input.setHintTextColor(secondary); input.setHint("Поиск модели или производителя"); input.setBackgroundColor(Color.TRANSPARENT); input.setText(query);
+        EditText input = new EditText(this); input.setSingleLine(true); input.setTextSize(14); input.setTextColor(white); input.setHintTextColor(secondary); input.setHint(getString(R.string.l10n_pp_search)); input.setBackgroundColor(Color.TRANSPARENT); input.setText(query);
         com.keplerslicer.app.glass.GlassTypography.apply(input, 500);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0, ui.dp(48), 1); ip.leftMargin = ui.dp(8); searchBox.addView(input, ip); top.addView(searchBox, ui.lp(-1, 48));
         TextView counter = ui.caption(""); counter.setPadding(ui.dp(4), ui.dp(16), ui.dp(4), ui.dp(8)); top.addView(counter);
@@ -223,12 +227,12 @@ public class PrinterPickerActivity extends Activity {
                 LinearLayout labels = ui.column(); LinearLayout.LayoutParams lp2 = ui.weight(); lp2.leftMargin = ui.dp(12); lp2.rightMargin = ui.dp(8);
                 labels.addView(ui.caption(EngineText.clean(m.vendor)));
                 TextView title = ui.text(m.name, 16, 700, white); title.setMaxLines(2); labels.addView(title, ui.below(2));
-                labels.addView(ui.line(m.variants.size() + " проф.", 12, 500, secondary), ui.below(2)); item.addView(labels, lp2);
+                labels.addView(ui.line(m.variants.size() + getString(R.string.l10n_pp_profiles_short), 12, 500, secondary), ui.below(2)); item.addView(labels, lp2);
                 item.addView(ui.image(R.drawable.kv3_chevron_right, 20, white));
                 LinearLayout wrapper = ui.column(); wrapper.addView(item, ui.lp(-1, -2)); wrapper.addView(ui.spacer(10)); return wrapper;
             }
         }; list.setAdapter(adapter);
-        Runnable filter = () -> { String q = query.trim().toLowerCase(Locale.ROOT); visible.clear(); for (Model m : models) if (q.isEmpty() || (m.vendor + " " + m.name).toLowerCase(Locale.ROOT).contains(q)) visible.add(m); counter.setText((visible.isEmpty() ? "Модели не найдены" : "Модели  ·  " + visible.size()).toUpperCase(Locale.getDefault())); adapter.notifyDataSetChanged(); };
+        Runnable filter = () -> { String q = query.trim().toLowerCase(Locale.ROOT); visible.clear(); for (Model m : models) if (q.isEmpty() || (m.vendor + " " + m.name).toLowerCase(Locale.ROOT).contains(q)) visible.add(m); counter.setText((visible.isEmpty() ? getString(R.string.l10n_pp_no_models) : getString(R.string.l10n_pp_models) + visible.size()).toUpperCase(Locale.getDefault())); adapter.notifyDataSetChanged(); };
         input.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s, int a, int c, int f) {} public void onTextChanged(CharSequence s, int a, int before, int count) { query = s.toString(); filter.run(); } public void afterTextChanged(Editable e) {} });
         list.setOnItemClickListener((p, v, position, id) -> { int pos = position - list.getHeaderViewsCount(); if (pos < 0 || pos >= visible.size()) return; chosenModel = visible.get(pos); chosenVariant = null; detailScrollY = 0; PrinterProfileCatalog.Profile saved = PrinterProfileCatalog.loadSelection(this); if (saved != null) for (PrinterProfileCatalog.Profile variant : chosenModel.variants) if (variant.path.equals(saved.path)) chosenVariant = variant; ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(input.getWindowToken(), 0); render(); });
         filter.run();
@@ -238,31 +242,31 @@ public class PrinterPickerActivity extends Activity {
         final int white = com.keplerslicer.app.glass.KeplerUi.WHITE, secondary = com.keplerslicer.app.glass.KeplerUi.SECONDARY;
         ScrollView scroll = screen.scroll;
         content.addView(ui.caption(EngineText.clean(chosenModel.vendor)));
-        content.addView(ui.text("Выберите вариант профиля для этой модели", 13, 500, secondary), ui.below(6));
+        content.addView(ui.text(getString(R.string.l10n_pp_choose_variant), 13, 500, secondary), ui.below(6));
         FrameLayout hero = coverView(chosenModel, 220); content.addView(hero, new LinearLayout.LayoutParams(-1, ui.dp(220))); ((LinearLayout.LayoutParams) hero.getLayoutParams()).topMargin = ui.dp(14);
-        screen.section("Сопло и вариант", null, null);
+        screen.section(getString(R.string.l10n_pp_nozzle_variant), null, null);
         LinearLayout card = ui.card(24);
         for (int i = 0; i < chosenModel.variants.size(); i++) {
             PrinterProfileCatalog.Profile p = chosenModel.variants.get(i);
-            String variant = p.variant == null || p.variant.trim().isEmpty() ? "Вариант не указан" : "Вариант  " + p.variant;
+            String variant = p.variant == null || p.variant.trim().isEmpty() ? getString(R.string.l10n_pp_no_variant) : getString(R.string.l10n_pp_variant) + p.variant;
             boolean selected = chosenVariant != null && p.path.equals(chosenVariant.path);
             View trailing = selected ? selectedBadge() : null;
             LinearLayout row = ui.listRow(0, variant, p.name, trailing, () -> { chosenVariant = p; detailScrollY = scroll.getScrollY(); render(); });
-            row.setContentDescription(variant + ", " + p.name + (selected ? ", выбрано" : ""));
+            row.setContentDescription(variant + ", " + p.name + (selected ? getString(R.string.l10n_pp_selected_suffix) : ""));
             if (i > 0) card.addView(ui.hairline()); card.addView(row);
         }
         content.addView(card, new LinearLayout.LayoutParams(-1, -2));
-        TextView disclaimer = ui.text("Системный профиль сохраняется на устройстве и применяется при экспериментальной нарезке вместе с выбранными процессом и материалом.", 12, 500, secondary); disclaimer.setPadding(ui.dp(4), 0, ui.dp(4), 0);
+        TextView disclaimer = ui.text(getString(R.string.l10n_pp_system_note), 12, 500, secondary); disclaimer.setPadding(ui.dp(4), 0, ui.dp(4), 0);
         content.addView(disclaimer, ui.below(14));
-        LinearLayout save = ui.primaryButton(R.drawable.kv3_check, "Сохранить выбор", () -> { if (chosenVariant != null) saveVariant(chosenModel, chosenVariant, true); });
+        LinearLayout save = ui.primaryButton(R.drawable.kv3_check, getString(R.string.l10n_pp_save_choice), () -> { if (chosenVariant != null) saveVariant(chosenModel, chosenVariant, true); });
         ui.setEnabled(save, chosenVariant != null);
         content.addView(save, ui.below(16));
         scroll.post(() -> scroll.scrollTo(0, detailScrollY));
     }
     private FrameLayout coverView(Model model,int size) {
         FrameLayout box=new FrameLayout(this); box.setBackground(shape(com.keplerslicer.app.glass.KeplerUi.FIELD,size>100?20:16)); box.setClipToOutline(true);
-        TextView fallback=text("▧",size>100?48:26,com.keplerslicer.app.glass.KeplerUi.SECONDARY,false); fallback.setGravity(Gravity.CENTER); fallback.setContentDescription("Изображение модели отсутствует"); box.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
-        ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); image.setPadding(dp(8),dp(8),dp(8),dp(8)); image.setContentDescription("Изображение "+model.name+" из встроенного каталога");
+        TextView fallback=text("▧",size>100?48:26,com.keplerslicer.app.glass.KeplerUi.SECONDARY,false); fallback.setGravity(Gravity.CENTER); fallback.setContentDescription(getString(R.string.l10n_pp_no_image)); box.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
+        ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); image.setPadding(dp(8),dp(8),dp(8),dp(8)); image.setContentDescription("Изображение "+model.name+getString(R.string.l10n_pp_from_catalog));
         box.addView(image,new FrameLayout.LayoutParams(-1,-1));
         if(model.cover.isEmpty()) { image.setVisibility(View.GONE); return box; }
         image.setTag(model.cover); Bitmap cached=images.get(model.cover);
