@@ -19,6 +19,9 @@ all remaining Preferences or all product phases.
 5. Fast-forward clean worktrees to a reviewed integration baseline sequentially
    before the next task. Never overwrite an agent's uncommitted work.
 
+Push each reviewed commit to its corresponding branch on origin promptly.
+Push master after its required checks; do not wait for APK distribution.
+
 One author per mixed file per task. To transfer a file, first commit/review the
 current work, then update ownership.json and the task through integration and
 propagate that coordination commit. The other agent must stop editing that file.
