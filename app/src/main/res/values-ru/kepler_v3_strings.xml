@@ -432,7 +432,7 @@
     <string name="l10n_bytes">\u0020байт</string>
     <string name="l10n_net_bytes_nl">\u0020байт\n\n</string>
     <string name="l10n_net_save_it">. Сохраните подключение.</string>
-    <string name="l10n_net_bambu_sdk">Bambu — требуется Android SDK</string>
+    <string name="l10n_net_bambu_sdk">Bambu Lab</string>
     <string name="l10n_net_extra_help">Repetier: storage — slug принтера, group — группа. Flashforge: serial, flashforge_mode (http/tcp), firmware. Elegoo: model (Elegoo Centauri / Elegoo Centauri 2), X-Token — в поле ключа. TCP-порт: control_port; Flashforge HTTP: http_port. Obico: printer_id. 3DPrinterOS: project_id, project_name, printer_type, gcode_type.</string>
     <string name="l10n_net_sla">SLA-сервер требует SL1/SL1S. Текущая сборка нарезает FFF G-code.</string>
     <string name="l10n_net_sp_rejected">SimplyPrint отклонил вход. Проверьте подключение или войдите снова; повторите передачу вручную.</string>
@@ -547,7 +547,7 @@
     <string name="l10n_net_slice_first">Сначала нарежьте текущую модель с выбранными параметрами.</string>
     <string name="l10n_net_send_first">Сначала передайте текущий файл на этот принтер.</string>
     <string name="l10n_net_state">Состояние:\u0020</string>
-    <string name="l10n_net_save_note">Сохранение не соединяется с сервером. Bambu требует совместимой Android-библиотеки сетевого плагина; в этой сборке она недоступна. SL1 поддерживает соединение, но не FFF G-code.</string>
+    <string name="l10n_net_save_note">Сохранение не соединяется с сервером. Bambu Lab работает в режиме LAN: укажите IP принтера, серийный номер в поле «Пользователь» и код доступа LAN в поле ключа; читаются состояние и AMS, передача файлов на Bambu пока не поддерживается. SL1 поддерживает соединение, но не FFF G-code.</string>
     <string name="l10n_net_save">Сохранить подключение</string>
     <string name="l10n_net_saving_choice">Сохраняем выбор…</string>
     <string name="l10n_net_saved_printers">Сохранённые принтеры</string>
@@ -645,4 +645,6 @@
     <string name="l10n_cs_export_versions">Экспортировать версии</string>
     <string name="l10n_cs_export_both">Экспортировать обе версии</string>
     <string name="l10n_cs_truncated">… (полная версия доступна в экспорте)</string>
+    <string name="kv3_ams_needs_bambu">Для синхронизации AMS нужно подключение Bambu Lab в режиме LAN. Добавьте его в разделе «Подключение» и выберите.</string>
+    <string name="kv3_ams_none">Принтер не сообщил об AMS.</string>
 </resources>

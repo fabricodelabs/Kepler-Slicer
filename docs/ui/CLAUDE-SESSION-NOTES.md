@@ -82,7 +82,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 ## Open items
 
-- Not implemented: AMS sync (no Bambu protocol). Cut, Text, Assembly and backdrop blur are done (2026-11-05).
+- Bambu LAN status + AMS (BambuLan, AmsTrays; Device screen, filament "Sync from printer"); tested on a loopback simulator only. Not implemented: Bambu file transfer (FTPS), Bambu cloud preferences (proprietary plug-in), printer job control (kept disabled by the safety rules).
   (Lay on face, Measure, object-setting tools, camera, Project 3MF and plate label are done — see UI-010 follow-ups.)
 - Not verified: TalkBack; live Device telemetry and camera against a real OctoPrint/PrusaLink/Moonraker host; plate label with a printer that defines a bed type. The emulator test sphere has a fuzzy_skin object override from the check.
 - The duplicate `Kepler-Slicer/` clone was deleted on the owner's request.
