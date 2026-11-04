@@ -1,8 +1,11 @@
-# Claude session notes — Kepler Glass UI v3 port (UI-010), 2026-11-04
+# Claude session notes — lead developer, 2026-11-04
 
 Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI-010-HANDOFF.md](UI-010-HANDOFF.md).
 
 ## Context and decisions
+
+- **Claude is the lead developer and integrator** (owner, 2026-11-04); Codex retired, all paths Claude-owned.
+  Process: AGENTS.md, CLAUDE.md, docs/collaboration/WORKFLOW.md. Integrate in `outputs/OrcaMobile` (master).
 
 - Owner (chat, 2026-11-04) asked for a 1:1 port of Figma "Kepler Slicer — Glass UI v3"
   (`OBNMhh3YDB0kRzvPnSERYW`, page `0:1`) and explicitly **lifted the ownership limits** of AGENTS.md/CLAUDE.md:
@@ -47,3 +50,14 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 - Not verified: TalkBack; live Device telemetry and camera against a real OctoPrint/PrusaLink/Moonraker host; plate label with a printer that defines a bed type. The emulator test sphere has a fuzzy_skin object override from the check.
 - The duplicate `Kepler-Slicer/` clone was deleted on the owner's request.
 - Codex/owner still need the integrator review and merge of `claude/ui` into `master`.
+
+## Backlog (lead, prioritised)
+
+1. Fix stale `tools/tests/ProcessOverridesStoreTest` digest assertion (fails on the inherited 91dcf06 baseline).
+2. Configure a C++ compiler path for `test_step_import_options.ps1 -Cxx`.
+3. Phase 2 open items from docs/PHASE2-STATUS.md: editable project drafts / full 3MF project export with settings,
+   runtime option coverage (auditor `incomplete`), desktop parity, multi-object overrides, target highlight after rotation.
+4. Preferences: 8 blocked entries (#23, #28–31, #36, #37, #39 — Bambu provider/region/profile update).
+5. UI-010 leftovers: Cut / Text / Assembly (engine), AMS sync, backdrop blur, Russian labels for Orca enum choices
+   (assets/orca_ui_ru.json), TalkBack pass, live Device/camera on a real host.
+Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-github-com-orcaslicer-orcaslicer-https\work\json-test.jar`.
