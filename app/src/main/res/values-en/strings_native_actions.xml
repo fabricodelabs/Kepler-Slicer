@@ -42,6 +42,8 @@
     <string name="native_material_colour_preset">%1$s, %2$s</string>
     <string name="native_preferences_test_passed">Native checks passed: %1$d</string>
     <string name="native_preferences_test_report_saved">JSON report saved on this device.</string>
+    <string name="native_precision_test_passed">JNI precision checks passed (%1$d)</string>
+    <string name="native_precision_test_failed">JNI precision check failed. No new precision report was saved.\n%1$s</string>
     <string name="native_preferences_test_report_failed">Cannot prepare the native verification report folder.</string>
     <string name="native_material_backup_profiles">Select printer, process and filament profiles before restoring a backup with project material settings.</string>
     <string name="native_material_backup_changed">Profiles changed while validating the backup. Retry restoring it.</string>
