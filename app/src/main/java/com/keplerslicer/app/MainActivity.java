@@ -177,7 +177,7 @@ public class MainActivity extends Activity {
                     reviewPreparedImport(prepared,uri,sequence,policy,checkedProject,checkedSession,checkedProblem);
                 });
             } catch (Exception e) {
-                final String message = e.getMessage() == null ? "Не удалось прочитать файл." : e.getMessage();
+                final String message = e.getMessage() == null ? getString(R.string.l10n_ws_file_read_failed) : e.getMessage();
                 runOnUiThread(() -> {
                     if (isDestroyed() || sequence != loadSequence) return;
                     pendingUri = null; loadingMesh = false; render();
@@ -250,13 +250,13 @@ public class MainActivity extends Activity {
     private boolean publishPreparedImport(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy){
         if(isDestroyed()||sequence!=loadSequence){prepared.discard();return false;}
         try{prepared.publish(this);if(pendingPrepared==prepared)pendingPrepared=null;RecentModels.remember(getApplicationContext(),uri,prepared.name,prepared.mesh);mesh=prepared.mesh;meshName=prepared.name;meshFileName=prepared.file.getName();modelTransform=prepared.transform;modelMetadata=prepared.metadata;modelProjectMode=prepared.projectMode;pendingUri=null;loadingMesh=false;render();
-            if(prepared.file.getName().endsWith(".obj"))dialog("Материалы OBJ","Загружена геометрия OBJ. Внешние файлы материалов .mtl и текстуры пока не импортируются; цвета и связанные настройки могут отсутствовать.");
+            if(prepared.file.getName().endsWith(".obj"))dialog(getString(R.string.l10n_ws_obj_materials),getString(R.string.l10n_ws_obj_note));
             else if(policy.settingsPresent)dialog(getString(R.string.native_project_title),getString(prepared.projectMode>0?R.string.native_project_loaded_full:R.string.native_project_loaded_geometry));
-            else if(prepared.metadata!=null&&prepared.metadata.optBoolean("mapping_unresolved",false))dialog("Пластина не определена","Нельзя определить соответствие объектов пластине. Исходный проект сохранён; нарезка недоступна.");
-            else if(prepared.metadata!=null&&prepared.metadata.optInt("non_printable_instances",0)>0)dialog("Объекты на столе","Непечатаемые экземпляры видны в предпросмотре, но не попадут в нарезку.");
+            else if(prepared.metadata!=null&&prepared.metadata.optBoolean("mapping_unresolved",false))dialog(getString(R.string.l10n_ws_plate_unknown),getString(R.string.l10n_ws_plate_mapping_full));
+            else if(prepared.metadata!=null&&prepared.metadata.optInt("non_printable_instances",0)>0)dialog(getString(R.string.l10n_ws_objects_on_bed),getString(R.string.l10n_ws_unprintable));
             if(canSliceModel())ControlPreferences.scheduleAutoSlice(this);
             return true;
-        }catch(java.io.IOException e){prepared.discard();pendingUri=null;loadingMesh=false;render();if(mesh==null)restoreModel();dialog("Не удалось сохранить модель",e.getMessage());return false;}
+        }catch(java.io.IOException e){prepared.discard();pendingUri=null;loadingMesh=false;render();if(mesh==null)restoreModel();dialog(getString(R.string.l10n_ws_model_save_failed),e.getMessage());return false;}
     }
 
     private void restoreModel() {
@@ -271,10 +271,10 @@ public class MainActivity extends Activity {
                     loadingMesh = false; render();
                 });
             } catch (Exception e) {
-                final String message = e.getMessage() == null ? "Не удалось прочитать модель." : e.getMessage();
+                final String message = e.getMessage() == null ? getString(R.string.l10n_ws_model_read_failed) : e.getMessage();
                 runOnUiThread(() -> {
                     if (isDestroyed() || sequence != loadSequence) return;
-                    loadingMesh = false; render(); dialog("Не удалось восстановить STL", message);
+                    loadingMesh = false; render(); dialog(getString(R.string.l10n_ws_restore_stl_failed), message);
                 });
             }
         }, "stl-restore").start();
@@ -408,7 +408,7 @@ public class MainActivity extends Activity {
         FrameLayout add = ui.glassButton(R.drawable.kv3_plus, 56, 26, getString(R.string.kv3_add_model), this::chooseStl); addButton = add;
         FrameLayout.LayoutParams plus = new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.END|Gravity.BOTTOM); plus.setMargins(0, 0, dp(20), dp(12)); viewport.addView(add, plus);
 
-        TextView hint = ui.text(loadingMesh ? getString(R.string.kv3_reading_model) : mesh == null ? getString(R.string.kv3_no_model_detail) : mesh.vertices.length==0 ? "Пластина пуста" : modelMetadata!=null && modelMetadata.optBoolean("mapping_unresolved",false) ? "Пластина не определена · все объекты проекта" : "Условная сетка · стол загружается", 10, 600, com.keplerslicer.app.glass.KeplerUi.SECONDARY);
+        TextView hint = ui.text(loadingMesh ? getString(R.string.kv3_reading_model) : mesh == null ? getString(R.string.kv3_no_model_detail) : mesh.vertices.length==0 ? getString(R.string.l10n_ws_plate_empty) : modelMetadata!=null && modelMetadata.optBoolean("mapping_unresolved",false) ? getString(R.string.l10n_ws_plate_unknown_all) : getString(R.string.l10n_ws_grid_loading), 10, 600, com.keplerslicer.app.glass.KeplerUi.SECONDARY);
         hint.setAlpha(.6f); hint.setMaxLines(2); bedHint = hint;
         FrameLayout.LayoutParams hintPosition = new FrameLayout.LayoutParams(-2,-2,Gravity.START|Gravity.BOTTOM); hintPosition.setMargins(dp(20), 0, dp(92), dp(18)); viewport.addView(hint, hintPosition);
 
@@ -460,7 +460,7 @@ public class MainActivity extends Activity {
             view.setMoveMode(previewReady&&editable&&moveMode&&toolsMode&&activeTool==0, moved);
             boolean sliceable = previewReady&&canSliceModel(); ui.setEnabled(slice, sliceable);
             refreshToolFields();
-            if (error != null) {pendingLayerPreview=false;dialog("Не удалось обновить модель",error.getMessage());} else maybeOpenRequestedLayers();
+            if (error != null) {pendingLayerPreview=false;dialog(getString(R.string.l10n_ws_update_failed),error.getMessage());} else maybeOpenRequestedLayers();
         });
         loadSelectedBed(printer, view, hint);
         final android.content.Context appContext = getApplicationContext();
@@ -560,14 +560,14 @@ public class MainActivity extends Activity {
         play.addView(playArt, new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER)); ui.pressable(play, null, 16);
         play.setContentDescription(getString(R.string.kv3_play_layers)); play.setOnClickListener(v -> togglePlayback(playArt));
         scrubber.addView(play, lp(32, 32));
-        layerSlider = new SeekBar(this); layerSlider.setContentDescription("Количество видимых слоёв");
+        layerSlider = new SeekBar(this); layerSlider.setContentDescription(getString(R.string.l10n_ws_visible_layers));
         layerSlider.setProgressTintList(android.content.res.ColorStateList.valueOf(white));
         layerSlider.setThumbTintList(android.content.res.ColorStateList.valueOf(white));
         layerSlider.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x52FFFFFF));
         layerSlider.setPadding(dp(8), 0, dp(8), 0);
         scrubber.addView(layerSlider, new LinearLayout.LayoutParams(0, dp(32), 1));
         layerCaption = ui.line(getString(R.string.kv3_layer, 1), 12, 500, secondary);
-        click(layerCaption, () -> { if (layerAnalysis!=null) dialog("О просмотре слоёв","Приблизительный просмотр линий экструзии и поддерживаемых дуг на высоте слоя. Холостые перемещения, толщина линий и изменение Z внутри сегмента не воспроизводятся. Пропущенных движений с неизвестной позицией: "+layerAnalysis.skippedUnknown+"; неподдерживаемых движений: "+layerAnalysis.unsupportedMoves+"; неотображённых дуг: "+layerAnalysis.arcMoves+"."); });
+        click(layerCaption, () -> { if (layerAnalysis!=null) dialog(getString(R.string.l10n_ws_about_layers),getString(R.string.l10n_ws_layer_note)+layerAnalysis.skippedUnknown+getString(R.string.l10n_ws_moves_unsupported)+layerAnalysis.unsupportedMoves+getString(R.string.l10n_ws_arcs_hidden)+layerAnalysis.arcMoves+"."); });
         scrubber.addView(layerCaption);
         sheet.addView(scrubber, ui.below(10));
         LinearLayout actions = ui.row();
@@ -654,7 +654,7 @@ public class MainActivity extends Activity {
                     String l = line.trim().toLowerCase(java.util.Locale.ROOT); if (!l.startsWith(";")) continue;
                     String value = l.contains("=") ? l.substring(l.indexOf('=') + 1).trim() : l.contains(":") ? l.substring(l.lastIndexOf(':') + 1).trim() : "";
                     if (value.isEmpty()) continue;
-                    if (time == null && l.contains("estimated printing time")) time = value;
+                    if (time == null && l.contains("estimated printing time")) time = PrintTime.localize(this, value);
                     else if (grams == null && l.contains("filament") && l.contains("[g]") && value.matches("[0-9.,]+.*")) grams = value.split("[ ,]")[0] + " " + getString(R.string.kv3_unit_g);
                     else if (cost == null && l.contains("filament cost") && value.matches("[0-9.,]+.*")) cost = value.split("[ ,]")[0];
                 }
@@ -918,11 +918,11 @@ public class MainActivity extends Activity {
                 if(isDestroyed()||stlView!=view)return;
                 if(error==null){dragReady(view,transform,move,true);ControlPreferences.scheduleAutoSlice(this);return;}
                 try{CurrentModelStore.saveTransform(this,expected,old);modelTransform=old;}
-                catch(Exception rollback){view.discardPendingMove();dialog("Ошибка сохранения",rollback.getMessage());return;}
+                catch(Exception rollback){view.discardPendingMove();dialog(getString(R.string.l10n_save_error),rollback.getMessage());return;}
                 view.setModelTransform(old,restoreError->{if(isDestroyed()||stlView!=view)return;dragReady(view,transform,move,restoreError==null);});
-                dialog("Не удалось переместить модель",error.getMessage());
+                dialog(getString(R.string.l10n_ws_move_failed),error.getMessage());
             });
-        }catch(Exception error){view.discardPendingMove();dialog("Не удалось сохранить положение",error.getMessage());}
+        }catch(Exception error){view.discardPendingMove();dialog(getString(R.string.l10n_ws_position_save_failed),error.getMessage());}
     }
 
     private FrameLayout toolButton(String icon, String label, Runnable action) {
@@ -954,12 +954,12 @@ public class MainActivity extends Activity {
         final boolean embeddedBed=modelProjectMode==2;
         final String key = embeddedBed?"project-bed:"+meshFileName+":"+(modelMetadata==null?-1:modelMetadata.optInt("selected_plate",-1)):printer == null || printer.imported ? "" : printer.vendor + "\\n" + printer.name + "\\n" + printer.path;
         if (!key.equals(bedKey)) { bedKey = key; loadedBed = null; bedPending = false; ++bedGeneration; }
-        if (key.isEmpty()) {if(pendingLayerPreview&&visibleWorkspace){pendingLayerPreview=false;dialog("Предпросмотр слоёв","Геометрия выбранного стола недоступна.");}return;}
+        if (key.isEmpty()) {if(pendingLayerPreview&&visibleWorkspace){pendingLayerPreview=false;dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_bed_unavailable));}return;}
         if (loadedBed != null) {
             view.setBuildVolume(loadedBed, error -> {
                 if (isDestroyed() || stlView != view || !key.equals(bedKey)) return;
-                hint.setText(error == null ? bedDescription(loadedBed) : "Условная сетка · область стола недоступна");
-                if(error==null)maybeOpenRequestedLayers();else if(pendingLayerPreview){pendingLayerPreview=false;dialog("Предпросмотр слоёв","Не удалось загрузить геометрию стола.");}
+                hint.setText(error == null ? bedDescription(loadedBed) : getString(R.string.l10n_ws_grid_unavailable));
+                if(error==null)maybeOpenRequestedLayers();else if(pendingLayerPreview){pendingLayerPreview=false;dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_bed_load_failed));}
             });
             return;
         }
@@ -1006,7 +1006,7 @@ public class MainActivity extends Activity {
                     if (stlView != null && bedHint != null) loadSelectedBed(printer, stlView, bedHint);
                 });
             } catch (Exception | LinkageError error) {
-                runOnUiThread(() -> { if (!isDestroyed() && generation == bedGeneration) { bedPending = false; if (stlView == view) {hint.setText("Условная сетка · область стола недоступна");if(pendingLayerPreview){pendingLayerPreview=false;dialog("Предпросмотр слоёв","Не удалось загрузить геометрию стола.");}} } });
+                runOnUiThread(() -> { if (!isDestroyed() && generation == bedGeneration) { bedPending = false; if (stlView == view) {hint.setText(getString(R.string.l10n_ws_grid_unavailable));if(pendingLayerPreview){pendingLayerPreview=false;dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_bed_load_failed));}} } });
             }
         });
     }
@@ -1051,29 +1051,29 @@ public class MainActivity extends Activity {
     private void showPreparation(){cancelLayerWork();layersMode=false;layerAnalysis=null;StlView view=stlView;if(view!=null)view.clearToolpaths();if(layerPanel!=null)layerPanel.setVisibility(View.GONE);if(bedHint!=null)bedHint.setVisibility(View.VISIBLE);updatePreviewTabs();
         boolean editable=previewReady&&mesh!=null&&mesh.vertices.length>0&&transformSupported();boolean toolsOpen=previewReady&&mesh!=null&&mesh.vertices.length>0;if(viewportTransform!=null){viewportTransform.setEnabled(toolsOpen);viewportTransform.setAlpha(toolsOpen?1:.38f);} // Cut/Text/Assembly also work on 3MF modelsif(viewportMove!=null){viewportMove.setEnabled(editable);viewportMove.setAlpha(editable?1:.38f);}if(view!=null)view.setMoveMode(editable&&moveMode&&toolsMode&&activeTool==0,viewportMoveCallback);
         if(viewportMode!=null)viewportMode.setText(plateCaption());}
-    private void maybeOpenRequestedLayers(){if(!pendingLayerPreview||!visibleWorkspace||isDestroyed()||isFinishing())return;if(loadingMesh)return;if(mesh==null||mesh.vertices.length==0){pendingLayerPreview=false;dialog("Предпросмотр слоёв","Откройте непустую модель и выполните нарезку.");return;}if(!previewReady||loadedBed==null)return;pendingLayerPreview=false;openLayerPreview();}
+    private void maybeOpenRequestedLayers(){if(!pendingLayerPreview||!visibleWorkspace||isDestroyed()||isFinishing())return;if(loadingMesh)return;if(mesh==null||mesh.vertices.length==0){pendingLayerPreview=false;dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_open_and_slice));return;}if(!previewReady||loadedBed==null)return;pendingLayerPreview=false;openLayerPreview();}
     private void openLayerPreview(){
-        if(layersMode)return;if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog("Предпросмотр слоёв","Сначала откройте модель и дождитесь её отображения.");return;}
-        if(loadedBed==null){dialog("Предпросмотр слоёв","Дождитесь загрузки геометрии выбранного стола принтера.");return;}
+        if(layersMode)return;if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_open_wait));return;}
+        if(loadedBed==null){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_wait_bed));return;}
         cancelLayerWork();final int request=layerRequest;final StlView view=stlView;layersMode=true;setToolsMode(false);updatePreviewTabs();view.setMoveMode(false,null);
-        if(viewportTransform!=null){viewportTransform.setEnabled(false);viewportTransform.setAlpha(.38f);}if(viewportMove!=null){viewportMove.setEnabled(false);viewportMove.setAlpha(.38f);}if(viewportMode!=null)viewportMode.setText("Читаем слои…");
+        if(viewportTransform!=null){viewportTransform.setEnabled(false);viewportTransform.setAlpha(.38f);}if(viewportMove!=null){viewportMove.setEnabled(false);viewportMove.setAlpha(.38f);}if(viewportMode!=null)viewportMode.setText(getString(R.string.l10n_ws_reading_layers));
         layerReader=new Thread(()->{try{
-            java.io.File file=lastResult();if(file==null)throw new java.io.IOException("Сначала повторите нарезку для текущей модели и настроек.");long length=file.length(),modified=file.lastModified();
+            java.io.File file=lastResult();if(file==null)throw new java.io.IOException(getString(R.string.l10n_ws_reslice_first));long length=file.length(),modified=file.lastModified();
             GcodeAnalysis analysis=GcodeAnalysis.read(file);if(Thread.currentThread().isInterrupted())return;
             ToolpathGeometry geometry=ToolpathGeometry.build(analysis);if(Thread.currentThread().isInterrupted())return;geometry.colors=ToolpathGeometry.colors(analysis,colorMode,geometry.vertices.capacity()/3);
-            java.io.File fresh=lastResult();if(fresh==null||!fresh.equals(file)||file.length()!=length||file.lastModified()!=modified)throw new java.io.IOException("Модель, настройки или результат изменились. Повторите нарезку.");
-            if(geometry.layerCount==0)throw new java.io.IOException("Нет поддерживаемых слоёв для отображения.");
+            java.io.File fresh=lastResult();if(fresh==null||!fresh.equals(file)||file.length()!=length||file.lastModified()!=modified)throw new java.io.IOException(getString(R.string.l10n_ws_changed_reslice));
+            if(geometry.layerCount==0)throw new java.io.IOException(getString(R.string.l10n_ws_no_layers));
             runOnUiThread(()->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;layerAnalysis=analysis;layerGeometry=geometry;updateLegend(analysis);int count=geometry.layerCount;
-                view.setToolpaths(geometry,count,error->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;if(error!=null){showPreparation();dialog("Предпросмотр слоёв",error.getMessage());return;}
+                view.setToolpaths(geometry,count,error->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;if(error!=null){showPreparation();dialog(getString(R.string.l10n_ws_layer_preview),error.getMessage());return;}
                     if(viewportMode!=null)viewportMode.setText(plateCaption());if(bedHint!=null)bedHint.setVisibility(View.GONE);layerPanel.setVisibility(View.VISIBLE);layerSlider.setMax(count-1);if(layerRail!=null)layerRail.setMax(count-1);syncPanels();
                     layerSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar bar,int progress,boolean fromUser){int visible=progress+1;view.setVisibleToolpathLayers(visible);updateLayerCaption(analysis,geometry,visible);}public void onStartTrackingTouch(SeekBar bar){}public void onStopTrackingTouch(SeekBar bar){}});
                     layerSlider.setProgress(count-1);updateLayerCaption(analysis,geometry,count);
                 });});
-        }catch(Exception | OutOfMemoryError error){String message=error instanceof OutOfMemoryError?"Недостаточно памяти для просмотра траекторий.":error.getMessage()==null?"Не удалось прочитать G-code.":error.getMessage();runOnUiThread(()->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;showPreparation();dialog("Предпросмотр слоёв",message);});}},"workspace-toolpaths");layerReader.start();
+        }catch(Exception | OutOfMemoryError error){String message=error instanceof OutOfMemoryError?getString(R.string.l10n_ws_toolpath_memory):error.getMessage()==null?getString(R.string.l10n_ws_gcode_read_failed):error.getMessage();runOnUiThread(()->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;showPreparation();dialog(getString(R.string.l10n_ws_layer_preview),message);});}},"workspace-toolpaths");layerReader.start();
     }
-    private void updateLayerCaption(GcodeAnalysis analysis,ToolpathGeometry geometry,int visible){int index=visible-1;double z=index<analysis.layers.size()?analysis.layers.get(index).z:Double.NaN;String value="Приблизительно · слой "+visible+" / "+geometry.layerCount+(Double.isFinite(z)?String.format(java.util.Locale.getDefault(),"  ·  Z %.3f мм",z):"  ·  Z неизвестен");if(geometry.skippedLayersWithoutZ>0||analysis.unsupportedMoves>0||analysis.skippedUnknown>0)value+="  ·  неполный просмотр";layerCaption.setText(getString(R.string.kv3_layer,visible));layerCaption.setContentDescription(value);if(layerRail!=null){layerRail.setProgress(visible-1);layerRail.setContentDescription(value);}}
+    private void updateLayerCaption(GcodeAnalysis analysis,ToolpathGeometry geometry,int visible){int index=visible-1;double z=index<analysis.layers.size()?analysis.layers.get(index).z:Double.NaN;String value=getString(R.string.l10n_ws_approx_layer)+visible+" / "+geometry.layerCount+(Double.isFinite(z)?String.format(java.util.Locale.getDefault(),"  ·  Z %.3f мм",z):getString(R.string.l10n_ws_z_unknown));if(geometry.skippedLayersWithoutZ>0||analysis.unsupportedMoves>0||analysis.skippedUnknown>0)value+=getString(R.string.l10n_ws_partial);layerCaption.setText(getString(R.string.kv3_layer,visible));layerCaption.setContentDescription(value);if(layerRail!=null){layerRail.setProgress(visible-1);layerRail.setContentDescription(value);}}
     private void openExport() {
-        java.io.File file=lastResult(); if(file==null) { dialog("Экспорт","Сначала повторите нарезку для текущей модели и настроек."); return; }
+        java.io.File file=lastResult(); if(file==null) { dialog(getString(R.string.l10n_export),getString(R.string.l10n_ws_reslice_first)); return; }
         String name=getSharedPreferences("last_slice_result",MODE_PRIVATE).getString("model","kepler-result");
         if(name==null || name.trim().isEmpty()) name="kepler-result";
         if(name.toLowerCase(java.util.Locale.ROOT).endsWith(".stl")) name=name.substring(0,name.length()-4);
@@ -1092,8 +1092,8 @@ public class MainActivity extends Activity {
     }
     private boolean canSliceModel(){if(mesh==null||mesh.vertices.length==0||modelMetadata!=null&&(modelMetadata.optBoolean("mapping_unresolved",false)||modelMetadata.has("printable_instances")&&modelMetadata.optInt("printable_instances",0)==0))return false;if(modelMetadata!=null&&"3mf".equals(modelMetadata.optString("format"))){if(modelProjectMode<0&&GeneralProjectPolicy.inspect(modelMetadata).settingsPresent)return false;if(modelProjectMode>0){org.json.JSONObject snapshot=modelMetadata.optJSONObject("project_settings_snapshot"),validation=snapshot==null?null:snapshot.optJSONObject("validation"),mode=validation==null?null:validation.optJSONObject(modelProjectMode==2?"embedded_printer":"selected_printer");if(mode==null||!mode.optBoolean("can_load",false))return false;}org.json.JSONObject project=modelMetadata.optJSONObject("project_data");if(project!=null&&(project.optBoolean("unknown_unit_requires_validation",false)||project.optBoolean("non_mm_transform_requires_validation",false)||project.optJSONArray("plates")!=null&&project.optJSONArray("plates").length()>1))return false;}return true;}
     private boolean needsProjectModeReview(){return modelMetadata!=null&&"3mf".equals(modelMetadata.optString("format"))&&modelProjectMode<0&&GeneralProjectPolicy.inspect(modelMetadata).settingsPresent;}
-    private String bedDescription(BedGeometry bed){if(mesh!=null&&mesh.vertices.length==0)return "Пластина пуста";if(modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false))return "Пластина не определена · все объекты проекта";if(modelMetadata!=null&&modelMetadata.has("printable_instances")&&modelMetadata.optInt("printable_instances",0)==0)return "Нет объектов для печати";
-        double[] b=projectBounds(modelMetadata);if(b!=null&&b.length==6&&bed!=null){double eps=.001;if(b[0]<bed.centerX-bed.width/2-eps||b[3]>bed.centerX+bed.width/2+eps||b[1]<bed.centerY-bed.depth/2-eps||b[4]>bed.centerY+bed.depth/2+eps||b[2]<-eps||b[5]>bed.height+eps)return "Границы 3MF выходят за габариты стола";return "Положение 3MF · совместимость проверяется при нарезке";}return "Стол профиля · исключённые зоны не показаны";
+    private String bedDescription(BedGeometry bed){if(mesh!=null&&mesh.vertices.length==0)return getString(R.string.l10n_ws_plate_empty);if(modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false))return getString(R.string.l10n_ws_plate_unknown_all);if(modelMetadata!=null&&modelMetadata.has("printable_instances")&&modelMetadata.optInt("printable_instances",0)==0)return getString(R.string.l10n_ws_no_objects);
+        double[] b=projectBounds(modelMetadata);if(b!=null&&b.length==6&&bed!=null){double eps=.001;if(b[0]<bed.centerX-bed.width/2-eps||b[3]>bed.centerX+bed.width/2+eps||b[1]<bed.centerY-bed.depth/2-eps||b[4]>bed.centerY+bed.depth/2+eps||b[2]<-eps||b[5]>bed.height+eps)return getString(R.string.l10n_ws_3mf_outside);return getString(R.string.l10n_ws_3mf_hint);}return getString(R.string.l10n_ws_bed_profile);
     }
     private boolean transformSupported() {
         if(modelMetadata==null)return true;
@@ -1105,9 +1105,9 @@ public class MainActivity extends Activity {
     private void openModelDetails() { startActivityForResult(new Intent().setClassName(this,getPackageName()+".ModelDetailsActivity"),REQUEST_MODEL_DETAILS); }
 
     private void openSlice() {
-        if (mesh == null || loadingMesh) { dialog("Нарезка", "Сначала откройте модель."); return; }
-        if(!canSliceModel()){dialog("Нарезка",needsProjectModeReview()?getString(R.string.native_project_legacy_mode):modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false)?"Нельзя определить соответствие объектов выбранной пластине.":"Проверьте режим проекта, выбранную пластину и совместимость настроек.");return;}
-        if (!previewReady) { dialog("Модель обновляется", "Дождитесь обновления предварительного просмотра."); return; }
+        if (mesh == null || loadingMesh) { dialog(getString(R.string.l10n_ws_slicing), getString(R.string.l10n_ws_open_first)); return; }
+        if(!canSliceModel()){dialog(getString(R.string.l10n_ws_slicing),needsProjectModeReview()?getString(R.string.native_project_legacy_mode):modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false)?getString(R.string.l10n_ws_plate_mapping):getString(R.string.l10n_ws_check_project));return;}
+        if (!previewReady) { dialog(getString(R.string.l10n_ws_model_updating), getString(R.string.l10n_ws_wait_preview)); return; }
         startActivity(new Intent(this, SliceActivity.class));
     }
 
@@ -1116,11 +1116,11 @@ public class MainActivity extends Activity {
         final String currentFile = meshFileName;
         final ModelTransform old = modelTransform;
         final StlView view = stlView;
-        String[] labels = {"Поворот X, °", "Поворот Y, °", "Поворот Z, °", "Масштаб X (1 = 100%)", "Масштаб Y (1 = 100%)", "Масштаб Z (1 = 100%)", "Смещение X, мм", "Смещение Y, мм"};
+        String[] labels = {getString(R.string.l10n_ws_rotate_x), getString(R.string.l10n_ws_rotate_y), getString(R.string.l10n_ws_rotate_z), getString(R.string.l10n_ws_scale_x), getString(R.string.l10n_ws_scale_y), getString(R.string.l10n_ws_scale_z), getString(R.string.l10n_ws_offset_x), getString(R.string.l10n_ws_offset_y)};
         double[] values = {old.rx, old.ry, old.rz, old.sx, old.sy, old.sz, old.offsetX, old.offsetY};
         EditText[] fields = new EditText[8];
         LinearLayout inputs = vertical(); pad(inputs, 20, 4, 20, 8);
-        TextView hint = text("Смещение задаётся относительно центра стола. Модель автоматически ставится на стол.", 13, MUTED, false);
+        TextView hint = text(getString(R.string.l10n_ws_offset_note), 13, MUTED, false);
         inputs.addView(hint); gap(inputs, 8);
         for (int i = 0; i < fields.length; i++) {
             inputs.addView(text(labels[i], 12, MUTED, true));
@@ -1130,8 +1130,8 @@ public class MainActivity extends Activity {
             field.setContentDescription(labels[i]); inputs.addView(field, lp(-1, 48)); gap(inputs, 8);
         }
         ScrollView scroller = new ScrollView(this); scroller.addView(inputs);
-        AlertDialog editor = MdUi.alert(this).setTitle("Преобразование модели").setView(scroller)
-                .setNegativeButton("Отмена", null).setNeutralButton("Сбросить", null).setPositiveButton("Применить", null).create();
+        AlertDialog editor = MdUi.alert(this).setTitle(getString(R.string.l10n_ws_transform)).setView(scroller)
+                .setNegativeButton(getString(R.string.general_project_cancel), null).setNeutralButton(getString(R.string.l10n_reset), null).setPositiveButton(getString(R.string.l10n_apply), null).create();
         activeTransformEditor = editor;
         editor.setOnDismissListener(ignored -> { if (activeTransformEditor == editor) activeTransformEditor = null; });
         editor.setOnShowListener(ignored -> {
@@ -1160,11 +1160,11 @@ public class MainActivity extends Activity {
                             editor.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(true);
                             editor.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(true);
                             editor.setCancelable(true);
-                            dialog("Не удалось применить", e.getMessage());
+                            dialog(getString(R.string.l10n_ws_apply_failed), e.getMessage());
                         }
                     });
                 } catch (IllegalArgumentException e) {
-                    dialog("Проверьте значения", e instanceof NumberFormatException ? "Введите число в каждом поле." : e.getMessage());
+                    dialog(getString(R.string.l10n_check_values), e instanceof NumberFormatException ? getString(R.string.kv3_edit_number) : e.getMessage());
                 }
             });
         });

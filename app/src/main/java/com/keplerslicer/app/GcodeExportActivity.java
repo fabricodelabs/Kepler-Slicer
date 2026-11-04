@@ -111,22 +111,22 @@ public final class GcodeExportActivity extends Activity {
         more.addView(k.hairline());
         more.addView(k.listRow(R.drawable.kv3_sliders, getString(R.string.kv3_preset_bundle), getString(R.string.kv3_preset_bundle_detail), k.image(R.drawable.kv3_chevron_right, 18, white), () -> startActivity(new Intent(this, SettingsTransferActivity.class))));
         content.addView(more, new LinearLayout.LayoutParams(-1, -2));
-        TextView note = k.text("Экспериментальная сборка: результат ещё не проверен для печати.", 12, 500, secondary); note.setPadding(k.dp(4), 0, k.dp(4), 0); content.addView(note, k.below(14));
+        TextView note = k.text(getString(R.string.l10n_ex_experimental), 12, 500, secondary); note.setPadding(k.dp(4), 0, k.dp(4), 0); content.addView(note, k.below(14));
 
         try {
             String path = getIntent().getStringExtra(EXTRA_RESULT_PATH);
-            if (path == null) throw new IOException("Не указан результат нарезки.");
+            if (path == null) throw new IOException(getString(R.string.l10n_no_slice_result));
             source = new File(path).getCanonicalFile();
             File base = new File(getFilesDir(), "slicer-engine").getCanonicalFile();
             if (!source.getPath().startsWith(base.getPath()+File.separator) || !source.getName().equals("result.gcode") || !source.isFile() || source.length() == 0)
-                throw new IOException("Результат нарезки недоступен.");
-            status.setText("Размер файла: " + android.text.format.Formatter.formatShortFileSize(this, source.length()) + ".");
+                throw new IOException(getString(R.string.l10n_slice_result_unavailable));
+            status.setText(getString(R.string.l10n_ex_file_size) + android.text.format.Formatter.formatShortFileSize(this, source.length()) + ".");
             loadSummary(source, stats);
         } catch (IOException e) { status.setText(EngineText.clean(e.getMessage())); source = null; }
         new Thread(() -> { String flavorName = ""; try { flavorName = SettingsState.repository(this).load(SettingsState.activeId(this, "printer")).effective.optString("gcode_flavor", ""); } catch (Exception ignored) { }
             final String value = flavorName; if (!value.isEmpty()) runOnUiThread(() -> { if (!isDestroyed()) flavorValue.setText(value); }); }, "export-flavor").start();
         if (task != null) { task.observer = new WeakReference<>(this); refreshTask(); }
-        else if (state != null && state.getBoolean("copying")) status.setText("Экспорт был прерван. Проверьте файл в выбранной папке и повторите сохранение при необходимости.");
+        else if (state != null && state.getBoolean("copying")) status.setText(getString(R.string.l10n_ex_interrupted));
         refreshEnabled();
     }
 
@@ -144,7 +144,7 @@ public final class GcodeExportActivity extends Activity {
         if (request == CREATE_OBJ && source == null) { screen.info(getString(R.string.kv3_toolpaths_obj), status.getText().toString()); return; }
         String name = baseName() + (request == CREATE_STL ? ".stl" : request == CREATE_3MF ? ".3mf" : "-toolpaths.obj");
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(request == CREATE_STL ? "model/stl" : request == CREATE_3MF ? "model/3mf" : "model/obj").putExtra(Intent.EXTRA_TITLE, name);
-        try { pickerOpen = true; refreshEnabled(); startActivityForResult(intent, request); } catch (android.content.ActivityNotFoundException e) { pickerOpen = false; refreshEnabled(); status.setText("На устройстве нет приложения для сохранения документов."); }
+        try { pickerOpen = true; refreshEnabled(); startActivityForResult(intent, request); } catch (android.content.ActivityNotFoundException e) { pickerOpen = false; refreshEnabled(); status.setText(getString(R.string.l10n_ex_no_saver)); }
     }
     private void writeExtra(int request, Uri destination) {
         final File mesh = modelMesh(), gcode = source; final android.content.Context app = getApplicationContext();
@@ -152,14 +152,14 @@ public final class GcodeExportActivity extends Activity {
         new Thread(() -> {
             String message;
             try (OutputStream out = app.getContentResolver().openOutputStream(destination, "wt")) {
-                if (out == null) throw new IOException("Не удалось открыть место сохранения.");
+                if (out == null) throw new IOException(getString(R.string.l10n_ex_open_target_failed));
                 if (request == CREATE_3MF) { message = Project3mfWriter.write(app, out, projectSource(), mesh); }
                 else if (request == CREATE_STL) {
                     if (mesh == null) throw new IOException(getString(R.string.kv3_stl_unavailable));
                     long n = 0; try (FileInputStream in = new FileInputStream(mesh)) { byte[] b = new byte[65536]; int r; while ((r = in.read(b)) != -1) { out.write(b, 0, r); n += r; } }
                     message = getString(R.string.kv3_saved_bytes, android.text.format.Formatter.formatShortFileSize(app, n));
                 } else {
-                    if (gcode == null) throw new IOException("Результат нарезки недоступен.");
+                    if (gcode == null) throw new IOException(getString(R.string.l10n_slice_result_unavailable));
                     GcodeAnalysis analysis = GcodeAnalysis.read(gcode); long vertices = 0;
                     java.io.Writer w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(out, java.nio.charset.StandardCharsets.UTF_8));
                     w.write("# Kepler Slicer toolpaths (extrusion only, millimetres)\n");
@@ -175,7 +175,7 @@ public final class GcodeExportActivity extends Activity {
                     w.flush();
                     message = getString(R.string.kv3_saved_obj, index, vertices / 2);
                 }
-            } catch (Exception | OutOfMemoryError e) { message = "Не удалось сохранить файл: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
+            } catch (Exception | OutOfMemoryError e) { message = getString(R.string.l10n_ex_save_failed) + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
             final String text = message; runOnUiThread(() -> { if (!isDestroyed()) status.setText(text); });
         }, "export-extra").start();
     }
@@ -192,7 +192,7 @@ public final class GcodeExportActivity extends Activity {
                 runOnUiThread(() -> { if (isDestroyed()) return;
                     Intent send = new Intent(Intent.ACTION_SEND).setType("application/octet-stream").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     send.setClipData(android.content.ClipData.newRawUri(name, uri));
-                    try { startActivity(Intent.createChooser(send, getString(R.string.kv3_share)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)); } catch (android.content.ActivityNotFoundException e) { status.setText("Нет приложений для отправки файла."); } });
+                    try { startActivity(Intent.createChooser(send, getString(R.string.kv3_share)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)); } catch (android.content.ActivityNotFoundException e) { status.setText(getString(R.string.l10n_ex_no_share)); } });
             } catch (IOException e) { runOnUiThread(() -> { if (!isDestroyed()) status.setText(EngineText.clean(e.getMessage())); }); }
         }, "export-share").start();
     }
@@ -214,7 +214,7 @@ public final class GcodeExportActivity extends Activity {
                 for (String line : new String(buffer, java.nio.charset.StandardCharsets.UTF_8).split("\n")) {
                     String l = line.trim().toLowerCase(java.util.Locale.ROOT); if (!l.startsWith(";")) continue;
                     String value = l.contains("=") ? l.substring(l.indexOf('=') + 1).trim() : l.contains(":") ? l.substring(l.lastIndexOf(':') + 1).trim() : "";
-                    if (time == null && l.contains("estimated printing time") && !value.isEmpty()) time = value;
+                    if (time == null && l.contains("estimated printing time") && !value.isEmpty()) time = PrintTime.localize(this, value);
                     else if (grams == null && l.contains("filament") && l.contains("[g]") && value.matches("[0-9.,]+.*")) grams = value.split("[ ,]")[0] + " " + getString(R.string.kv3_unit_g);
                     else if (layers == 0 && (l.contains("total layer number") || l.contains("total layers count")) && value.matches("[0-9]+.*")) layers = Integer.parseInt(value.replaceAll("[^0-9].*", ""));
                 }
@@ -240,7 +240,7 @@ public final class GcodeExportActivity extends Activity {
             intent.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,directory);
         }catch(IllegalArgumentException ignored){/* A provider may no longer expose the persisted tree. */}
         try { pickerOpen = true; refreshEnabled(); startActivityForResult(intent,CREATE_DOCUMENT); }
-        catch (android.content.ActivityNotFoundException e) { pickerOpen = false; status.setText("На устройстве нет приложения для сохранения документов."); refreshEnabled(); }
+        catch (android.content.ActivityNotFoundException e) { pickerOpen = false; status.setText(getString(R.string.l10n_ex_no_saver)); refreshEnabled(); }
     }
     @Override protected void onActivityResult(int request,int result,Intent data) {
         super.onActivityResult(request,result,data);
@@ -248,7 +248,7 @@ public final class GcodeExportActivity extends Activity {
         if (request != CREATE_DOCUMENT) return;
         pickerOpen = false;
         if (result != RESULT_OK || data == null || data.getData() == null) { refreshEnabled(); return; }
-        if (source == null) { status.setText("Исходный результат нарезки недоступен."); refreshEnabled(); return; }
+        if (source == null) { status.setText(getString(R.string.l10n_ex_source_unavailable)); refreshEnabled(); return; }
         task = new ExportTask(getApplicationContext(),source,data.getData(),this); task.start(); refreshTask();
     }
     private void refreshEnabled() { boolean enabled = source != null && !pickerOpen && (task == null || !task.running); save.setEnabled(enabled); save.setAlpha(enabled?1f:.45f); }
@@ -262,20 +262,20 @@ public final class GcodeExportActivity extends Activity {
 
     private static final class ExportTask extends Thread {
         final android.content.Context context; final File source; final Uri destination;
-        volatile WeakReference<GcodeExportActivity> observer; volatile boolean running = true; volatile String message = "Сохраняем G-code…";
+        volatile WeakReference<GcodeExportActivity> observer; volatile boolean running = true; volatile String message = KeplerApplication.str(R.string.l10n_ex_saving);
         ExportTask(android.content.Context context,File source,Uri destination,GcodeExportActivity activity) { super("gcode-export"); this.context=context; this.source=source; this.destination=destination; observer=new WeakReference<>(activity); }
         @Override public void run() {
             try {
                 long length = source.length(), copied = 0;
                 try (FileInputStream in = new FileInputStream(source); OutputStream out = context.getContentResolver().openOutputStream(destination,"wt")) {
-                    if (out == null) throw new IOException("Не удалось открыть место сохранения.");
+                    if (out == null) throw new IOException(KeplerApplication.str(R.string.l10n_ex_open_target_failed));
                     byte[] buffer = new byte[65536]; int n;
                     while ((n=in.read(buffer)) != -1) { out.write(buffer,0,n); copied+=n; }
                     out.flush();
-                    if (copied != length || source.length() != length) throw new IOException("Размер исходного файла изменился.");
+                    if (copied != length || source.length() != length) throw new IOException(KeplerApplication.str(R.string.l10n_ex_size_changed));
                 }
-                message = "G-code сохранён: " + copied + " байт.";
-            } catch (Exception error) { message = "Не удалось сохранить файл полностью: " + (error.getMessage()==null?error.getClass().getSimpleName():error.getMessage()) + " Повторите экспорт при необходимости."; }
+                message = KeplerApplication.str(R.string.l10n_ex_gcode_saved) + copied + KeplerApplication.str(R.string.l10n_bytes_dot);
+            } catch (Exception error) { message = KeplerApplication.str(R.string.l10n_ex_partial_save) + (error.getMessage()==null?error.getClass().getSimpleName():error.getMessage()) + KeplerApplication.str(R.string.l10n_ex_repeat); }
             finally { running=false; new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> { GcodeExportActivity a=observer.get(); if (a!=null && !a.isDestroyed()) a.refreshTask(); }); }
         }
     }

@@ -26,7 +26,7 @@ public final class DeviceActivity extends Activity {
         screen = new KeplerScreen(this, name, this::finish, wifi, 0); ui = screen.ui;
         final int white = KeplerUi.WHITE, secondary = KeplerUi.SECONDARY;
 
-        LinearLayout bar = (LinearLayout) screen.column.getChildAt(0); TextView title = (TextView) bar.getChildAt(1);
+        LinearLayout bar = screen.topBar; TextView title = (TextView) bar.getChildAt(1);
         LinearLayout.LayoutParams tp = (LinearLayout.LayoutParams) title.getLayoutParams(); bar.removeView(title);
         LinearLayout head = ui.column(); head.setGravity(Gravity.CENTER_HORIZONTAL); head.addView(title, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout st = ui.row(); st.setGravity(Gravity.CENTER); View dot = new View(this); dot.setBackground(ui.shape(0x99FFFFFF, 0, 4)); st.addView(dot, ui.lp(8, 8)); statusDot = dot;

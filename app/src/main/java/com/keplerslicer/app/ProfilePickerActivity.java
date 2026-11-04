@@ -76,7 +76,7 @@ public class ProfilePickerActivity extends Activity {
         KeplerUi kui = new KeplerUi(this);
         View plus = kui.glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.kv3_new_preset), () -> screen.unavailable(getString(R.string.kv3_new_preset)));
         screen = new KeplerScreen(this, getString(filament ? R.string.kv3_filament : R.string.kv3_process), this::finish, plus, 1); ui = screen.ui;
-        if (printer == null || printer.imported || printer.path.isEmpty()) { screen.content.addView(ui.text("Сначала выберите системный профиль принтера и сопла.", 14, 500, KeplerUi.SECONDARY)); return; }
+        if (printer == null || printer.imported || printer.path.isEmpty()) { screen.content.addView(ui.text(getString(R.string.l10n_fp_choose_printer_first), 14, 500, KeplerUi.SECONDARY)); return; }
 
         screen.body.removeView(screen.scroll);
         LinearLayout top = ui.column(); top.setPadding(0, ui.dp(8), 0, 0);
@@ -118,7 +118,7 @@ public class ProfilePickerActivity extends Activity {
         addChip(r2, ui.chip(getString(R.string.kv3_filter_my_presets), false, () -> screen.unavailable(getString(R.string.kv3_filter_my_presets))));
         addChip(r2, ui.chip(getString(R.string.kv3_filter_vendors), false, () -> screen.unavailable(getString(R.string.kv3_filter_vendors))));
         top.addView(s2, ui.below(8));
-        status = ui.text("Загружаем профили…", 12, 500, KeplerUi.SECONDARY); status.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), 0); top.addView(status);
+        status = ui.text(getString(R.string.l10n_fp_loading), 12, 500, KeplerUi.SECONDARY); status.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), 0); top.addView(status);
 
         top.addView(screen.takeTopBar(), 0); LinearLayout wrap = ui.column();
         ListView list = new ListView(this); list.setDivider(null); list.setClipToPadding(false); list.setSelector(new android.graphics.drawable.ColorDrawable(0));
@@ -153,12 +153,12 @@ public class ProfilePickerActivity extends Activity {
                 CompatibilityResources paths = CompatibilityResources.prepare(context, printer.vendor, processVendor);
                 String[] result = ExperimentalSlicer.listSystemCompatibility(printer.vendor, printer.name, kind,
                         processVendor, processName, paths.resources.getAbsolutePath(), paths.data.getAbsolutePath());
-                if (result == null || result.length % 3 != 0) throw new java.io.IOException("Неверный ответ движка совместимости.");
+                if (result == null || result.length % 3 != 0) throw new java.io.IOException(getString(R.string.l10n_fp_bad_compat));
                 Map<String,String> checked = new HashMap<>();
                 for (int i = 0; i < result.length; i += 3) {
                     if (result[i] == null || result[i+1] == null || result[i+2] == null ||
                             !(result[i+2].equals("yes") || result[i+2].equals("no") || result[i+2].equals("unknown") || result[i+2].equals("printer_only")))
-                        throw new java.io.IOException("Неверный ответ движка совместимости.");
+                        throw new java.io.IOException(getString(R.string.l10n_fp_bad_compat));
                     checked.put(profileKey(result[i], result[i+1]), result[i+2]);
                 }
                 runOnUiThread(() -> {
@@ -167,7 +167,7 @@ public class ProfilePickerActivity extends Activity {
                     PrintProfileCatalog.Profile currentProcess = PrintProfileCatalog.FILAMENT.equals(kind)
                             ? PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.PROCESS) : null;
                     if (currentPrinter == null || !printer.path.equals(currentPrinter.path) || !sameProfile(selectedProcess, currentProcess)) {
-                        calculating = false; compatibilityError = "Выбор принтера или процесса изменился. Откройте экран заново."; showAll = true; updateChips(); refilter(); return;
+                        calculating = false; compatibilityError = getString(R.string.l10n_fp_selection_changed); showAll = true; updateChips(); refilter(); return;
                     }
                     compatibility = checked; calculating = false; refilter();
                 });
@@ -176,7 +176,7 @@ public class ProfilePickerActivity extends Activity {
                 runOnUiThread(() -> {
                     if (!isDestroyed() && token == generation) {
                         calculating = false; compatibilityError = message; showAll = true; updateChips();
-                        if (all == null) status.setText("Не удалось загрузить профили: " + message); else refilter();
+                        if (all == null) status.setText(getString(R.string.l10n_fp_load_failed) + message); else refilter();
                     }
                 });
             }
@@ -246,11 +246,11 @@ public class ProfilePickerActivity extends Activity {
             boolean changed = previous == null || !previous.path.equals(next.path) || !previous.vendor.equals(next.vendor) || !previous.name.equals(next.name);
             if (changed) ProcessOverridesStore.changeSelection(this, () -> {
                 PrinterProfileCatalog.Profile currentPrinter = PrinterProfileCatalog.loadSelection(this);
-                if (currentPrinter == null || !currentPrinter.path.equals(printer.path)) throw new java.io.IOException("Профиль принтера изменился. Откройте выбор снова.");
+                if (currentPrinter == null || !currentPrinter.path.equals(printer.path)) throw new java.io.IOException(getString(R.string.l10n_fp_printer_changed));
                 PrintProfileCatalog.saveSelection(this, next, printer);
             });
             setResult(RESULT_OK); finish();
-        } catch (Exception e) { screen.info("Не удалось сохранить профиль", e.getMessage()); }
+        } catch (Exception e) { screen.info(getString(R.string.l10n_profile_save_failed), e.getMessage()); }
     }
 
     private static String profileKey(String vendor, String name) { return vendor + "\u0000" + name; }
@@ -258,12 +258,12 @@ public class ProfilePickerActivity extends Activity {
         return a == null ? b == null : b != null && a.vendor.equals(b.vendor) && a.name.equals(b.name);
     }
     private String compatibilityLabel(String value) {
-        if (value == null) return calculating ? "проверяется" : "не проверен";
+        if (value == null) return calculating ? getString(R.string.l10n_fp_checking_short) : getString(R.string.l10n_fp_unchecked);
         switch (value) {
-            case "yes": return "совместим";
-            case "no": return "несовместим";
-            case "printer_only": return "совместим с принтером; выберите процесс";
-            default: return "ошибка проверки условия";
+            case "yes": return getString(R.string.l10n_fp_compatible);
+            case "no": return getString(R.string.l10n_fp_incompatible);
+            case "printer_only": return getString(R.string.l10n_fp_compatible_choose_process);
+            default: return getString(R.string.l10n_fp_condition_error);
         }
     }
     private void refilter() {
@@ -287,9 +287,9 @@ public class ProfilePickerActivity extends Activity {
             for (int k = i; k < j; k++) rows.add(new Row(visible.get(k), k == i, k == j - 1));
             i = j;
         }
-        if (calculating) status.setText("Проверяем совместимость профилей…");
-        else if (compatibilityError != null) status.setText("Не удалось проверить совместимость: " + compatibilityError);
-        else status.setText(visible.isEmpty() ? "Ничего не найдено" : "");
+        if (calculating) status.setText(getString(R.string.l10n_fp_checking));
+        else if (compatibilityError != null) status.setText(getString(R.string.l10n_fp_compat_failed) + compatibilityError);
+        else status.setText(visible.isEmpty() ? getString(R.string.l10n_nothing_found) : "");
         status.setVisibility(status.getText().length() == 0 ? View.GONE : View.VISIBLE);
         adapter.notifyDataSetChanged(); updateIndex();
     }

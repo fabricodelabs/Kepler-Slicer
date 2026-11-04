@@ -37,7 +37,7 @@ public final class SliceActivity extends Activity {
     private static WeakReference<SliceActivity> observer = new WeakReference<>(null);
     private static boolean working;
     static boolean isSlicing() { synchronized (LOCK) { return working; } }
-    private static String status = "Готово к пробной нарезке.";
+    private static String status = KeplerApplication.str(R.string.l10n_sl_ready);
     private TextView statusView, startButton, previewButton, previewDetails, exportButton;
     private MdUi ui;
     private boolean pendingAutoSlice;
@@ -62,23 +62,23 @@ public final class SliceActivity extends Activity {
         LinearLayout content = new LinearLayout(this); content.setPadding(dp(20), dp(8), dp(20), dp(32)); content.setOrientation(LinearLayout.VERTICAL); scroll.addView(content);
         com.keplerslicer.app.glass.KeplerUi kv = new com.keplerslicer.app.glass.KeplerUi(this); content.addView(kv.subHeader(getString(R.string.kv3_slice_title), getString(R.string.kv3_back), this::finish, null)); space(content, 16);
         // Title is in the Kepler v3 top bar above.
-        content.addView(label("Экспериментальный движок нарезки. Результат сохраняется только на устройстве; соответствие настольной версии и пригодность к печати ещё не подтверждены.", 14, false)); space(content, 24);
-        content.addView(label("ПРИНТЕР", 11, true)); printerSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(printerSummary);space(content,14);
-        content.addView(label("ПРОЦЕСС", 11, true)); processSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(processSummary);space(content,14);
-        content.addView(label("МАТЕРИАЛ", 11, true)); filamentSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(filamentSummary);space(content,12);
+        content.addView(label(getString(R.string.l10n_sl_note), 14, false)); space(content, 24);
+        content.addView(label(getString(R.string.l10n_sl_printer), 11, true)); printerSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(printerSummary);space(content,14);
+        content.addView(label(getString(R.string.l10n_sl_process), 11, true)); processSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(processSummary);space(content,14);
+        content.addView(label(getString(R.string.l10n_sl_material), 11, true)); filamentSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(filamentSummary);space(content,12);
         profileSummaryNote=label("",12,false);content.addView(profileSummaryNote);space(content,24);
         statusView = label("", 14, false); statusView.setTextIsSelectable(true); content.addView(statusView); space(content, 24);
-        startButton = label("Нарезать модель", 15, true); startButton.setTextColor(ui.bg); startButton.setGravity(Gravity.CENTER); startButton.setPadding(dp(16), dp(16), dp(16), dp(16));
+        startButton = label(getString(R.string.l10n_sl_slice_model), 15, true); startButton.setTextColor(ui.bg); startButton.setGravity(Gravity.CENTER); startButton.setPadding(dp(16), dp(16), dp(16), dp(16));
         GradientDrawable button = new GradientDrawable(); button.setColor(ui.ink); button.setCornerRadius(dp(100)); startButton.setBackground(button); content.addView(startButton);
         startButton.setOnClickListener(v -> startSlice(-1));
         space(content, 16);
-        previewButton = label("Посмотреть последнюю нарезку", 15, true); previewButton.setGravity(Gravity.CENTER); previewButton.setPadding(dp(16), dp(16), dp(16), dp(16));
+        previewButton = label(getString(R.string.l10n_sl_view_last), 15, true); previewButton.setGravity(Gravity.CENTER); previewButton.setPadding(dp(16), dp(16), dp(16), dp(16));
         GradientDrawable outline = new GradientDrawable(); outline.setColor(ui.surface); outline.setStroke(dp(1), ui.line); outline.setCornerRadius(dp(100)); previewButton.setBackground(outline); content.addView(previewButton);
         previewButton.setOnClickListener(v -> withCurrentResult(result -> {
             startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("kepler_show_layers",true));
         }));
         space(content, 12);
-        exportButton = label("Сохранить G-code", 15, true); exportButton.setGravity(Gravity.CENTER); exportButton.setPadding(dp(16), dp(16), dp(16), dp(16));
+        exportButton = label(getString(R.string.l10n_sl_save_gcode), 15, true); exportButton.setGravity(Gravity.CENTER); exportButton.setPadding(dp(16), dp(16), dp(16), dp(16));
         GradientDrawable exportOutline = new GradientDrawable(); exportOutline.setColor(ui.surface); exportOutline.setStroke(dp(1), ui.line); exportOutline.setCornerRadius(dp(100)); exportButton.setBackground(exportOutline); content.addView(exportButton);
         exportButton.setOnClickListener(v -> withCurrentResult(result -> {
             String modelName = getSharedPreferences(RESULTS, MODE_PRIVATE).getString(RESULT_MODEL, "");
@@ -97,7 +97,7 @@ public final class SliceActivity extends Activity {
     private void refresh() {
         boolean available = shownResult != null;
         synchronized (LOCK) {
-            String visibleStatus = !working && !available && status.contains("Нарезка завершена:") ? "Результат недоступен или относится к прежней модели и настройкам. Запустите нарезку заново." : status;
+            String visibleStatus = !working && !available && status.contains(getString(R.string.l10n_sl_done)) ? getString(R.string.l10n_sl_stale) : status;
             statusView.setText(visibleStatus); startButton.setEnabled(!working); startButton.setAlpha(working ? .45f : 1f);
         }
         previewButton.setVisibility(available ? View.VISIBLE : View.GONE); exportButton.setVisibility(available ? View.VISIBLE : View.GONE); previewDetails.setVisibility(available ? View.VISIBLE : View.GONE);
@@ -194,7 +194,7 @@ public final class SliceActivity extends Activity {
             MAIN.post(()->{
                 if(isFinishing()||isDestroyed()||generation!=resultQueryGeneration){checkingResult=false;return;}
                 checkingResult=false;shownResult=result;refresh();
-                if(result==null)update("Сохранённый результат недоступен.");else action.accept(result);
+                if(result==null)update(getString(R.string.l10n_sl_saved_unavailable));else action.accept(result);
             });
         },"kepler-result-action").start();
     }
@@ -205,18 +205,18 @@ public final class SliceActivity extends Activity {
         refresh();
         final android.content.Context context = getApplicationContext();
         new Thread(() -> {
-            String stage = "снимок выбранных профилей";
+            String stage = getString(R.string.l10n_sl_phase_snapshot);
             File data = null;
             boolean success = false;
             try {
-                if(autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))throw new IOException("Автонарезка отменена: появился более новый запрос.");
+                if(autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))throw new IOException(getString(R.string.l10n_sl_auto_cancelled));
                 final ProcessOverridesStore.Snapshot selection=ProcessOverridesStore.snapshotForSlice(context);
                 final boolean allowMixed=GeneralPreferences.prefs(context).getBoolean("allow_mixed_temperatures",false);
                 final PrinterProfileCatalog.Profile printer=selection.identity.printer;
                 final PrintProfileCatalog.Profile process=selection.identity.process;
                 final PrintProfileCatalog.Profile filament=selection.identity.filament;
-                stage="загрузка модели";
-                update("Проверяем модель и подготавливаем ресурсы движка…");
+                stage=getString(R.string.l10n_sl_phase_model);
+                update(getString(R.string.l10n_sl_checking));
                 File root = new File(context.getFilesDir(), "slicer-engine"); ensureDirectory(root);
                 data = new File(root, "run-" + UUID.randomUUID()); ensureDirectory(data);
                 // Snapshot the bytes and transform together before the model can be changed.
@@ -224,14 +224,14 @@ public final class SliceActivity extends Activity {
                 ObjectSettingsStore.Snapshot objectSettings=selection.identity.objectSettings;
                 String sourceFile=model.selectionKey.substring(0,model.selectionKey.indexOf('\n'));
                 if(!objectSettings.modelFileName.equals(sourceFile)||objectSettings.plateIndex!=model.plateIndex)
-                    throw new IOException("Модель или пластина изменились при подготовке параметров. Повторите нарезку.");
+                    throw new IOException(getString(R.string.l10n_sl_changed_prepare));
                 File input = model.file;
                 String jobFingerprint = ResultFingerprint.of(model.selectionKey, selection.identity.fingerprint, selection.overrides);
                 if(autoRequest>=0&&hasSavedResult(context,jobFingerprint)&&ControlPreferences.currentAutoRequest(context,autoRequest)
                         &&jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context))){
-                    update("Результат для текущей модели и настроек уже сохранён; повторная автонарезка не нужна.");return;
+                    update(getString(R.string.l10n_sl_already));return;
                 }
-                File resources = EngineResources.prepare(context, count -> update("Подготавливаем ресурсы движка: " + count + " файлов…"));
+                File resources = EngineResources.prepare(context, count -> update(getString(R.string.l10n_sl_preparing) + count + " файлов…"));
                 File system = new File(data, "system"); ensureDirectory(system);
                 LinkedHashSet<String> vendors = new LinkedHashSet<>();
                 vendors.add(printer.vendor); vendors.add(process.vendor); vendors.add(filament.vendor); vendors.add("OrcaFilamentLibrary");
@@ -241,7 +241,7 @@ public final class SliceActivity extends Activity {
                     File from = new File(resources, "profiles");
                     needed += treeSize(new File(from, vendor + ".json")) + treeSize(new File(from, vendor));
                 }
-                if (root.getUsableSpace() < needed) throw new IOException("Недостаточно свободного места для выбранных профилей и результата.");
+                if (root.getUsableSpace() < needed) throw new IOException(getString(R.string.l10n_sl_no_space));
                 for (String vendor : vendors) {
                     File from = new File(resources, "profiles");
                     copyTree(new File(from, vendor + ".json"), new File(system, vendor + ".json"));
@@ -253,9 +253,9 @@ public final class SliceActivity extends Activity {
                 java.util.Iterator<String> objectKeys=objectSettings.changes().keys();
                 while(objectKeys.hasNext())nativeOverrides.remove(objectKeys.next());
                 if((autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))||!jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context)))
-                    throw new IOException("Модель или настройки изменились до начала нарезки. Повторите операцию.");
-                stage = "загрузка движка и нарезка";
-                update("Проверяем совместимость профилей и нарезаем модель…");
+                    throw new IOException(getString(R.string.l10n_sl_changed_before));
+                stage = getString(R.string.l10n_sl_phase_engine);
+                update(getString(R.string.l10n_sl_slicing));
                 File job = new File(data, "job-" + UUID.randomUUID());
                 ProjectSettingsSnapshot projectDetails=null;
                 if(model.projectMode==1||model.projectMode==2)projectDetails=ProjectSettingsSnapshot.parse(ExperimentalSlicer.projectSettingsSnapshot(
@@ -265,9 +265,9 @@ public final class SliceActivity extends Activity {
                 String result = ExperimentalSlicer.sliceProjectWithSettings(printer.vendor, process.vendor, filament.vendor,
                         printer.name, process.name, filament.name, input.getAbsolutePath(), resources.getAbsolutePath(), data.getAbsolutePath(), job.getAbsolutePath(), model.transform.toNativeArguments(), nativeOverrides.toString(),model.materialEdits,model.plateIndex,model.projectMode,allowMixed);
                 File output = result == null ? null : new File(result);
-                if (output == null || !output.isFile() || output.length() == 0 || !output.getCanonicalFile().getParentFile().equals(job.getCanonicalFile())) throw new IOException("G-code не создан или пуст.");
+                if (output == null || !output.isFile() || output.length() == 0 || !output.getCanonicalFile().getParentFile().equals(job.getCanonicalFile())) throw new IOException(getString(R.string.l10n_sl_no_gcode));
                 if((autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))||!jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context)))
-                    throw new IOException("Модель или настройки изменились во время нарезки; устаревший результат не сохранён.");
+                    throw new IOException(getString(R.string.l10n_sl_changed_during));
                 if(allowMixed!=GeneralPreferences.prefs(context).getBoolean("allow_mixed_temperatures",false))throw new IOException("Material compatibility policy changed during slicing; stale result was not saved");
                 success = true;
                 ModelTransform transform = model.transform;
@@ -284,11 +284,11 @@ public final class SliceActivity extends Activity {
                 boolean saved = prefs.edit().putString(RESULT_PATH, output.getCanonicalPath()).putString(RESULT_DETAILS, details).putString(RESULT_MODEL, model.name).putString(RESULT_OVERRIDES, selection.overrides).putString(RESULT_FINGERPRINT, jobFingerprint).commit();
                 // A failed commit may still change the in-memory preference map.
                 if (!saved) prefs.edit().putString(RESULT_PATH, previousPath).putString(RESULT_DETAILS, previousDetails).putString(RESULT_MODEL, previousModel).putString(RESULT_OVERRIDES, previousOverrides).putString(RESULT_FINGERPRINT, previousFingerprint).apply();
-                update("Последний запуск: " + details + "\n\nНарезка завершена: " + output.length() + " байт. Результат сохранён во внутреннем хранилище и не проверен для печати." + (saved ? "" : "\nНе удалось сохранить ссылку на результат для просмотра и экспорта."));
+                update(getString(R.string.l10n_sl_last_run) + details + "\n\nНарезка завершена: " + output.length() + getString(R.string.l10n_sl_done_bytes) + (saved ? "" : "\nНе удалось сохранить ссылку на результат для просмотра и экспорта."));
             } catch (Throwable error) {
                 String message = error.getMessage();
                 String diagnostic = error instanceof LinkageError ? nativeDiagnostic(context) : "";
-                update("Последний запуск остановился: " + stage + ".\n" + error.getClass().getSimpleName() + (message == null ? "" : ": " + message) + diagnostic);
+                update(getString(R.string.l10n_sl_last_stopped) + stage + ".\n" + error.getClass().getSimpleName() + (message == null ? "" : ": " + message) + diagnostic);
             } finally {
                 if (data != null) {
                     if (success) { deleteTree(new File(data, "system")); File[] files=data.listFiles(); if(files!=null) for (File source : files) if (source.isFile() && source.getName().startsWith("model.")) source.delete(); }
@@ -299,7 +299,7 @@ public final class SliceActivity extends Activity {
             }
         }, "kepler-slicing").start();
     }
-    private static void ensureDirectory(File dir) throws IOException { if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Не удалось создать каталог: " + dir.getName()); }
+    private static void ensureDirectory(File dir) throws IOException { if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException(KeplerApplication.str(R.string.l10n_sl_mkdir_failed) + dir.getName()); }
     private static File lastResult(android.content.Context context) {
         java.util.Map<String, ?> record = context.getSharedPreferences(RESULTS, MODE_PRIVATE).getAll();
         Object rawPath=record.get(RESULT_PATH);String path=rawPath instanceof String?(String)rawPath:null;
@@ -340,8 +340,8 @@ public final class SliceActivity extends Activity {
     }
     private static long treeSize(File file) throws IOException {
         if (file.isFile()) return file.length();
-        if (!file.isDirectory()) throw new IOException("Ресурс профиля не найден: " + file.getName());
-        File[] files = file.listFiles(); if (files == null) throw new IOException("Не удалось прочитать профили.");
+        if (!file.isDirectory()) throw new IOException(KeplerApplication.str(R.string.l10n_sl_resource_missing) + file.getName());
+        File[] files = file.listFiles(); if (files == null) throw new IOException(KeplerApplication.str(R.string.l10n_sl_profiles_read_failed));
         long total = 0; for (File child : files) total += treeSize(child); return total;
     }
     private static void deleteTree(File file) {
@@ -349,8 +349,8 @@ public final class SliceActivity extends Activity {
         file.delete();
     }
     private static void copyTree(File from, File to) throws IOException {
-        if (from.isDirectory()) { ensureDirectory(to); File[] children = from.listFiles(); if (children == null) throw new IOException("Не удалось прочитать профили."); for (File child : children) copyTree(child, new File(to, child.getName())); }
+        if (from.isDirectory()) { ensureDirectory(to); File[] children = from.listFiles(); if (children == null) throw new IOException(KeplerApplication.str(R.string.l10n_sl_profiles_read_failed)); for (File child : children) copyTree(child, new File(to, child.getName())); }
         else if (from.isFile()) { try (InputStream in = new FileInputStream(from); FileOutputStream out = new FileOutputStream(to)) { copy(in, out); } }
-        else throw new IOException("Ресурс профиля не найден: " + from.getName());
+        else throw new IOException(KeplerApplication.str(R.string.l10n_sl_resource_missing) + from.getName());
     }
 }

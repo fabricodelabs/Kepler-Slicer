@@ -78,11 +78,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 ## Known defects to fix next
 
-- Hard-coded Russian strings in English UI (printer library search/«МОДЕЛИ»/«проф.», printer variant screen,
-  «Условная сетка…» bed hint, many `MdUi` screens). Move to resources.
-- Settings editor shows vector values as JSON (`["ABS"]`); show single values as plain text.
-- Printers landing card does not refresh the active process after choosing one ("Выберите процесс" stays).
-- Export summary time is not localised ("8m 56s").
+- Hard-coded Russian text remains only in protocol/model helper classes (error messages; they are compiled by host tests without Android context). Screens are localised.
 
 ## Open items
 
@@ -94,8 +90,8 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 ## Backlog (lead, prioritised)
 
-1. Fix stale `tools/tests/ProcessOverridesStoreTest` digest assertion (fails on the inherited 91dcf06 baseline).
-2. Configure a C++ compiler path for `test_step_import_options.ps1 -Cxx`.
+1. (done) ProcessOverridesStoreTest expects the 13-field fingerprint.
+2. (done) STEP test compiler: LLVM-MinGW clang++ (winget MartinStorsjo.LLVM-MinGW.UCRT), run `tools/test_step_import_options.ps1 -Cxx <...>\llvm-mingw-*-ucrt-x86_64\bin\clang++.exe` — 16 checks pass.
 3. Phase 2 open items from docs/PHASE2-STATUS.md: editable project drafts / full 3MF project export with settings,
    runtime option coverage (auditor `incomplete`), desktop parity, multi-object overrides, target highlight after rotation.
 4. Preferences: 8 blocked entries (#23, #28–31, #36, #37, #39 — Bambu provider/region/profile update).

@@ -195,6 +195,17 @@ public final class SettingsSchema {
         }
         public String displayValue(Object value) {
             if (value == null || value == JSONObject.NULL) return "";
+            // Per-extruder vectors are shown as plain values ("ABS", "200, 210"), not as JSON.
+            if (value instanceof org.json.JSONArray) {
+                org.json.JSONArray array = (org.json.JSONArray) value; StringBuilder out = new StringBuilder();
+                for (int i = 0; i < array.length(); i++) {
+                    Object item = array.opt(i);
+                    if (item instanceof org.json.JSONArray || item instanceof JSONObject) return value.toString();
+                    if (i > 0) out.append(", ");
+                    out.append(displayValue(item));
+                }
+                return out.toString();
+            }
             String raw = value.toString();
             int index = enumValues.indexOf(raw);
             return index >= 0 ? enumLabels.get(index) : raw;
