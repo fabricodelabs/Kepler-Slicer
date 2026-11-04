@@ -37,7 +37,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 - Build: `export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"; ./gradlew --offline assembleDebug -q`.
 - Emulator `Medium_Phone_API_37.0` (emulator-5554). Install `app/build/outputs/apk/debug/app-debug.apk`;
-  launch `com.orcamobile.app/com.keplerslicer.app.LaunchActivity` (use `MSYS_NO_PATHCONV=1` in Git Bash). Most activities are not
+  launch `com.keplerslicer.app/.LaunchActivity` (use `MSYS_NO_PATHCONV=1` in Git Bash). Most activities are not
   exported — navigate through the UI. The STEP sample model takes ~30–40 s to load after launch; taps on the
   workspace are ignored meanwhile. 1 screenshot px = 1.2 × displayed px.
 - Commit hook needs pwsh: `export PATH="/c/Users/tails/AppData/Local/Microsoft/WindowsApps:$PATH"`.
@@ -45,10 +45,10 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 ## Naming (2026-11-04, owner: "убери отовсюду упоминание орки")
 
-- Code package `com.keplerslicer.app` (applicationId stays `com.orcamobile.app` — owner decision pending),
-  assets `kepler_*`, classes `PrintProfileCatalog`, `PrinterProfileCatalog`, `ProfileIniCodec`, `CloudProfile*`.
-- Stored names live in `StorageNames`; `StorageMigration.run` (first call in `KeplerApplication`) moves the old
-  prefs / cloud secret / cloud folder once and deletes old caches. Verified on the emulator.
+- applicationId and code package `com.keplerslicer.app` (changed 2026-11-04 before the Google Play release; never change it again).
+  Installs with the old id are a separate app; their data is not carried over, so no storage migration exists.
+  Assets `kepler_*`, classes `PrintProfileCatalog`, `PrinterProfileCatalog`, `ProfileIniCodec`, `CloudProfile*`.
+- Stored preference/secret/folder names live in `StorageNames`.
 - Engine text (native messages, tooltips, vendor `OrcaFilamentLibrary`) is reworded for display only by
   `EngineText.clean` (MdUi alerts, GlassBottomSheet, schema labels, error helpers, vendor captions).
 - Remaining old names and why: [../NAMING.md](../NAMING.md).
