@@ -12,6 +12,8 @@
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true">
         <activity android:name=".NetworkActivity" android:exported="false" />
+        <activity android:name=".DeviceActivity" android:exported="false" />
+        <provider android:name=".ShareProvider" android:authorities="${applicationId}.share" android:exported="false" android:grantUriPermissions="true" />
         <activity android:name=".CloudSyncActivity" android:exported="false" />
         <activity android:name=".CloudPrintLoginActivity" android:exported="false" />
         <activity android:name=".ModelDetailsActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />

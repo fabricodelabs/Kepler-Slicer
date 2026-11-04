@@ -33,7 +33,7 @@ final class StlView extends GLSurfaceView {
     private ModelTransform dragBase;
     private MoveCallback moveCallback;
     interface MoveCallback { void completed(ModelTransform transform); }
-    void setMoveMode(boolean enabled, MoveCallback callback) { cancelDrag(); moveMode=enabled&&!toolpathMode; moveCallback=callback; setContentDescription(cameraDescription(moveMode,toolpathMode)); }
+    void setMoveMode(boolean enabled, MoveCallback callback) { cancelDrag(); moveMode=enabled&&!toolpathMode; moveCallback=callback; setContentDescription(cameraDescription(moveMode,toolpathMode)); renderer.gizmo=moveMode; requestRender(); }
     void discardPendingMove() { cancelDrag(); renderer.dragX=renderer.dragY=0; requestRender(); }
     @Override public void onPause() { cancelDrag(); super.onPause(); }
     private void cancelDrag() { if(dragging) { dragging=false; renderer.dragX=renderer.dragY=0; requestRender(); } }
@@ -54,6 +54,27 @@ final class StlView extends GLSurfaceView {
     }
     void resetCamera() { renderer.yaw = -35; renderer.pitch = 25; renderer.zoom = 1;renderer.panX=renderer.panY=0; requestRender(); }
     void setDarkMode(boolean dark) { renderer.dark = dark; requestRender(); }
+    private android.graphics.drawable.Drawable backdrop; private android.view.View backdropAnchor;
+    private final int[] backdropMine = new int[2], backdropTheirs = new int[2], backdropLast = {Integer.MIN_VALUE, 0, 0, 0};
+    /**
+     * Kepler v3: the GL surface sits behind the window, so the glass backdrop is drawn into the scene
+     * as a positioned copy of the anchor's background instead of showing through.
+     */
+    void setBackdrop(android.graphics.drawable.Drawable drawable, android.view.View anchor) {
+        backdrop = drawable; backdropAnchor = anchor; backdropLast[0] = Integer.MIN_VALUE;
+        getViewTreeObserver().addOnGlobalLayoutListener(this::updateBackdrop);
+    }
+    private void updateBackdrop() {
+        if (backdrop == null || backdropAnchor == null || getWidth() <= 0 || getHeight() <= 0) return;
+        getLocationInWindow(backdropMine); backdropAnchor.getLocationInWindow(backdropTheirs);
+        int dx = backdropTheirs[0] - backdropMine[0], dy = backdropTheirs[1] - backdropMine[1];
+        if (backdropLast[0] == dx && backdropLast[1] == dy && backdropLast[2] == getWidth() && backdropLast[3] == getHeight()) return;
+        backdropLast[0] = dx; backdropLast[1] = dy; backdropLast[2] = getWidth(); backdropLast[3] = getHeight();
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(getWidth(), getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap); canvas.translate(dx, dy);
+        backdrop.setBounds(0, 0, Math.max(1, backdropAnchor.getWidth()), Math.max(1, backdropAnchor.getHeight())); backdrop.draw(canvas);
+        queueEvent(() -> renderer.setBackdrop(bitmap)); requestRender();
+    }
     /** Update only the view; raw printable dimensions remain owned by the selected profile. */
     void setBuildVolume(BedGeometry volume, TransformCallback callback) {
         cancelDrag(); volumeReady=false; bed = volume;
@@ -225,6 +246,46 @@ final class StlView extends GLSurfaceView {
         volatile boolean dark = true;
         final float[] projection = new float[16], model = new float[16], mvp = new float[16];
         int program, pos, norm, matrix, modelMatrix, gridProgram, gridPos, gridMatrix, gridColor;
+        int colorProgram, colorPos, colorAttr, colorMatrix;
+        volatile boolean gizmo; FloatBuffer gizmoPositions, gizmoColors; int gizmoCount;
+        /** Tools move gizmo (Figma 3:176): dashed #FFB454 bounding box and X/Y/Z arrows (#FF8A80, #8BE28B, #8AB4FF) from the base centre. */
+        void buildGizmo(float[] scene) {
+            if (scene.length < 9) { gizmoCount = 0; return; }
+            float x0 = Float.MAX_VALUE, y0 = Float.MAX_VALUE, z0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, y1 = -Float.MAX_VALUE, z1 = -Float.MAX_VALUE;
+            for (int i = 0; i < scene.length; i += 3) { x0 = Math.min(x0, scene[i]); x1 = Math.max(x1, scene[i]); y0 = Math.min(y0, scene[i+1]); y1 = Math.max(y1, scene[i+1]); z0 = Math.min(z0, scene[i+2]); z1 = Math.max(z1, scene[i+2]); }
+            java.util.ArrayList<float[]> lines = new java.util.ArrayList<>(); float pad = .04f * Math.max(x1 - x0, Math.max(y1 - y0, z1 - z0)) + .02f;
+            x0 -= pad; y0 -= pad; x1 += pad; y1 += pad; z1 += pad;
+            float[][] c = {{x0,y0,z0},{x1,y0,z0},{x1,y1,z0},{x0,y1,z0},{x0,y0,z1},{x1,y0,z1},{x1,y1,z1},{x0,y1,z1}}; int[][] e = {{0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}};
+            float[] box = {1f, .706f, .329f};
+            for (int[] edge : e) { float[] a = c[edge[0]], b = c[edge[1]]; int dashes = 8; for (int d = 0; d < dashes; d++) { float t0 = d / (float) dashes, t1 = (d + .55f) / dashes; lines.add(new float[]{a[0]+(b[0]-a[0])*t0, a[1]+(b[1]-a[1])*t0, a[2]+(b[2]-a[2])*t0, a[0]+(b[0]-a[0])*t1, a[1]+(b[1]-a[1])*t1, a[2]+(b[2]-a[2])*t1, box[0], box[1], box[2]}); } }
+            float cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, len = .55f * Math.max(.4f, Math.max(x1 - x0, y1 - y0)), up = .7f * Math.max(.4f, z1 - z0) + (z1 - z0);
+            float[][] axes = {{len,0,0, 1f,.541f,.502f},{0,len,0, .545f,.886f,.545f},{0,0,up, .541f,.706f,1f}};
+            for (float[] a : axes) { float ex = cx + a[0], ey = cy + a[1], ez = z0 + a[2]; lines.add(new float[]{cx, cy, z0, ex, ey, ez, a[3], a[4], a[5]});
+                float hx = a[0] * .15f, hy = a[1] * .15f, hz = a[2] * .15f, sx = a[2] != 0 ? .08f * up : 0, sy = a[0] != 0 ? .08f * len : a[1] != 0 ? 0 : 0, sz = a[2] == 0 ? .08f * len : 0;
+                lines.add(new float[]{ex, ey, ez, ex - hx + sx, ey - hy + sy, ez - hz + sz, a[3], a[4], a[5]}); lines.add(new float[]{ex, ey, ez, ex - hx - sx, ey - hy - sy, ez - hz - sz, a[3], a[4], a[5]}); }
+            float[] p = new float[lines.size() * 6], col = new float[lines.size() * 6]; int k = 0;
+            for (float[] l : lines) { System.arraycopy(l, 0, p, k, 6); col[k] = col[k+3] = l[6]; col[k+1] = col[k+4] = l[7]; col[k+2] = col[k+5] = l[8]; k += 6; }
+            gizmoPositions = buffer(p); gizmoColors = buffer(col); gizmoCount = p.length / 3;
+        }
+        int quadProgram, quadPos, quadSampler, backdropTexture; android.graphics.Bitmap backdropBitmap; boolean backdropDirty;
+        final FloatBuffer quad = buffer(new float[]{-1,-1, 1,-1, -1,1, 1,1});
+        void setBackdrop(android.graphics.Bitmap bitmap) { backdropBitmap = bitmap; backdropDirty = true; }
+        private void drawBackdrop() {
+            if (backdropBitmap == null) return;
+            if (backdropDirty || backdropTexture == 0) {
+                if (backdropTexture == 0) { int[] t = new int[1]; GLES20.glGenTextures(1, t, 0); backdropTexture = t[0]; }
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, backdropTexture);
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+                android.opengl.GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, backdropBitmap, 0); backdropDirty = false;
+            }
+            GLES20.glDisable(GLES20.GL_DEPTH_TEST); GLES20.glUseProgram(quadProgram);
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0); GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, backdropTexture); GLES20.glUniform1i(quadSampler, 0);
+            quad.position(0); GLES20.glEnableVertexAttribArray(quadPos); GLES20.glVertexAttribPointer(quadPos, 2, GLES20.GL_FLOAT, false, 0, quad);
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4); GLES20.glDisableVertexAttribArray(quadPos); GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+        }
         MeshRenderer(StlMesh mesh) { setGeometry(mesh == null ? new float[0] : mesh.vertices, null, mesh == null ? null : mesh.size,null); }
         void setToolpaths(ToolpathGeometry geometry,int layers){pathGeometry=geometry;pathPositions=geometry.vertices.duplicate();pathPositions.position(0);visiblePathLayers=layers;}
         void clearToolpaths(){pathGeometry=null;pathPositions=null;visiblePathLayers=0;}
@@ -255,7 +316,7 @@ final class StlView extends GLSurfaceView {
             }
             sceneScale = bed == null ? 0 : bedScale;
             bedCenterX=bed==null?0:bed.centerX;bedCenterY=bed==null?0:bed.centerY;
-            count = scene.length / 3;
+            count = scene.length / 3; buildGizmo(scene);
             positions = buffer(scene);
             float[] n = new float[scene.length];
             for (int i=0; i<scene.length; i+=9) {
@@ -291,8 +352,17 @@ final class StlView extends GLSurfaceView {
         static int shader(int type, String source) { int s=GLES20.glCreateShader(type); GLES20.glShaderSource(s,source); GLES20.glCompileShader(s); int[] ok=new int[1]; GLES20.glGetShaderiv(s,GLES20.GL_COMPILE_STATUS,ok,0); if(ok[0]==0) throw new IllegalStateException(GLES20.glGetShaderInfoLog(s)); return s; }
         public void onSurfaceCreated(GL10 gl, EGLConfig config) {
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-            String vs="attribute vec3 aPosition; attribute vec3 aNormal; uniform mat4 uMvp; uniform mat4 uModel; varying float light; void main(){ vec3 n=normalize(mat3(uModel)*aNormal); light=0.32+0.68*abs(dot(n,normalize(vec3(0.4,0.6,1.0)))); gl_Position=uMvp*vec4(aPosition,1.0); }";
-            String fs="precision mediump float; varying float light; void main(){ gl_FragColor=vec4(vec3(0.82)*light,1.0); }";
+            // Kepler v3 model faces: top #8CC8FF, lit side #3D8FE0, shaded side #2A6FBE (Workspace viewport, node 3:73).
+            String vs="attribute vec3 aPosition; attribute vec3 aNormal; uniform mat4 uMvp; uniform mat4 uModel; varying vec3 shade; void main(){ vec3 o=normalize(aNormal); vec3 n=normalize(mat3(uModel)*aNormal); float side=clamp(0.5-0.5*n.x/max(0.2,length(n.xy)),0.0,1.0); vec3 sideColor=mix(vec3(0.165,0.435,0.745),vec3(0.239,0.561,0.878),side); shade=mix(sideColor,vec3(0.549,0.784,1.0),smoothstep(0.55,0.9,abs(o.z))); gl_Position=uMvp*vec4(aPosition,1.0); }";
+            String fs="precision mediump float; varying vec3 shade; void main(){ gl_FragColor=vec4(shade,1.0); }";
+            String qvs="attribute vec2 aPosition; varying vec2 uv; void main(){ uv=vec2(aPosition.x*0.5+0.5,0.5-aPosition.y*0.5); gl_Position=vec4(aPosition,0.0,1.0); }";
+            String qfs="precision mediump float; varying vec2 uv; uniform sampler2D uTexture; void main(){ gl_FragColor=texture2D(uTexture,uv); }";
+            quadProgram=GLES20.glCreateProgram(); GLES20.glAttachShader(quadProgram,shader(GLES20.GL_VERTEX_SHADER,qvs)); GLES20.glAttachShader(quadProgram,shader(GLES20.GL_FRAGMENT_SHADER,qfs)); GLES20.glLinkProgram(quadProgram);
+            String cvs="attribute vec3 aPosition; attribute vec3 aColor; uniform mat4 uMvp; varying vec3 vColor; void main(){vColor=aColor;gl_Position=uMvp*vec4(aPosition,1.0);}";
+            String cfs="precision mediump float; varying vec3 vColor; void main(){gl_FragColor=vec4(vColor,1.0);}";
+            colorProgram=GLES20.glCreateProgram(); GLES20.glAttachShader(colorProgram,shader(GLES20.GL_VERTEX_SHADER,cvs)); GLES20.glAttachShader(colorProgram,shader(GLES20.GL_FRAGMENT_SHADER,cfs)); GLES20.glLinkProgram(colorProgram);
+            colorPos=GLES20.glGetAttribLocation(colorProgram,"aPosition"); colorAttr=GLES20.glGetAttribLocation(colorProgram,"aColor"); colorMatrix=GLES20.glGetUniformLocation(colorProgram,"uMvp");
+            quadPos=GLES20.glGetAttribLocation(quadProgram,"aPosition"); quadSampler=GLES20.glGetUniformLocation(quadProgram,"uTexture"); backdropTexture=0;
             program=GLES20.glCreateProgram(); GLES20.glAttachShader(program,shader(GLES20.GL_VERTEX_SHADER,vs)); GLES20.glAttachShader(program,shader(GLES20.GL_FRAGMENT_SHADER,fs)); GLES20.glLinkProgram(program);
             int[] ok=new int[1]; GLES20.glGetProgramiv(program,GLES20.GL_LINK_STATUS,ok,0); if(ok[0]==0) throw new IllegalStateException(GLES20.glGetProgramInfoLog(program));
             pos=GLES20.glGetAttribLocation(program,"aPosition"); norm=GLES20.glGetAttribLocation(program,"aNormal"); matrix=GLES20.glGetUniformLocation(program,"uMvp"); modelMatrix=GLES20.glGetUniformLocation(program,"uModel");
@@ -304,16 +374,18 @@ final class StlView extends GLSurfaceView {
         }
         public void onSurfaceChanged(GL10 gl, int width, int height) { GLES20.glViewport(0,0,width,height); float aspect=(float)width/Math.max(height,1); Matrix.perspectiveM(projection,0,40,aspect,.1f,20f); }
         public void onDrawFrame(GL10 gl) {
-            if (dark) GLES20.glClearColor(.067f,.075f,.067f,1); else GLES20.glClearColor(.980f,.980f,.969f,1);
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT|GLES20.GL_DEPTH_BUFFER_BIT); Matrix.setIdentityM(model,0); Matrix.translateM(model,0,panX,panY,-9.5f); Matrix.scaleM(model,0,zoom,zoom,zoom); Matrix.rotateM(model,0,pitch,1,0,0); Matrix.rotateM(model,0,yaw,0,1,0);
+            if (dark) GLES20.glClearColor(.220f,.239f,.275f,1); else GLES20.glClearColor(.980f,.980f,.969f,1);
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT|GLES20.GL_DEPTH_BUFFER_BIT); drawBackdrop();
+            GLES20.glEnable(GLES20.GL_BLEND); GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA); Matrix.setIdentityM(model,0); Matrix.translateM(model,0,panX,panY,-9.5f); Matrix.scaleM(model,0,zoom,zoom,zoom); Matrix.rotateM(model,0,pitch,1,0,0); Matrix.rotateM(model,0,yaw,0,1,0);
             // STL and the bed use Z-up. Convert to OpenGL's Y-up camera after
             // camera orbit, without changing the printable object transform.
             Matrix.rotateM(model,0,-90,1,0,0); Matrix.multiplyMM(mvp,0,projection,0,model,0);
             GLES20.glUseProgram(gridProgram); GLES20.glUniformMatrix4fv(gridMatrix,1,false,mvp,0);
             GLES20.glEnableVertexAttribArray(gridPos);
-            if (dark) GLES20.glUniform4f(gridColor,.19f,.20f,.21f,1); else GLES20.glUniform4f(gridColor,.80f,.81f,.79f,1);
+            // Plate #14161A at 55%, grid white at 16% (node 3:73).
+            if (dark) GLES20.glUniform4f(gridColor,.078f,.086f,.102f,.55f); else GLES20.glUniform4f(gridColor,.80f,.81f,.79f,1);
             bedPositions.position(0); GLES20.glVertexAttribPointer(gridPos,3,GLES20.GL_FLOAT,false,0,bedPositions); GLES20.glDrawArrays(GLES20.GL_TRIANGLES,0,bedCount);
-            if (dark) GLES20.glUniform4f(gridColor,.34f,.35f,.36f,1); else GLES20.glUniform4f(gridColor,.62f,.63f,.61f,1);
+            if (dark) GLES20.glUniform4f(gridColor,1f,1f,1f,.16f); else GLES20.glUniform4f(gridColor,.62f,.63f,.61f,1);
             gridPositions.position(0); GLES20.glVertexAttribPointer(gridPos,3,GLES20.GL_FLOAT,false,0,gridPositions); GLES20.glDrawArrays(GLES20.GL_LINES,0,gridCount); GLES20.glDisableVertexAttribArray(gridPos);
             if(pathGeometry!=null && pathPositions!=null) {
                 int layers=Math.max(0,Math.min(visiblePathLayers,pathGeometry.layerCount)),vertices=pathGeometry.layerEnds[layers];
@@ -321,9 +393,11 @@ final class StlView extends GLSurfaceView {
                     float[] placement=ToolpathGeometry.sceneTransform(bedCenterX,bedCenterY,sceneScale),pathModel=model.clone(),pathMvp=new float[16];
                     Matrix.translateM(pathModel,0,placement[0],placement[1],0);
                     Matrix.scaleM(pathModel,0,placement[2],placement[2],placement[2]);Matrix.multiplyMM(pathMvp,0,projection,0,pathModel,0);
-                    GLES20.glUseProgram(gridProgram);GLES20.glUniformMatrix4fv(gridMatrix,1,false,pathMvp,0);
-                    if(dark)GLES20.glUniform4f(gridColor,.92f,.92f,.92f,1);else GLES20.glUniform4f(gridColor,.12f,.12f,.12f,1);
-                    GLES20.glEnableVertexAttribArray(gridPos);pathPositions.position(0);GLES20.glVertexAttribPointer(gridPos,3,GLES20.GL_FLOAT,false,0,pathPositions);GLES20.glLineWidth(1.5f);GLES20.glDrawArrays(GLES20.GL_LINES,0,vertices);GLES20.glDisableVertexAttribArray(gridPos);
+                    FloatBuffer pathColors=pathGeometry.colors;
+                    if(pathColors!=null){GLES20.glUseProgram(colorProgram);GLES20.glUniformMatrix4fv(colorMatrix,1,false,pathMvp,0);GLES20.glEnableVertexAttribArray(colorPos);GLES20.glEnableVertexAttribArray(colorAttr);pathPositions.position(0);pathColors.position(0);GLES20.glVertexAttribPointer(colorPos,3,GLES20.GL_FLOAT,false,0,pathPositions);GLES20.glVertexAttribPointer(colorAttr,3,GLES20.GL_FLOAT,false,0,pathColors);GLES20.glLineWidth(2f);GLES20.glDrawArrays(GLES20.GL_LINES,0,vertices);GLES20.glDisableVertexAttribArray(colorPos);GLES20.glDisableVertexAttribArray(colorAttr);}
+                    else{GLES20.glUseProgram(gridProgram);GLES20.glUniformMatrix4fv(gridMatrix,1,false,pathMvp,0);
+                    if(dark)GLES20.glUniform4f(gridColor,1f,.624f,.263f,1);else GLES20.glUniform4f(gridColor,.12f,.12f,.12f,1);
+                    GLES20.glEnableVertexAttribArray(gridPos);pathPositions.position(0);GLES20.glVertexAttribPointer(gridPos,3,GLES20.GL_FLOAT,false,0,pathPositions);GLES20.glLineWidth(1.5f);GLES20.glDrawArrays(GLES20.GL_LINES,0,vertices);GLES20.glDisableVertexAttribArray(gridPos);}
                 }
                 return;
             }
@@ -333,6 +407,7 @@ final class StlView extends GLSurfaceView {
             positions.position(0); normals.position(0); GLES20.glEnableVertexAttribArray(pos); GLES20.glEnableVertexAttribArray(norm);
             GLES20.glVertexAttribPointer(pos,3,GLES20.GL_FLOAT,false,0,positions); GLES20.glVertexAttribPointer(norm,3,GLES20.GL_FLOAT,false,0,normals); GLES20.glDrawArrays(GLES20.GL_TRIANGLES,0,count);
             GLES20.glDisableVertexAttribArray(pos); GLES20.glDisableVertexAttribArray(norm);
+            if (gizmo && gizmoCount > 0) { GLES20.glDisable(GLES20.GL_DEPTH_TEST); GLES20.glUseProgram(colorProgram); GLES20.glUniformMatrix4fv(colorMatrix,1,false,objectMvp,0); GLES20.glEnableVertexAttribArray(colorPos); GLES20.glEnableVertexAttribArray(colorAttr); gizmoPositions.position(0); gizmoColors.position(0); GLES20.glVertexAttribPointer(colorPos,3,GLES20.GL_FLOAT,false,0,gizmoPositions); GLES20.glVertexAttribPointer(colorAttr,3,GLES20.GL_FLOAT,false,0,gizmoColors); GLES20.glLineWidth(3f); GLES20.glDrawArrays(GLES20.GL_LINES,0,gizmoCount); GLES20.glDisableVertexAttribArray(colorPos); GLES20.glDisableVertexAttribArray(colorAttr); GLES20.glEnable(GLES20.GL_DEPTH_TEST); }
         }
     }
 }

@@ -23,12 +23,32 @@ final class GcodeAnalysis {
     private static final Pattern WORD = Pattern.compile("([A-Za-z])\\s*([-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+))");
     static final class Layer {
         float[] segments = new float[128]; int size; double z = Double.NaN;
+        /** Per-segment display attributes: Orca feature type, feed (mm/min), extrusion per mm, nozzle temperature. */
+        byte[] types = new byte[32]; float[] feed = new float[32], flow = new float[32], temp = new float[32];
         void add(double x1, double y1, double x2, double y2) {
             if (size + 4 > segments.length) { float[] next = new float[segments.length * 2]; System.arraycopy(segments, 0, next, 0, size); segments = next; }
             segments[size++] = (float)x1; segments[size++] = (float)y1; segments[size++] = (float)x2; segments[size++] = (float)y2;
         }
+        void attributes(byte type, float f, float w, float t) {
+            int index = size / 4 - 1; if (index >= types.length) { int n = Math.max(types.length * 2, index + 1); types = java.util.Arrays.copyOf(types, n); feed = java.util.Arrays.copyOf(feed, n); flow = java.util.Arrays.copyOf(flow, n); temp = java.util.Arrays.copyOf(temp, n); }
+            types[index] = type; feed[index] = f; flow[index] = w; temp[index] = t;
+        }
     }
     final List<Layer> layers = new ArrayList<>();
+    /** Feature classes shown in the Kepler v3 Preview legend (node 3:394). */
+    static final byte OTHER = 0, OUTER_WALL = 1, INNER_WALL = 2, SPARSE_INFILL = 3, SOLID_INFILL = 4, SUPPORT = 5, BRIDGE = 6;
+    private byte currentType = OTHER; private double currentFeed, currentFlow, currentTemp = Double.NaN;
+    static byte featureOf(String orcaType) {
+        String t = orcaType.trim().toLowerCase(Locale.ROOT);
+        if (t.contains("bridge")) return BRIDGE;
+        if (t.contains("support")) return SUPPORT;
+        if (t.equals("outer wall") || t.contains("external perimeter") || t.contains("overhang")) return OUTER_WALL;
+        if (t.contains("inner wall") || t.equals("perimeter") || t.contains("internal perimeter")) return INNER_WALL;
+        if (t.contains("sparse") || t.equals("internal infill")) return SPARSE_INFILL;
+        if (t.contains("solid") || t.contains("top surface") || t.contains("bottom surface") || t.contains("ironing") || t.contains("gap")) return SOLID_INFILL;
+        return OTHER;
+    }
+    double minFeed = Double.POSITIVE_INFINITY, maxFeed = 0, minFlow = Double.POSITIVE_INFINITY, maxFlow = 0, minTemp = Double.POSITIVE_INFINITY, maxTemp = 0;
     int segments, renderedArcs, arcSegments, arcMoves, arcTravel, unsupportedMoves, skippedUnknown, skippedBeforeLayers, malformedLines, unknownResets, ignoredOther;
     final Map<String, Integer> ignoredCommands = new TreeMap<>();
     double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
@@ -53,6 +73,7 @@ final class GcodeAnalysis {
                     if (out.layers.size() >= MAX_LAYERS) throw new IOException("Слишком много слоёв для просмотра.");
                     layer = new Layer(); out.layers.add(layer); continue;
                 }
+                if (trimmed.startsWith(";TYPE:")) { out.currentType = featureOf(trimmed.substring(6)); continue; }
                 if (layer != null && (trimmed.startsWith(";Z:") || trimmed.startsWith("; Z_HEIGHT:"))) {
                     int colon = trimmed.indexOf(':');
                     try { double value = Double.parseDouble(trimmed.substring(colon + 1).trim()); if (Double.isFinite(value)) layer.z = value; } catch (NumberFormatException ignored) { out.malformedLines++; }
@@ -94,6 +115,7 @@ final class GcodeAnalysis {
                 boolean arc = "G2".equals(code) || "G02".equals(code) || "G3".equals(code) || "G03".equals(code);
                 if (linear || arc) modalMotion = code;
                 boolean reset = "G92".equals(code), home = "G28".equals(code);
+                if ("M104".equals(code) || "M109".equals(code)) { Matcher s = WORD.matcher(trimmed); s.region(m.end(), trimmed.length()); while (s.find()) if (Character.toUpperCase(s.group(1).charAt(0)) == 'S') { try { double t = Double.parseDouble(s.group(2)); if (t > 0 && t < 600) out.currentTemp = t; } catch (NumberFormatException ignoredTemp) { } } }
                 if (!linear && !arc && !reset && !home) {
                     out.ignored(code);
                     if (command == 'G' && !("G4".equals(code) || "G04".equals(code))) { out.unsupportedMoves++; xKnown = yKnown = zKnown = eKnown = false; }
@@ -104,6 +126,7 @@ final class GcodeAnalysis {
                 boolean invalid = false;
                 while (m.find()) {
                     char axis = Character.toUpperCase(m.group(1).charAt(0));
+                    if (axis == 'F') { try { double f = Double.parseDouble(m.group(2)) * units; if (f > 0 && Double.isFinite(f)) out.currentFeed = f; } catch (NumberFormatException ignoredFeed) { } continue; }
                     if (axis != 'X' && axis != 'Y' && axis != 'Z' && axis != 'E' && axis != 'I' && axis != 'J' && axis != 'K' && axis != 'R' && axis != 'P') continue;
                     double v;
                     try { v = Double.parseDouble(m.group(2)) * units; } catch (NumberFormatException bad) { invalid = true; break; }
@@ -137,7 +160,7 @@ final class GcodeAnalysis {
                     else if (!extruding) out.arcTravel++;
                     else if (layer == null) out.skippedBeforeLayers++;
                     else if (!xKnown || !yKnown || !nextXKnown || !nextYKnown) out.skippedUnknown++;
-                    else if (plane != 17 || !relativeArcCenters || dk != null || dp != null ||
+                    else if ((out.currentFlow = Math.hypot(nx - x, ny - y) > 1e-9 ? (absoluteE ? ne - e : de) / Math.hypot(nx - x, ny - y) : 0) < 0 || plane != 17 || !relativeArcCenters || dk != null || dp != null ||
                             !out.addArc(layer, x, y, nx, ny, xOffset, yOffset, di, dj, dr, "G3".equals(code) || "G03".equals(code))) {
                         out.arcMoves++; out.ignored(code);
                     } else if (Double.isNaN(layer.z) && nextZKnown) layer.z = nz;
@@ -150,6 +173,7 @@ final class GcodeAnalysis {
                         if (out.segments + out.arcSegments >= MAX_SEGMENTS) throw new IOException("Слишком много отрезков для просмотра.");
                         if (Double.isNaN(layer.z) && nextZKnown) layer.z = nz;
                         double px = x + xOffset, py = y + yOffset, pnx = nx + xOffset, pny = ny + yOffset;
+                        double length = Math.hypot(nx - x, ny - y); out.currentFlow = length > 1e-9 ? (absoluteE ? ne - e : de) / length : 0;
                         out.addSegment(layer, px, py, pnx, pny, true); out.segments++;
                     }
                 }
@@ -159,7 +183,10 @@ final class GcodeAnalysis {
         return out;
     }
     private void addSegment(Layer layer, double x1, double y1, double x2, double y2, boolean linear) {
-        layer.add(x1, y1, x2, y2);
+        layer.add(x1, y1, x2, y2); layer.attributes(currentType, (float) currentFeed, (float) currentFlow, (float) currentTemp);
+        if (currentFeed > 0) { minFeed = Math.min(minFeed, currentFeed); maxFeed = Math.max(maxFeed, currentFeed); }
+        if (currentFlow > 0) { minFlow = Math.min(minFlow, currentFlow); maxFlow = Math.max(maxFlow, currentFlow); }
+        if (currentTemp > 0) { minTemp = Math.min(minTemp, currentTemp); maxTemp = Math.max(maxTemp, currentTemp); }
         minX = Math.min(minX, Math.min(x1, x2)); minY = Math.min(minY, Math.min(y1, y2));
         maxX = Math.max(maxX, Math.max(x1, x2)); maxY = Math.max(maxY, Math.max(y1, y2));
         if (linear) {
