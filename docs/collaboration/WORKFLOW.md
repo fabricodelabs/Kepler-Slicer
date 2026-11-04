@@ -34,7 +34,7 @@ cache for native work from another tree. Record the .so SHA-256 when it changes.
 ## Builds and devices
 `local.properties` is ignored; each worktree configures the Android SDK.
 Use Android Studio's JBR: `export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"`.
-applicationId stays `com.orcamobile.app` (installed data depends on it; code package is `com.keplerslicer.app`). Emulator: `Medium_Phone_API_37.0`.
+applicationId and code package are `com.keplerslicer.app` (owner, 2026-11-04; set before the Google Play release, never change it after). Emulator: `Medium_Phone_API_37.0`.
 `tools/start_claude_ui.ps1` is the legacy bounded launcher from the two-agent
 setup and is no longer required.
 

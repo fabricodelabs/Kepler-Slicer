@@ -1,6 +1,6 @@
 package com.keplerslicer.app;
 
-/** Names of stored preferences, secrets and folders. {@link StorageMigration} moves data saved under older names. */
+/** Names of stored preferences, secrets and folders. */
 public final class StorageNames {
     public static final String PRINT_PROFILES = "kepler_print_profiles";
     public static final String PROFILE_SELECTION = "kepler_profile_selection";
