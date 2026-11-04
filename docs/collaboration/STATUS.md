@@ -1,3 +1,16 @@
+# Current increment — 2026-11-04 (lead handover)
+
+The owner appointed **Claude Code lead developer and integrator**, replacing Codex. `codex/core` was
+fully merged (91dcf06) and is retired; all paths are Claude-owned (`ownership.json`), and AGENTS.md,
+CLAUDE.md and WORKFLOW.md describe the single-lead process. UI-010 (full Figma Glass UI v3 port) is on
+master at d27f0ab: see [UI-010 handoff](../ui/UI-010-HANDOFF.md) and [session notes](../ui/CLAUDE-SESSION-NOTES.md).
+
+Host suites at handover (JDK from Android Studio, `-JsonJar ..\..\work\json-test.jar`): camera 11, control 24,
+engine resources 92, cloud presets 87, general 82 + model restore 70, native config 72 + 78, online 40 + 25,
+presets 78, project settings 52, settings schema + INI codec, settings state 87, STEP import Java — pass.
+`test_process_overrides` fails on the inherited baseline too (stale 12-field digest assertion);
+`test_step_import_options` needs `-Cxx` (no C++ compiler configured). Phase 2 remains open.
+
 # Current increment — 2026-11-04
 
 The UI-008 Settings hub is integrated at `aa38e26`. The [increment report](INCREMENT-2026-11-04-UI008.md)
