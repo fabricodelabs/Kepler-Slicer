@@ -176,4 +176,16 @@
     <string name="kv3_target">target %1$s</string>
     <string name="kv3_no_target">no target</string>
     <string name="kv3_time_left">%1$d h %2$d m left</string>
+    <string name="kv3_tool_option_missing">The setting %1$s is not available in this profile schema.</string>
+    <string name="kv3_support_off">Off</string>
+    <string name="kv3_tool_applied">Saved for this object. It is applied at the next slice.</string>
+    <string name="kv3_measure_result">Size X %1$s mm · Y %2$s mm · Z %3$s mm\nDiagonal %4$s mm</string>
+    <string name="kv3_measure_sampled">Large model: measured on the preview mesh.</string>
+    <string name="kv3_tool_cut_detail">Cutting needs mesh splitting in the slicing engine, which this build does not include yet.</string>
+    <string name="kv3_tool_text_detail">Embossed text needs the engine text tool, which this build does not include yet.</string>
+    <string name="kv3_tool_assembly_detail">Assembly needs several objects on one plate; this build slices one object per plate.</string>
+    <string name="kv3_camera_unsupported">Live view is available for OctoPrint and Moonraker cameras; %1$s does not expose a stream here.</string>
+    <string name="kv3_3mf_unavailable">Project 3MF is available for STL and 3MF models (STEP and OBJ are converted only while slicing).</string>
+    <string name="kv3_3mf_copied">Project saved with its plates and settings: %1$s.</string>
+    <string name="kv3_3mf_written">Project 3MF saved: %1$d triangles placed on the plate (geometry and placement; profiles are not embedded).</string>
 </resources>

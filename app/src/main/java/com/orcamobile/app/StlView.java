@@ -54,6 +54,15 @@ final class StlView extends GLSurfaceView {
     }
     void resetCamera() { renderer.yaw = -35; renderer.pitch = 25; renderer.zoom = 1;renderer.panX=renderer.panY=0; requestRender(); }
     void setDarkMode(boolean dark) { renderer.dark = dark; requestRender(); }
+    /** Plate name drawn on the bed (upper case, 10sp/600 at 60% white like the Figma Workspace). */
+    void setPlateLabel(String label) {
+        if (label == null || label.trim().isEmpty()) { queueEvent(() -> renderer.setLabel(null)); requestRender(); return; }
+        android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG); p.setTypeface(com.orcamobile.app.glass.GlassTypography.typeface(getContext(), 600)); p.setTextSize(48); p.setColor(0x99E0E0E0); p.setLetterSpacing(.04f);
+        String text = label.trim().toUpperCase(java.util.Locale.getDefault()); float w = p.measureText(text); android.graphics.Paint.FontMetrics m = p.getFontMetrics();
+        android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(Math.max(8, (int) Math.ceil(w) + 8), (int) Math.ceil(m.descent - m.ascent) + 8, android.graphics.Bitmap.Config.ARGB_8888);
+        new android.graphics.Canvas(b).drawText(text, 4, 4 - m.ascent, p);
+        queueEvent(() -> renderer.setLabel(b)); requestRender();
+    }
     private android.graphics.drawable.Drawable backdrop; private android.view.View backdropAnchor;
     private final int[] backdropMine = new int[2], backdropTheirs = new int[2], backdropLast = {Integer.MIN_VALUE, 0, 0, 0};
     /**
@@ -248,6 +257,20 @@ final class StlView extends GLSurfaceView {
         int program, pos, norm, matrix, modelMatrix, gridProgram, gridPos, gridMatrix, gridColor;
         int colorProgram, colorPos, colorAttr, colorMatrix;
         volatile boolean gizmo; FloatBuffer gizmoPositions, gizmoColors; int gizmoCount;
+        /** Plate label (Figma "TEXTURED PEI PLATE", 10/600, 60%): a text texture lying on the bed along its front edge. */
+        int labelProgram, labelPos, labelUv, labelMatrix, labelSampler, labelTexture; volatile android.graphics.Bitmap labelBitmap; boolean labelDirty; FloatBuffer labelQuad; float labelAspect = 6;
+        volatile boolean volumeLabel = true;
+        void setLabel(android.graphics.Bitmap b) { labelBitmap = b; labelDirty = true; if (b != null) labelAspect = b.getWidth() / (float) Math.max(1, b.getHeight()); if (lastBedW > 0) buildLabelQuad(lastBedW, lastBedD); }
+        float lastBedW, lastBedD;
+        void buildLabelQuad(float w, float d) { lastBedW = w; lastBedD = d; float h = Math.min(w, d) * .045f, len = h * labelAspect, x0 = -w / 2 + h * .8f, y0 = -d / 2 + h * .5f, z = -.005f;
+            labelQuad = buffer(new float[]{x0, y0, z, 0, 1, x0 + len, y0, z, 1, 1, x0, y0 + h, z, 0, 0, x0 + len, y0 + h, z, 1, 0}); }
+        void drawLabel(float[] mvpMatrix) {
+            if (labelBitmap == null || labelQuad == null) return;
+            if (labelDirty || labelTexture == 0) { if (labelTexture == 0) { int[] t = new int[1]; GLES20.glGenTextures(1, t, 0); labelTexture = t[0]; } GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, labelTexture); GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR); GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR); GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE); GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE); android.opengl.GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, labelBitmap, 0); labelDirty = false; }
+            GLES20.glUseProgram(labelProgram); GLES20.glUniformMatrix4fv(labelMatrix, 1, false, mvpMatrix, 0); GLES20.glActiveTexture(GLES20.GL_TEXTURE0); GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, labelTexture); GLES20.glUniform1i(labelSampler, 0);
+            labelQuad.position(0); GLES20.glEnableVertexAttribArray(labelPos); GLES20.glVertexAttribPointer(labelPos, 3, GLES20.GL_FLOAT, false, 20, labelQuad); labelQuad.position(3); GLES20.glEnableVertexAttribArray(labelUv); GLES20.glVertexAttribPointer(labelUv, 2, GLES20.GL_FLOAT, false, 20, labelQuad);
+            GLES20.glDepthMask(false); GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4); GLES20.glDepthMask(true); GLES20.glDisableVertexAttribArray(labelPos); GLES20.glDisableVertexAttribArray(labelUv);
+        }
         /** Tools move gizmo (Figma 3:176): dashed #FFB454 bounding box and X/Y/Z arrows (#FF8A80, #8BE28B, #8AB4FF) from the base centre. */
         void buildGizmo(float[] scene) {
             if (scene.length < 9) { gizmoCount = 0; return; }
@@ -332,7 +355,7 @@ final class StlView extends GLSurfaceView {
             if (!Float.isFinite(minZ)) minZ = 0;
             if (bed != null) {
                 float[] floor = bed.floor(bedScale, -.02f), lines = bed.lines(bedScale, -.01f);
-                bedPositions = buffer(floor); bedCount = floor.length / 3;
+                bedPositions = buffer(floor); bedCount = floor.length / 3; buildLabelQuad((float) (bed.width * bedScale), (float) (bed.depth * bedScale));
                 gridPositions = buffer(lines); gridCount = lines.length / 3;
                 return;
             }
@@ -362,6 +385,10 @@ final class StlView extends GLSurfaceView {
             String cfs="precision mediump float; varying vec3 vColor; void main(){gl_FragColor=vec4(vColor,1.0);}";
             colorProgram=GLES20.glCreateProgram(); GLES20.glAttachShader(colorProgram,shader(GLES20.GL_VERTEX_SHADER,cvs)); GLES20.glAttachShader(colorProgram,shader(GLES20.GL_FRAGMENT_SHADER,cfs)); GLES20.glLinkProgram(colorProgram);
             colorPos=GLES20.glGetAttribLocation(colorProgram,"aPosition"); colorAttr=GLES20.glGetAttribLocation(colorProgram,"aColor"); colorMatrix=GLES20.glGetUniformLocation(colorProgram,"uMvp");
+            String lvs="attribute vec3 aPosition; attribute vec2 aUv; uniform mat4 uMvp; varying vec2 uv; void main(){uv=aUv;gl_Position=uMvp*vec4(aPosition,1.0);}";
+            String lfs="precision mediump float; varying vec2 uv; uniform sampler2D uTexture; void main(){gl_FragColor=texture2D(uTexture,uv);}";
+            labelProgram=GLES20.glCreateProgram(); GLES20.glAttachShader(labelProgram,shader(GLES20.GL_VERTEX_SHADER,lvs)); GLES20.glAttachShader(labelProgram,shader(GLES20.GL_FRAGMENT_SHADER,lfs)); GLES20.glLinkProgram(labelProgram);
+            labelPos=GLES20.glGetAttribLocation(labelProgram,"aPosition"); labelUv=GLES20.glGetAttribLocation(labelProgram,"aUv"); labelMatrix=GLES20.glGetUniformLocation(labelProgram,"uMvp"); labelSampler=GLES20.glGetUniformLocation(labelProgram,"uTexture"); labelTexture=0;
             quadPos=GLES20.glGetAttribLocation(quadProgram,"aPosition"); quadSampler=GLES20.glGetUniformLocation(quadProgram,"uTexture"); backdropTexture=0;
             program=GLES20.glCreateProgram(); GLES20.glAttachShader(program,shader(GLES20.GL_VERTEX_SHADER,vs)); GLES20.glAttachShader(program,shader(GLES20.GL_FRAGMENT_SHADER,fs)); GLES20.glLinkProgram(program);
             int[] ok=new int[1]; GLES20.glGetProgramiv(program,GLES20.GL_LINK_STATUS,ok,0); if(ok[0]==0) throw new IllegalStateException(GLES20.glGetProgramInfoLog(program));
@@ -386,7 +413,7 @@ final class StlView extends GLSurfaceView {
             if (dark) GLES20.glUniform4f(gridColor,.078f,.086f,.102f,.55f); else GLES20.glUniform4f(gridColor,.80f,.81f,.79f,1);
             bedPositions.position(0); GLES20.glVertexAttribPointer(gridPos,3,GLES20.GL_FLOAT,false,0,bedPositions); GLES20.glDrawArrays(GLES20.GL_TRIANGLES,0,bedCount);
             if (dark) GLES20.glUniform4f(gridColor,1f,1f,1f,.16f); else GLES20.glUniform4f(gridColor,.62f,.63f,.61f,1);
-            gridPositions.position(0); GLES20.glVertexAttribPointer(gridPos,3,GLES20.GL_FLOAT,false,0,gridPositions); GLES20.glDrawArrays(GLES20.GL_LINES,0,gridCount); GLES20.glDisableVertexAttribArray(gridPos);
+            gridPositions.position(0); GLES20.glVertexAttribPointer(gridPos,3,GLES20.GL_FLOAT,false,0,gridPositions); GLES20.glDrawArrays(GLES20.GL_LINES,0,gridCount); GLES20.glDisableVertexAttribArray(gridPos); if(dark&&volumeLabel)drawLabel(mvp);
             if(pathGeometry!=null && pathPositions!=null) {
                 int layers=Math.max(0,Math.min(visiblePathLayers,pathGeometry.layerCount)),vertices=pathGeometry.layerEnds[layers];
                 if(vertices>0 && sceneScale>0) {

@@ -64,7 +64,7 @@ public final class GcodeExportActivity extends Activity {
         String[] types = {"G-code", getString(R.string.kv3_project_3mf), "STL"};
         for (int i = 0; i < types.length; i++) {
             final String label = types[i]; TextView seg = k.line(label, 13, 700, i == 0 ? com.orcamobile.app.glass.KeplerUi.ON_ACTIVE : white); seg.setGravity(Gravity.CENTER); seg.setMinHeight(k.dp(40));
-            final int index = i; if (i == 0) { seg.setBackground(k.shape(white, 0, 18)); seg.setSelected(true); } else { k.pressable(seg, null, 18); seg.setOnClickListener(v -> { if (index == 2) chooseExtra(CREATE_STL); else screen.unavailable(label); }); }
+            final int index = i; if (i == 0) { seg.setBackground(k.shape(white, 0, 18)); seg.setSelected(true); } else { k.pressable(seg, null, 18); seg.setOnClickListener(v -> { if (index == 2) chooseExtra(CREATE_STL); else chooseExtra(CREATE_3MF); }); }
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, k.dp(40), 1); if (i > 0) p.leftMargin = k.dp(2); type.addView(seg, p);
         }
         content.addView(type, new LinearLayout.LayoutParams(-1, -2));
@@ -130,18 +130,20 @@ public final class GcodeExportActivity extends Activity {
         refreshEnabled();
     }
 
-    private static final int CREATE_STL = 302, CREATE_OBJ = 303;
+    private static final int CREATE_STL = 302, CREATE_OBJ = 303, CREATE_3MF = 304;
     private String baseName() { String n = fileName == null ? "kepler-result" : fileName.getText().toString().trim(); n = n.replaceAll("(?i)\\.gcode$", "").replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_"); return n.isEmpty() ? "kepler-result" : n.length() > 140 ? n.substring(0, 140) : n; }
     /** The model mesh kept by CurrentModelStore; only STL meshes can be saved as-is. */
+    private File projectSource() { String name = getSharedPreferences("current_model", MODE_PRIVATE).getString("file", ""); if (!name.toLowerCase(java.util.Locale.ROOT).endsWith(".3mf")) return null; File f = new File(new File(getFilesDir(), "models"), name); return f.isFile() && f.length() > 0 ? f : null; }
     private File modelMesh() { String name = getSharedPreferences("current_model", MODE_PRIVATE).getString("file", ""); if (name.isEmpty() || !name.toLowerCase(java.util.Locale.ROOT).endsWith(".stl")) return null; File f = new File(new File(getFilesDir(), "models"), name); return f.isFile() && f.length() > 0 ? f : null; }
 
     /** Export the plate mesh (STL) or the G-code toolpaths (OBJ polylines) through the document picker. */
     private void chooseExtra(int request) {
         if (pickerOpen) return;
         if (request == CREATE_STL && modelMesh() == null) { screen.info(getString(R.string.kv3_plate_stl), getString(R.string.kv3_stl_unavailable)); return; }
+        if (request == CREATE_3MF && modelMesh() == null && projectSource() == null) { screen.info(getString(R.string.kv3_project_3mf), getString(R.string.kv3_3mf_unavailable)); return; }
         if (request == CREATE_OBJ && source == null) { screen.info(getString(R.string.kv3_toolpaths_obj), status.getText().toString()); return; }
-        String name = baseName() + (request == CREATE_STL ? ".stl" : "-toolpaths.obj");
-        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(request == CREATE_STL ? "model/stl" : "model/obj").putExtra(Intent.EXTRA_TITLE, name);
+        String name = baseName() + (request == CREATE_STL ? ".stl" : request == CREATE_3MF ? ".3mf" : "-toolpaths.obj");
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(request == CREATE_STL ? "model/stl" : request == CREATE_3MF ? "model/3mf" : "model/obj").putExtra(Intent.EXTRA_TITLE, name);
         try { pickerOpen = true; refreshEnabled(); startActivityForResult(intent, request); } catch (android.content.ActivityNotFoundException e) { pickerOpen = false; refreshEnabled(); status.setText("На устройстве нет приложения для сохранения документов."); }
     }
     private void writeExtra(int request, Uri destination) {
@@ -151,7 +153,8 @@ public final class GcodeExportActivity extends Activity {
             String message;
             try (OutputStream out = app.getContentResolver().openOutputStream(destination, "wt")) {
                 if (out == null) throw new IOException("Не удалось открыть место сохранения.");
-                if (request == CREATE_STL) {
+                if (request == CREATE_3MF) { message = Project3mfWriter.write(app, out, projectSource(), mesh); }
+                else if (request == CREATE_STL) {
                     if (mesh == null) throw new IOException(getString(R.string.kv3_stl_unavailable));
                     long n = 0; try (FileInputStream in = new FileInputStream(mesh)) { byte[] b = new byte[65536]; int r; while ((r = in.read(b)) != -1) { out.write(b, 0, r); n += r; } }
                     message = getString(R.string.kv3_saved_bytes, android.text.format.Formatter.formatShortFileSize(app, n));
@@ -241,7 +244,7 @@ public final class GcodeExportActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data) {
         super.onActivityResult(request,result,data);
-        if (request == CREATE_STL || request == CREATE_OBJ) { pickerOpen = false; refreshEnabled(); if (result == RESULT_OK && data != null && data.getData() != null) writeExtra(request, data.getData()); return; }
+        if (request == CREATE_STL || request == CREATE_OBJ || request == CREATE_3MF) { pickerOpen = false; refreshEnabled(); if (result == RESULT_OK && data != null && data.getData() != null) writeExtra(request, data.getData()); return; }
         if (request != CREATE_DOCUMENT) return;
         pickerOpen = false;
         if (result != RESULT_OK || data == null || data.getData() == null) { refreshEnabled(); return; }

@@ -60,3 +60,15 @@ Slice screen; Workspace landscape. TalkBack was not run.
 
 Still not implemented (no engine/backend support): Lay on face, Cut, paint tools, Text, Measure, Assembly,
 Brim ears; Project 3MF export; camera stream; AMS sync; backdrop blur; plate label in 3D.
+
+## Second follow-up (same day)
+
+- Tools: Lay on face (largest planar face down; keeps Z rotation/scale/offset), Measure (transformed size and
+  diagonal), Support / Seam / Fuzzy skin / Brim ears as per-object overrides (`ObjectSettingsStore`, Orca enum
+  values from `SettingsSchema`; applied by the next slice). Cut, Text and Assembly explain the missing engine support.
+- Device camera: MJPEG live view from `webcam/?action=stream` for OctoPrint/Moonraker (read-only, network policy).
+- Export Project 3MF: a 3MF source is copied unchanged; an STL source is written as a core 3MF with the transform
+  baked in and placed on the plate (`Project3mfWriter`); profiles are not embedded.
+- Plate label: `curr_bed_type` / `default_bed_type` drawn on the bed. Prusa CORE One has no bed type, so it was not
+  visible in the emulator check.
+- Still not possible in this build: Cut, Text, Assembly (engine), AMS sync (no Bambu protocol), backdrop blur.

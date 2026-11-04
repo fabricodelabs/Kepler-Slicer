@@ -42,9 +42,8 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 ## Open items
 
-- Not implemented (no engine/backend): Lay on face, Cut, Support/Seam paint, Fuzzy skin, Text, Measure,
-  Assembly, Brim ears; Project 3MF export; camera stream; AMS sync; backdrop blur; plate label in 3D.
-- Not verified: TalkBack; live Device telemetry against a real OctoPrint/PrusaLink/Moonraker host.
-- `Kepler-Slicer/` inside this worktree is an untracked duplicate clone copied in by the desktop app; do not
-  commit it (safe to delete once the owner agrees).
+- Not implemented (no engine/backend): Cut, Text, Assembly; AMS sync; backdrop blur.
+  (Lay on face, Measure, object-setting tools, camera, Project 3MF and plate label are done — see UI-010 follow-ups.)
+- Not verified: TalkBack; live Device telemetry and camera against a real OctoPrint/PrusaLink/Moonraker host; plate label with a printer that defines a bed type. The emulator test sphere has a fuzzy_skin object override from the check.
+- The duplicate `Kepler-Slicer/` clone was deleted on the owner's request.
 - Codex/owner still need the integrator review and merge of `claude/ui` into `master`.

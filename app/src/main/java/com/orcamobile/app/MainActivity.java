@@ -463,6 +463,10 @@ public class MainActivity extends Activity {
             if (error != null) {pendingLayerPreview=false;dialog("Не удалось обновить модель",error.getMessage());} else maybeOpenRequestedLayers();
         });
         loadSelectedBed(printer, view, hint);
+        final android.content.Context appContext = getApplicationContext();
+        bedWorker.execute(() -> { String plate = ""; try { com.orcamobile.app.settings.PresetRepository repo = SettingsState.repository(appContext);
+            plate = repo.load(SettingsState.activeId(appContext, "process")).effective.optString("curr_bed_type", ""); if (plate.isEmpty()) plate = repo.load(SettingsState.activeId(appContext, "printer")).effective.optString("default_bed_type", ""); } catch (Exception ignored) { }
+            final String label = plate; runOnUiThread(() -> { if (!isDestroyed() && stlView == view) view.setPlateLabel(label); }); });
     }
 
     private String modelDetails() {
@@ -492,7 +496,13 @@ public class MainActivity extends Activity {
             final int index = i; final String label = getString(labels[i]);
             toolTiles[i] = ui.toolTile(icons[i], label, i == activeTool, () -> {
                 if (index <= 2) selectTool(index);
-                else com.orcamobile.app.glass.GlassBottomSheet.info(this, root, false, label, getString(R.string.kv3_tool_unavailable, label));
+                else if (index == 3) layOnFace();
+                else if (index == 5) objectTool(label, "support_type", true);
+                else if (index == 6) objectTool(label, "seam_position", false);
+                else if (index == 7) objectTool(label, "fuzzy_skin", false);
+                else if (index == 9) measure();
+                else if (index == 11) objectTool(label, "brim_type", false);
+                else com.orcamobile.app.glass.GlassBottomSheet.info(this, root, false, label, getString(index == 4 ? R.string.kv3_tool_cut_detail : index == 8 ? R.string.kv3_tool_text_detail : R.string.kv3_tool_assembly_detail));
             });
         }
         sheet.addView(ui.grid(toolTiles, 4), ui.below(10));
@@ -650,6 +660,97 @@ public class MainActivity extends Activity {
             final String t = time, g = grams, c = cost;
             runOnUiThread(() -> { if (isDestroyed() || request != statsRequest || statTime == null) return; statTime.setText(t == null ? "—" : t); statFilament.setText(g == null ? "—" : g); statCost.setText(c == null ? "—" : c); });
         }, "slice-stats").start();
+    }
+
+    /**
+     * Object-scoped setting tools (Support / Seam / Fuzzy skin / Brim ears): the choices are the Orca enum values
+     * from the settings schema and are stored as per-object overrides that the engine applies when slicing.
+     */
+    private void objectTool(String title, String key, boolean support) {
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            try {
+                com.orcamobile.app.settings.SettingsSchema schema = com.orcamobile.app.settings.SettingsSchema.load(app);
+                com.orcamobile.app.settings.SettingsSchema.Option option = null, enable = null;
+                for (com.orcamobile.app.settings.SettingsSchema.Option o : schema.options("process")) { if (key.equals(o.key)) option = o; if ("enable_support".equals(o.key)) enable = o; }
+                if (option == null || option.enumValues.isEmpty() || support && enable == null) throw new java.io.IOException(getString(R.string.kv3_tool_option_missing, key));
+                ObjectSettingsStore.Snapshot scope = ObjectSettingsStore.current(app); org.json.JSONObject changes = scope.changes();
+                final java.util.List<String> values = new java.util.ArrayList<>(option.enumValues), labels = new java.util.ArrayList<>();
+                for (int i = 0; i < values.size(); i++) labels.add(i < option.enumLabels.size() && !option.enumLabels.get(i).isEmpty() ? option.enumLabels.get(i) : values.get(i));
+                if (support) { values.add(0, null); labels.add(0, getString(R.string.kv3_support_off)); }
+                String current = changes.has(key) ? String.valueOf(changes.opt(key)) : null; int selected = -1;
+                Object enabled = changes.opt("enable_support"); if (support && enabled != null && ("false".equals(String.valueOf(enabled)) || "0".equals(String.valueOf(enabled)))) selected = 0;
+                else if (current != null) selected = values.indexOf(current);
+                final int sel = selected; final com.orcamobile.app.settings.SettingsSchema.Option opt = option, en = enable;
+                runOnUiThread(() -> { if (isDestroyed()) return;
+                    com.orcamobile.app.glass.GlassBottomSheet.choose(this, root, false, title, labels.toArray(new String[0]), sel, index -> applyObjectTool(title, key, opt, en, values.get(index)));
+                });
+            } catch (Exception e) { String m = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(); runOnUiThread(() -> { if (!isDestroyed()) dialog(title, m); }); }
+        }, "object-tool").start();
+    }
+    private void applyObjectTool(String title, String key, com.orcamobile.app.settings.SettingsSchema.Option option, com.orcamobile.app.settings.SettingsSchema.Option enable, String value) {
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            try {
+                ObjectSettingsStore.Snapshot scope = ObjectSettingsStore.current(app); org.json.JSONObject changes = scope.changes();
+                if (enable != null) changes.put("enable_support", enable.parseInput(value == null ? "false" : "true", changes.opt("enable_support")));
+                if (value != null) changes.put(key, option.parseInput(value, changes.opt(key)));
+                ObjectSettingsStore.save(app, scope.modelFileName, scope.plateIndex, scope.nativeObjectCount, changes);
+                runOnUiThread(() -> { if (isDestroyed()) return; ControlPreferences.scheduleAutoSlice(this); com.orcamobile.app.glass.GlassBottomSheet.info(this, root, false, title, getString(R.string.kv3_tool_applied)); });
+            } catch (Exception e) { String m = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(); runOnUiThread(() -> { if (!isDestroyed()) dialog(title, m); }); }
+        }, "object-tool-save").start();
+    }
+
+    /** Lay on face: orient the largest planar face of the mesh downwards (keeps Z rotation, scale and offset). */
+    private void layOnFace() {
+        if (mesh == null || mesh.vertices.length < 9 || !previewReady || !transformSupported()) { dialog(getString(R.string.kv3_tool_lay_on_face), getString(R.string.kv3_tools_unavailable)); return; }
+        final float[] v = mesh.vertices; final ModelTransform t = modelTransform;
+        new Thread(() -> {
+            java.util.HashMap<Long, double[]> clusters = new java.util.HashMap<>(); double[] best = null; double bestArea = 0;
+            for (int i = 0; i + 8 < v.length; i += 9) {
+                double ax = (v[i+3]-v[i])*t.sx, ay = (v[i+4]-v[i+1])*t.sy, az = (v[i+5]-v[i+2])*t.sz, bx = (v[i+6]-v[i])*t.sx, by = (v[i+7]-v[i+1])*t.sy, bz = (v[i+8]-v[i+2])*t.sz;
+                double nx = ay*bz-az*by, ny = az*bx-ax*bz, nz = ax*by-ay*bx, area = Math.sqrt(nx*nx+ny*ny+nz*nz); if (area < 1e-12) continue;
+                nx /= area; ny /= area; nz /= area;
+                long k = ((Math.round(nx*40)+64) << 16) | ((Math.round(ny*40)+64) << 8) | (Math.round(nz*40)+64);
+                double[] c = clusters.get(k); if (c == null) clusters.put(k, c = new double[4]);
+                c[0] += nx*area; c[1] += ny*area; c[2] += nz*area; c[3] += area;
+                if (c[3] > bestArea) { bestArea = c[3]; best = c; }
+            }
+            if (best == null) return;
+            double len = Math.sqrt(best[0]*best[0]+best[1]*best[1]+best[2]*best[2]), nx = best[0]/len, ny = best[1]/len, nz = best[2]/len;
+            double a = Math.atan2(ny, nz), r = Math.sqrt(ny*ny+nz*nz), b = Math.atan2(nx, -r);
+            final ModelTransform next = new ModelTransform(Math.toDegrees(a), Math.toDegrees(b), t.rz, t.sx, t.sy, t.sz, t.offsetX, t.offsetY);
+            runOnUiThread(() -> { if (!isDestroyed() && modelTransform == t) applyTransform(next); });
+        }, "lay-on-face").start();
+    }
+    /** Measure: size of the transformed model in millimetres (bounding box, as placed on the plate). */
+    private void measure() {
+        if (mesh == null || mesh.vertices.length < 9) { dialog(getString(R.string.kv3_tool_measure), getString(R.string.kv3_no_model_detail)); return; }
+        final float[] v = mesh.vertices; final double max = Math.max(mesh.size[0], Math.max(mesh.size[1], mesh.size[2])) / 1.6; final ModelTransform t = modelTransform;
+        new Thread(() -> {
+            double ax = Math.toRadians(t.rx), ay = Math.toRadians(t.ry), az = Math.toRadians(t.rz), cx = Math.cos(ax), sx = Math.sin(ax), cy = Math.cos(ay), sy = Math.sin(ay), cz = Math.cos(az), sz = Math.sin(az);
+            double[] lo = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE}, hi = {-Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+            for (int i = 0; i + 2 < v.length; i += 3) {
+                double x = v[i]*max*t.sx, y = v[i+1]*max*t.sy, z = v[i+2]*max*t.sz;
+                double y1 = y*cx - z*sx, z1 = y*sx + z*cx; double x2 = x*cy + z1*sy, z2 = -x*sy + z1*cy; double x3 = x2*cz - y1*sz, y3 = x2*sz + y1*cz;
+                double[] p = {x3, y3, z2}; for (int k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], p[k]); hi[k] = Math.max(hi[k], p[k]); }
+            }
+            double dx = hi[0]-lo[0], dy = hi[1]-lo[1], dz = hi[2]-lo[2];
+            String text = getString(R.string.kv3_measure_result, fmt(dx), fmt(dy), fmt(dz), fmt(Math.sqrt(dx*dx+dy*dy+dz*dz))) + (mesh.previewSampled ? "\n" + getString(R.string.kv3_measure_sampled) : "");
+            runOnUiThread(() -> { if (!isDestroyed()) com.orcamobile.app.glass.GlassBottomSheet.info(this, root, false, getString(R.string.kv3_tool_measure), text); });
+        }, "measure").start();
+    }
+    private static String fmt(double mm) { return String.format(java.util.Locale.getDefault(), "%.2f", mm); }
+    /** Applies a complete transform with the same save/rollback rules as the X/Y/Z fields. */
+    private void applyTransform(ModelTransform next) {
+        if (stlView == null || meshFileName == null || !previewReady || !transformSupported()) return;
+        final StlView view = stlView; final String file = meshFileName; final ModelTransform old = modelTransform;
+        dragReady(view, viewportTransform, viewportMove, false);
+        view.setModelTransform(next, error -> {
+            if (isDestroyed() || stlView != view) return;
+            try { if (error != null) throw new IllegalArgumentException(error.getMessage()); CurrentModelStore.saveTransform(this, file, next); modelTransform = next; dragReady(view, viewportTransform, viewportMove, true); refreshToolFields(); ControlPreferences.scheduleAutoSlice(this); }
+            catch (Exception e) { view.setModelTransform(old, ignored -> { if (!isDestroyed() && stlView == view) { dragReady(view, viewportTransform, viewportMove, true); refreshToolFields(); } }); dialog(getString(R.string.kv3_apply_failed), e.getMessage()); }
+        });
     }
 
     private void openTools() {
@@ -828,7 +929,7 @@ public class MainActivity extends Activity {
                 }
                 runOnUiThread(() -> {
                     if (isDestroyed() || generation != bedGeneration) return;
-                    loadedBed = result; bedPending = false;
+                    loadedBed = result; bedPending = false; getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).edit().putFloat("bed_center_x", (float) result.centerX).putFloat("bed_center_y", (float) result.centerY).apply();
                     if (stlView != null && bedHint != null) loadSelectedBed(printer, stlView, bedHint);
                 });
             } catch (Exception | LinkageError error) {
