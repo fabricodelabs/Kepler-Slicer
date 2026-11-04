@@ -56,7 +56,11 @@ public final class GlassGalleryActivity extends Activity {
     @Override public void onBackPressed(){if(!handleBack())super.onBackPressed();}
     private void referenceMode(int mode){reference=mode;render();}
     private void renderReference(){
-        LinearLayout column=ui.vertical();ui.pad(column,20,28,20,0);root.addView(column,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout shell=ui.vertical();
+        root.addView(shell,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout column=ui.vertical();
+        ui.pad(column,20,28,20,0);
+        shell.addView(column,new LinearLayout.LayoutParams(-1,0,1));
         FrameLayout bar=new FrameLayout(this);column.addView(bar,new LinearLayout.LayoutParams(-1,ui.dp(44)));
         TextView title=ui.heading(s(reference==1?R.string.glass_tab_process:R.string.glass_preferences));title.setGravity(Gravity.CENTER);FrameLayout.LayoutParams titleLp=new FrameLayout.LayoutParams(-2,-1,Gravity.CENTER);bar.addView(title,titleLp);
         android.widget.ImageView back=new android.widget.ImageView(this);back.setImageDrawable(GlassIcon.create(this,"back",ui.tokens.textPrimary));back.setBackground(GlassSurface.of(this,ui.tokens.pillRadiusMax,reduced));back.setPadding(ui.dp(12),ui.dp(12),ui.dp(12),ui.dp(12));back.setContentDescription(s(R.string.glass_back));back.setFocusable(true);back.setOnClickListener(v->referenceMode(0));bar.addView(back,new FrameLayout.LayoutParams(ui.dp(44),ui.dp(44),Gravity.START|Gravity.CENTER_VERTICAL));
@@ -66,9 +70,14 @@ public final class GlassGalleryActivity extends Activity {
         content.removeViewAt(0);content.removeViewAt(0);
         int controls=reference==1?2:1;
         for(int i=0;i<controls;i++){View child=content.getChildAt(0);content.removeViewAt(0);column.addView(child,new LinearLayout.LayoutParams(-1,-2));}
-        content.removeViewAt(0);ui.pad(content,0,0,0,110);
+        content.removeViewAt(0);ui.pad(content,0,0,0,16);
         ScrollView scroll=new ScrollView(this);scroll.setClipToPadding(false);scroll.setVerticalScrollBarEnabled(false);scroll.addView(content);column.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));pageScroll=scroll;
-        GlassNavigation navigation=new GlassNavigation(this,reference==1?1:3,reduced,item->{if(item==1)referenceMode(1);else if(item==3)referenceMode(2);else render();});FrameLayout.LayoutParams np=new FrameLayout.LayoutParams(-1,ui.dp(ui.tokens.navHeight),Gravity.BOTTOM);np.setMargins(ui.dp(20),0,ui.dp(20),ui.dp(24));root.addView(navigation,np);restoreScrolls();
+        GlassNavigation navigation=new GlassNavigation(this,reference==1?1:3,reduced,item->{if(item==1)referenceMode(1);else if(item==3)referenceMode(2);else render();});
+        LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);
+        int navInset=ui.dp(ui.tokens.navInset);
+        np.setMargins(navInset,ui.dp(8),navInset,ui.dp(ui.tokens.navBottom));
+        shell.addView(navigation,np);
+        restoreScrolls();
     }
     private void header(int stringId){TextView section=ui.section(s(stringId));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(ui.dp(4),ui.dp(12),ui.dp(4),ui.dp(6));content.addView(section,lp);}
     private LinearLayout card(){return ui.vertical();}

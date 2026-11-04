@@ -59,11 +59,22 @@
   "active": "#1C1A18"
  },
  "nav": {
-  "h": 64,
-  "inset": 20,
+  "h": 68,
+  "inset": 16,
   "bottom": 24,
-  "activeFlex": 2.2,
-  "activeCircle": 40
+  "pad": 6,
+  "gap": 4,
+  "radius": 34,
+  "selectedRadius": 28,
+  "strokeWidth": 1,
+  "labelSize": 11,
+  "lineHeight": 1.3,
+  "labelGap": 3,
+  "iconSize": 22,
+  "fill": "rgba(255,255,255,0.11)",
+  "stroke": "rgba(255,255,255,0.20)",
+  "activeText": "#16181C",
+  "inactiveText": "#FFFFFF"
  },
  "spacing": {
   "screen": 20,
