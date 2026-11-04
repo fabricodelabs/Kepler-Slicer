@@ -58,9 +58,35 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 - Python 3.12 is installed per-user (`%LOCALAPPDATA%\Programs\Python\Python312`); open a new shell for PATH.
 - Many files in the index are CRLF while edits produce LF; restore CRLF before committing to keep diffs small.
 
+## Native engine work (2026-11-05)
+
+- The native cache `work/orca-headless-fresh` now builds from **this tree** (`KEPLER_SLICE_JNI` points to
+  `outputs/Kepler-Claude/engine/src/slice_jni.cpp`). Incremental build + publish (~1 min):
+  `pwsh -File engine/build-native.ps1 -Build ../../work/orca-headless-fresh -Cmake ../../work/android-tools/cmake/data/bin/cmake.exe -Ndk ../../work/android-ndk/android-ndk-r30 -Parallel 12 -PublishToApp`
+  (keeps the previous .so under `outputs/Kepler-Native-Phase2-baseline/<sha>/`). Keep both ExperimentalSlicer.java copies equal.
+- Current .so SHA-256 `12e68879a0a7429223f3b4e1602f942b7a70cfd62ef8cfe203080516519ab916` (16 KB aligned).
+- New JNI: `editModel` (op 1 Cut at Z via upstream `Cut::perform_with_plane` — plane is relative to the instance
+  offset; op 2 Text via `Emboss`, system Roboto font; op 3 Assembly = all objects into one multi-part object) and
+  `exportProject3mf` (upstream `store_bbs_3mf` with resolved settings). Code in `native_preferences.cpp`
+  (`cut_model_at_z`, `add_text_object`, `assemble_objects`, `store_project_3mf`, `arrange_on_plate`).
+- Java: `NativePreferenceActions.editModel/exportProject` (same snapshot/session guards as clone), Tools sheet dialogs
+  in `MainActivity` (`cutTool`, `textTool`, `assemblyTool`), Project 3MF export uses the engine unless the source is a
+  real project (has `Metadata/project_settings.config`). Verified on the emulator: cut, assembly, text, slice, export.
+- Dialogs: `glass/GlassDialog` restyles every `MdUi.alert` AlertDialog (glass card, Manrope, pill buttons).
+  `glass/Backdrop` blurs content under the floating nav (Android 12+); sheets/alerts blur behind.
+- Google Play: `docs/GOOGLE-PLAY.md`, `docs/PRIVACY.md`; upload key in `C:\Users\tails\.kepler-signing` (not in git).
+
+## Known defects to fix next
+
+- Hard-coded Russian strings in English UI (printer library search/«МОДЕЛИ»/«проф.», printer variant screen,
+  «Условная сетка…» bed hint, many `MdUi` screens). Move to resources.
+- Settings editor shows vector values as JSON (`["ABS"]`); show single values as plain text.
+- Printers landing card does not refresh the active process after choosing one ("Выберите процесс" stays).
+- Export summary time is not localised ("8m 56s").
+
 ## Open items
 
-- Not implemented (no engine/backend): Cut, Text, Assembly; AMS sync; backdrop blur.
+- Not implemented: AMS sync (no Bambu protocol). Cut, Text, Assembly and backdrop blur are done (2026-11-05).
   (Lay on face, Measure, object-setting tools, camera, Project 3MF and plate label are done — see UI-010 follow-ups.)
 - Not verified: TalkBack; live Device telemetry and camera against a real OctoPrint/PrusaLink/Moonraker host; plate label with a printer that defines a bed type. The emulator test sphere has a fuzzy_skin object override from the check.
 - The duplicate `Kepler-Slicer/` clone was deleted on the owner's request.

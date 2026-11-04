@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground: the Kepler "K" from ic_launcher, centred in the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:scaleX="1.5" android:scaleY="1.5" android:translateX="16.5" android:translateY="18">
+        <path android:fillColor="#FFFFFF" android:pathData="M14,11h5v11l10,-11h6L23,24l13,13h-7L19,27v10h-5z" />
+    </group>
+</vector>

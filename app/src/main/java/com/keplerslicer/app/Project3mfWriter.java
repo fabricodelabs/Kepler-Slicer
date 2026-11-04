@@ -23,9 +23,23 @@ final class Project3mfWriter {
     private Project3mfWriter() {}
 
     static String write(Context context, OutputStream out, File project, File stl) throws IOException {
+        // A geometry-only 3MF (made by Cut/Text/Assembly or a plain mesh export) is not a project: write it with settings.
+        if (project != null && !hasProjectSettings(project)) project = null;
         if (project != null) {
             long n = 0; try (InputStream in = new FileInputStream(project)) { byte[] b = new byte[65536]; int r; while ((r = in.read(b)) != -1) { out.write(b, 0, r); n += r; } }
             return context.getString(R.string.kv3_3mf_copied, android.text.format.Formatter.formatShortFileSize(context, n));
+        }
+        // Engine writer first: a full project with the resolved printer/process/filament settings and placement.
+        final long[] written = {0};
+        OutputStream counting = new java.io.FilterOutputStream(out) {
+            @Override public void write(int b) throws IOException { out.write(b); written[0]++; }
+            @Override public void write(byte[] b, int off, int len) throws IOException { out.write(b, off, len); written[0] += len; }
+        };
+        try {
+            long n = NativePreferenceActions.exportProject(context, counting);
+            return context.getString(R.string.kv3_3mf_project_written, android.text.format.Formatter.formatShortFileSize(context, n));
+        } catch (IOException e) {
+            if (written[0] > 0 || stl == null) throw e; // never append a second archive to a partly written one
         }
         if (stl == null) throw new IOException(context.getString(R.string.kv3_3mf_unavailable));
         ModelTransform t = ModelTransform.decode(context.getSharedPreferences("current_model", Context.MODE_PRIVATE).getString("transform", ""));
@@ -55,6 +69,11 @@ final class Project3mfWriter {
         w.write("</triangles></mesh></object></resources>\n<build><item objectid=\"1\"/></build>\n</model>\n");
         w.flush(); zip.closeEntry(); zip.finish();
         return context.getString(R.string.kv3_3mf_written, v.length / 9);
+    }
+
+    private static boolean hasProjectSettings(File project) {
+        try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(project)) { return zip.getEntry("Metadata/project_settings.config") != null; }
+        catch (IOException e) { return true; } // unreadable here: keep the original file untouched
     }
 
     private static void entry(ZipOutputStream zip, String name, String text) throws IOException { zip.putNextEntry(new ZipEntry(name)); zip.write(text.getBytes(StandardCharsets.UTF_8)); zip.closeEntry(); }

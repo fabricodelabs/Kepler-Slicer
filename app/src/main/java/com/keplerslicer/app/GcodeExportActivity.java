@@ -131,7 +131,7 @@ public final class GcodeExportActivity extends Activity {
     }
 
     private static final int CREATE_STL = 302, CREATE_OBJ = 303, CREATE_3MF = 304;
-    private String baseName() { String n = fileName == null ? "kepler-result" : fileName.getText().toString().trim(); n = n.replaceAll("(?i)\\.gcode$", "").replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_"); return n.isEmpty() ? "kepler-result" : n.length() > 140 ? n.substring(0, 140) : n; }
+    private String baseName() { String n = fileName == null ? "kepler-result" : fileName.getText().toString().trim(); n = n.replaceAll("(?i)(\\.(gcode|3mf|stl|obj|step|stp))+$", "").replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_"); return n.isEmpty() ? "kepler-result" : n.length() > 140 ? n.substring(0, 140) : n; }
     /** The model mesh kept by CurrentModelStore; only STL meshes can be saved as-is. */
     private File projectSource() { String name = getSharedPreferences("current_model", MODE_PRIVATE).getString("file", ""); if (!name.toLowerCase(java.util.Locale.ROOT).endsWith(".3mf")) return null; File f = new File(new File(getFilesDir(), "models"), name); return f.isFile() && f.length() > 0 ? f : null; }
     private File modelMesh() { String name = getSharedPreferences("current_model", MODE_PRIVATE).getString("file", ""); if (name.isEmpty() || !name.toLowerCase(java.util.Locale.ROOT).endsWith(".stl")) return null; File f = new File(new File(getFilesDir(), "models"), name); return f.isFile() && f.length() > 0 ? f : null; }

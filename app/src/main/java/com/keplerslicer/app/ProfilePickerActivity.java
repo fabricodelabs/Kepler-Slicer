@@ -233,6 +233,8 @@ public class ProfilePickerActivity extends Activity {
         star.setOnClickListener(v -> { if (favourites.contains(key)) favourites.remove(key); else favourites.add(key); getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).edit().putStringSet("favourites_" + kind, new HashSet<>(favourites)).apply(); refilter(); });
         r.addView(star, ui.lp(44, 44));
         r.setContentDescription(p.name + ", " + p.vendor + ", " + detail);
+        // The list lets header fields take focus, so rows with a focusable star handle their own tap.
+        r.setOnClickListener(v -> choose(p));
         LinearLayout wrapper = ui.column(); wrapper.addView(r, new LinearLayout.LayoutParams(-1, -2));
         if (!row.last) { View d = new View(this); d.setBackgroundColor(KeplerUi.DIVIDER); wrapper.addView(d, new LinearLayout.LayoutParams(-1, Math.max(1, ui.dp(1)))); }
         return wrapper;
@@ -275,7 +277,7 @@ public class ProfilePickerActivity extends Activity {
             if (favouritesOnly && !favourites.contains(profileKey(p.vendor, p.name))) continue;
             visible.add(p);
         }
-        visible.sort(Comparator.<PrintProfileCatalog.Profile, String>comparing(p -> p.vendor.toLowerCase(Locale.ROOT))
+        visible.sort(Comparator.<PrintProfileCatalog.Profile, String>comparing(p -> EngineText.clean(p.vendor).toLowerCase(Locale.ROOT))
                 .thenComparingInt(p -> "yes".equals(compatibility.get(profileKey(p.vendor, p.name))) ? 0 : 1)
                 .thenComparing(p -> p.name.toLowerCase(Locale.ROOT)));
         rows.clear();

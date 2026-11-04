@@ -43,6 +43,12 @@ public final class ExperimentalSlicer {
     public static native String prepareStep(String source,String resources,String data,String job,double linearMm,double angularRad,boolean split);
     public static native String cloneModelWithPreferences(String pv,String qv,String fv,String pn,String qn,String fn,
             String model,String resources,String data,String job,double[] transform,String settings,int objectIndex,int instanceIndex,int copies,boolean arrange);
+    /** Tools sheet edits: op 1 cut at height a (b: 1 keep upper, 2 keep lower), op 2 text (a height, b depth), op 3 assembly. Returns a new 3MF in job. */
+    public static native String editModel(String pv,String qv,String fv,String pn,String qn,String fn,
+            String model,String resources,String data,String job,double[] transform,String settings,int op,double a,double b,String text,String fontPath);
+    /** Project 3MF with the resolved settings and current placement; returns job/project.3mf. */
+    public static native String exportProject3mf(String pv,String qv,String fv,String pn,String qn,String fn,
+            String model,String resources,String data,String job,double[] transform,String settings);
     public static native String setNativeLogLevel(String level);
     public static native byte[] runNativePreferencesSelfTest(String resources,String data);
 }

@@ -43,11 +43,34 @@ public final class KeplerUi {
         if (nav.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) nav.getParent()).removeView(nav);
         android.widget.FrameLayout.LayoutParams p = new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
         p.setMargins(sideMarginPx, 0, sideMarginPx, bottomMarginPx); host.addView(nav, p);
+        if (nav instanceof GlassNavigation) ((GlassNavigation) nav).setBackdrop(content);
+        statusScrim(host);
         final int extra = Math.round(12 * host.getResources().getDisplayMetrics().density);
         host.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             if (nav.getHeight() <= 0) return;
             int[] navXY = new int[2]; nav.getLocationInWindow(navXY);
             padScrollables(content, navXY[1] - extra, nav.getHeight() + bottomMarginPx + extra);
+        });
+    }
+    /** Soft fade under the status bar so content scrolling up does not collide with the system icons. */
+    private static void statusScrim(android.widget.FrameLayout host) {
+        for (int i = 0; i < host.getChildCount(); i++) if ("kv3-status-scrim".equals(host.getChildAt(i).getTag())) return;
+        View scrim = new View(host.getContext()); scrim.setTag("kv3-status-scrim");
+        scrim.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        final float d = host.getResources().getDisplayMetrics().density;
+        final android.graphics.drawable.GradientDrawable fade = new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF4B5058, 0xFF4B5058, 0x004B5058});
+        scrim.setBackground(fade);
+        host.addView(scrim, new android.widget.FrameLayout.LayoutParams(-1, Math.round(40 * d), Gravity.TOP));
+        host.setClipToPadding(false);
+        scrim.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> {
+            // Cover the status bar itself (the host pads it away) plus a short fade below its edge.
+            int pad = host.getPaddingTop(), top = pad;
+            android.view.WindowInsets in = v.getRootWindowInsets();
+            if (top == 0 && in != null && android.os.Build.VERSION.SDK_INT >= 30) top = in.getInsets(android.view.WindowInsets.Type.statusBars()).top;
+            android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) v.getLayoutParams();
+            int want = top + Math.round(16 * d);
+            if (android.os.Build.VERSION.SDK_INT >= 29) fade.setColors(new int[]{0xFF4B5058, 0xFF4B5058, 0x004B5058}, new float[]{0f, (want - 8 * d) / want, 1f}); // solid to the list edge (8dp below the bar), then an 8dp fade
+            if (lp.height != want || lp.topMargin != -pad) { lp.height = want; lp.topMargin = -pad; v.post(v::requestLayout); }
         });
     }
     private static void padScrollables(View v, int navTop, int fallback) {
@@ -60,8 +83,6 @@ public final class KeplerUi {
                 v.setTag(R.id.kv3_nav_pad, new int[]{base, need});
                 v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), base + need);
                 if (v instanceof android.view.ViewGroup) ((android.view.ViewGroup) v).setClipToPadding(false);
-                // Soft top edge under the status bar instead of a hard cut line.
-                v.setVerticalFadingEdgeEnabled(true); v.setFadingEdgeLength(Math.round(28 * v.getResources().getDisplayMetrics().density));
             }
             return;
         }

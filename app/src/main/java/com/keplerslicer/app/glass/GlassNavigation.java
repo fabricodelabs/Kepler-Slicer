@@ -40,6 +40,10 @@ public final class GlassNavigation extends LinearLayout {
     private final TextView[] captions = new TextView[4];
     private int selected;
     private boolean reduced;
+    private View backdropSource;
+
+    /** Blurs {@code source} (a sibling drawn under this floating bar) behind the bar on Android 12+. */
+    public void setBackdrop(View source) { backdropSource = source; updateAppearance(); }
 
     public GlassNavigation(Context context, int selected, boolean reduced, Listener listener) {
         super(context);
@@ -131,12 +135,13 @@ public final class GlassNavigation extends LinearLayout {
     /** Update selection in place to retain item views and accessibility focus. */
     private void updateAppearance() {
         GradientDrawable bar = new GradientDrawable();
-        // Frosted glass: Figma glass/fill over bg/base, nearly opaque because Android Views cannot blur what lies
-        // behind them; content scrolling under the floating bar stays readable only as a soft shadow.
-        bar.setColor(reduced ? tokens.reduceTransparencyFill : 0xE64E535A);
+        // Frosted glass: Figma glass/fill over a blurred backdrop (Android 12+). Without blur the fill stays nearly
+        // opaque so content scrolling under the floating bar does not fight with the labels.
+        boolean blur = !reduced && backdropSource != null && Backdrop.supported();
+        bar.setColor(reduced ? tokens.reduceTransparencyFill : blur ? 0xB84E535A : 0xE64E535A);
         bar.setCornerRadius(tokens.dp(tokens.navRadius));
         bar.setStroke(Math.max(1, tokens.dp(tokens.navStrokeWidth)), tokens.navStroke);
-        setBackground(bar);
+        setBackground(blur ? Backdrop.behind(this, backdropSource, tokens.dp(24), tokens.dp(tokens.navRadius), bar) : bar);
 
         for (int index = 0; index < items.length; index++) {
             boolean active = index == selected;

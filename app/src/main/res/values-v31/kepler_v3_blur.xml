@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Glass UI v3: alert dialogs blur the screen behind them on Android 12+. -->
+    <style name="KeplerAlertDark" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:fontFamily">@font/manrope_medium</item>
+        <item name="android:textColorPrimary">#FFFFFFFF</item>
+        <item name="android:textColorSecondary">#E0FFFFFF</item>
+        <item name="android:colorAccent">#5EE0C8</item>
+        <item name="android:colorBackgroundFloating">#2E323A</item>
+        <item name="android:windowBackground">@drawable/dialog_dark</item>
+        <item name="android:windowBlurBehindEnabled">true</item>
+        <item name="android:windowBlurBehindRadius">20dp</item>
+    </style>
+</resources>

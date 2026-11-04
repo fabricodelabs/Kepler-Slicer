@@ -188,4 +188,23 @@
     <string name="kv3_3mf_unavailable">Project 3MF is available for STL and 3MF models (STEP and OBJ are converted only while slicing).</string>
     <string name="kv3_3mf_copied">Project saved with its plates and settings: %1$s.</string>
     <string name="kv3_3mf_written">Project 3MF saved: %1$d triangles placed on the plate (geometry and placement; profiles are not embedded).</string>
+    <string name="kv3_cut_height">Cut height, mm</string>
+    <string name="kv3_cut_keep_upper">Keep upper part</string>
+    <string name="kv3_cut_keep_lower">Keep lower part</string>
+    <string name="kv3_cut_apply">Cut</string>
+    <string name="kv3_cut_hint">The model is %1$s mm tall. The upper part is placed on its cut face.</string>
+    <string name="kv3_cut_name">%1$s (cut).3mf</string>
+    <string name="kv3_text_value">Text</string>
+    <string name="kv3_text_height">Letter height, mm</string>
+    <string name="kv3_text_depth">Depth, mm</string>
+    <string name="kv3_text_apply">Add text</string>
+    <string name="kv3_text_name">%1$s + text.3mf</string>
+    <string name="kv3_assembly_detail">Join all objects and copies on the plate into one assembly. Parts keep their positions and move together.</string>
+    <string name="kv3_assembly_apply">Join</string>
+    <string name="kv3_assembly_name">%1$s (assembly).3mf</string>
+    <string name="kv3_edit_working">Editing the model in the engine…</string>
+    <string name="kv3_edit_failed">Could not edit the model</string>
+    <string name="kv3_edit_number">Enter a number in each field.</string>
+    <string name="kv3_3mf_project_written">Project 3MF saved with the printer, process and filament settings: %1$s.</string>
+    <string name="kv3_ok">OK</string>
 </resources>
