@@ -136,7 +136,7 @@ public final class SettingsHubUi {
         LinearLayout wrap=new LinearLayout(context);wrap.setPadding(dp(16),dp(6),dp(16),dp(10));wrap.addView(row,new LinearLayout.LayoutParams(-2,-2));return wrap;
     }
     private View segment(String caption,boolean selected,Runnable action){
-        TextView t=text(caption,13,700,selected?ON_ACTIVE:WHITE);t.setGravity(Gravity.CENTER);t.setMinHeight(dp(32));t.setPadding(dp(12),0,dp(12),0);t.setSingleLine(true);
+        TextView t=text(caption,13,700,selected?ON_ACTIVE:WHITE);t.setGravity(Gravity.CENTER);t.setPadding(dp(12),0,dp(12),0);t.setSingleLine(true);t.setMinHeight(dp(32));
         if(selected)t.setBackground(shape(WHITE,0,13));else pressable(t,0,0,13);
         t.setClickable(true);t.setFocusable(true);t.setOnClickListener(v->action.run());return t;
     }
