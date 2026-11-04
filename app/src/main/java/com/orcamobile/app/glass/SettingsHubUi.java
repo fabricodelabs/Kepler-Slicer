@@ -117,11 +117,36 @@ public final class SettingsHubUi {
     }
 
     /** Figma Advanced control: atom18 + 12/600 label + 46x28 switch inside a >=44dp checkable target. */
-    public View advancedControl(String label,String description,boolean initial,Consumer<Boolean> onChange){
+    public View advancedControl(String label,String description,boolean initial,Consumer<Boolean> onChange){return advancedControl(label,description,initial,onChange,false);}
+
+    /**
+     * Process header (node 6:368). The Advanced control stays inline with the title while the title and the
+     * whole label (<=96dp, never wrapped mid-word) fit the card; otherwise it moves to its own row under the
+     * title, aligned with the card insets. Decided once from the current font scale and screen width.
+     */
+    public View processHeader(int iconRes,String title,String label,String description,boolean initial,Consumer<Boolean> onChange){
+        float screenPx=context.getResources().getConfiguration().screenWidthDp*density;
+        float cardPx=screenPx-dp(20+20+2); // page padding 20/20 plus the card stroke
+        float titlePx=text(title,16,700,WHITE).getPaint().measureText(title);
+        float labelPx=text(label,12,600,SECONDARY).getPaint().measureText(label);
+        float fixedPx=dp(16+20+8+8)+dp(4+18+8+8+46+6)+dp(8); // header insets+icon+title margins, control chrome, slack
+        boolean inline=labelPx<=dp(96)&&fixedPx+titlePx+labelPx<=cardPx;
+        if(inline)return cardHeader(iconRes,title,advancedControl(label,description,initial,onChange,false));
+        LinearLayout stacked=new LinearLayout(context);stacked.setOrientation(LinearLayout.VERTICAL);
+        stacked.addView(cardHeader(iconRes,title),new LinearLayout.LayoutParams(-1,-2));
+        LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMarginStart(dp(12));cp.setMarginEnd(dp(2)); // control pads 4/6, so art lands on the 16dp/8dp card insets
+        stacked.addView(advancedControl(label,description,initial,onChange,true),cp);
+        return stacked;
+    }
+
+    /** @param wide true lets the label take the remaining row width (switch stays fixed at the end) instead of the 96dp cap. */
+    private View advancedControl(String label,String description,boolean initial,Consumer<Boolean> onChange,boolean wide){
         final boolean[] on={initial};
-        LinearLayout g=new LinearLayout(context);g.setOrientation(LinearLayout.HORIZONTAL);g.setGravity(Gravity.CENTER_VERTICAL);g.setPadding(dp(4),0,dp(6),0);g.setMinimumHeight(dp(44));
+        LinearLayout g=new LinearLayout(context);g.setOrientation(LinearLayout.HORIZONTAL);g.setGravity(Gravity.CENTER_VERTICAL);g.setPaddingRelative(dp(4),0,dp(6),0);g.setMinimumHeight(dp(44));
         g.addView(image(R.drawable.kepler_v3_settings_atom,18));
-        TextView t=text(label,12,600,SECONDARY);t.setMaxWidth(dp(96));t.setMaxLines(2);LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-2,-2);tp.leftMargin=dp(8);tp.rightMargin=dp(8);g.addView(t,tp);
+        TextView t=text(label,12,600,SECONDARY);LinearLayout.LayoutParams tp;
+        if(wide)tp=new LinearLayout.LayoutParams(0,-2,1);else{t.setMaxWidth(dp(96));t.setMaxLines(2);tp=new LinearLayout.LayoutParams(-2,-2);}
+        tp.setMarginStart(dp(8));tp.setMarginEnd(dp(8));g.addView(t,tp);
         ImageView sw=new ImageView(context);sw.setImageResource(initial?R.drawable.kepler_v3_settings_switch_on:R.drawable.kepler_v3_settings_switch_off);sw.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);g.addView(sw,new LinearLayout.LayoutParams(dp(46),dp(28)));
         pressable(g,0,0,22);g.setContentDescription(description);
         g.setAccessibilityDelegate(new View.AccessibilityDelegate(){@Override public void onInitializeAccessibilityNodeInfo(View host,AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(host,info);info.setClassName("android.widget.Switch");info.setCheckable(true);info.setChecked(on[0]);}});
