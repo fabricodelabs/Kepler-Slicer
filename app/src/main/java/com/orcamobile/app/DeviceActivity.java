@@ -36,16 +36,17 @@ public final class DeviceActivity extends Activity {
 
         FrameLayout camera = new FrameLayout(this); camera.setBackground(ui.shape(0xFF15171B, KeplerUi.GLASS_STROKE, 24));
         LinearLayout center = ui.column(); center.setGravity(Gravity.CENTER);
-        FrameLayout start = ui.glassButton(R.drawable.kv3_play, 56, 22, getString(R.string.kv3_start_live_view), () -> screen.unavailable(getString(R.string.kv3_start_live_view)));
+        FrameLayout start = ui.glassButton(R.drawable.kv3_play, 56, 22, getString(R.string.kv3_start_live_view), this::toggleCamera); cameraCenter = center;
         center.addView(start, ui.lp(56, 56));
         TextView live = ui.line(getString(R.string.kv3_start_live_view), 13, 600, white); live.setGravity(Gravity.CENTER); center.addView(live, ui.below(8));
+        cameraImage = new android.widget.ImageView(this); cameraImage.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP); cameraImage.setVisibility(View.GONE); cameraImage.setContentDescription(getString(R.string.kv3_camera)); camera.addView(cameraImage, new FrameLayout.LayoutParams(-1, -1)); camera.setClipToOutline(true);
         camera.addView(center, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout badge = ui.row(); badge.setPadding(ui.dp(12), 0, ui.dp(12), 0); badge.setMinimumHeight(ui.dp(30)); badge.setBackground(ui.shape(0x73000000, 0, 15));
         View rec = new View(this); rec.setBackground(ui.shape(0xFFFF6B6B, 0, 4)); badge.addView(rec, ui.lp(8, 8));
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-2, -2); bp.leftMargin = ui.dp(6); badge.addView(ui.line(getString(R.string.kv3_camera), 12, 500, white), bp);
         FrameLayout.LayoutParams badgePos = new FrameLayout.LayoutParams(-2, ui.dp(30), Gravity.TOP | Gravity.START); badgePos.setMargins(ui.dp(11), ui.dp(11), 0, 0); camera.addView(badge, badgePos);
         FrameLayout full = new FrameLayout(this); full.addView(ui.image(R.drawable.kv3_fullscreen, 22, white), new FrameLayout.LayoutParams(ui.dp(22), ui.dp(22), Gravity.CENTER));
-        ui.pressable(full, ui.shape(0x73000000, 0, 22), 22); full.setContentDescription(getString(R.string.kv3_fullscreen)); full.setOnClickListener(v -> screen.unavailable(getString(R.string.kv3_fullscreen)));
+        ui.pressable(full, ui.shape(0x73000000, 0, 22), 22); full.setContentDescription(getString(R.string.kv3_fullscreen)); full.setOnClickListener(v -> { if (cameraImage.getVisibility() == View.VISIBLE) cameraImage.setScaleType(cameraImage.getScaleType() == android.widget.ImageView.ScaleType.CENTER_CROP ? android.widget.ImageView.ScaleType.FIT_CENTER : android.widget.ImageView.ScaleType.CENTER_CROP); else toggleCamera(); });
         FrameLayout.LayoutParams fullPos = new FrameLayout.LayoutParams(ui.dp(44), ui.dp(44), Gravity.TOP | Gravity.END); fullPos.setMargins(0, ui.dp(7), ui.dp(7), 0); camera.addView(full, fullPos);
         content.addView(camera, new LinearLayout.LayoutParams(-1, ui.dp(200)));
 
@@ -108,7 +109,40 @@ public final class DeviceActivity extends Activity {
     }
 
     private NetworkHttp.Cancellation cancellation;
-    @Override protected void onDestroy() { if (cancellation != null) cancellation.cancel(); super.onDestroy(); }
+    private android.widget.ImageView cameraImage; private View cameraCenter; private volatile Thread cameraThread; private volatile java.net.HttpURLConnection cameraConnection;
+    @Override protected void onDestroy() { if (cancellation != null) cancellation.cancel(); stopCamera(); super.onDestroy(); }
+    @Override protected void onPause() { stopCamera(); super.onPause(); }
+
+    /** Live view: MJPEG stream of the selected OctoPrint/Moonraker host (webcam/?action=stream), read-only. */
+    private void toggleCamera() {
+        if (cameraThread != null) { stopCamera(); return; }
+        Thread worker = new Thread(() -> {
+            java.net.HttpURLConnection c = null;
+            try {
+                NetworkStore.Connection conn = NetworkStore.load(this).selected();
+                if (conn == null) throw new java.io.IOException(getString(R.string.kv3_device_offline));
+                if (conn.endpoint.type != PrinterEndpoint.Type.OCTOPRINT && conn.endpoint.type != PrinterEndpoint.Type.MOONRAKER) throw new java.io.IOException(getString(R.string.kv3_camera_unsupported, label(conn.endpoint.type)));
+                java.net.URI uri = conn.endpoint.url("webcam/?action=stream"); NetworkPolicy.checkUri(this, uri);
+                c = (java.net.HttpURLConnection) uri.toURL().openConnection(); cameraConnection = c; c.setConnectTimeout(8000); c.setReadTimeout(15000);
+                if (c.getResponseCode() / 100 != 2) throw new java.io.IOException("HTTP " + c.getResponseCode());
+                runOnUiThread(() -> { if (!isDestroyed()) { cameraImage.setVisibility(View.VISIBLE); cameraCenter.setVisibility(View.GONE); } });
+                java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream(), 65536);
+                java.io.ByteArrayOutputStream frame = new java.io.ByteArrayOutputStream(); int prev = -1, b; boolean inside = false;
+                while (!Thread.currentThread().isInterrupted() && (b = in.read()) != -1) {
+                    if (!inside) { if (prev == 0xFF && b == 0xD8) { inside = true; frame.reset(); frame.write(0xFF); frame.write(0xD8); } }
+                    else { frame.write(b); if (prev == 0xFF && b == 0xD9) { inside = false; final android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeByteArray(frame.toByteArray(), 0, frame.size()); if (bmp != null) runOnUiThread(() -> { if (!isDestroyed() && cameraThread != null) cameraImage.setImageBitmap(bmp); }); }
+                        else if (frame.size() > 8 * 1024 * 1024) { inside = false; frame.reset(); } }
+                    prev = b;
+                }
+            } catch (Exception e) {
+                if (Thread.currentThread().isInterrupted()) return;
+                String m = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                runOnUiThread(() -> { if (isDestroyed()) return; cameraThread = null; cameraImage.setVisibility(View.GONE); cameraCenter.setVisibility(View.VISIBLE); screen.info(getString(R.string.kv3_camera), m); });
+            } finally { if (c != null) c.disconnect(); }
+        }, "device-camera");
+        cameraThread = worker; worker.start();
+    }
+    private void stopCamera() { Thread t = cameraThread; cameraThread = null; if (t != null) t.interrupt(); final java.net.HttpURLConnection open = cameraConnection; cameraConnection = null; if (open != null) new Thread(open::disconnect, "camera-close").start(); if (cameraImage != null) { cameraImage.setVisibility(View.GONE); cameraCenter.setVisibility(View.VISIBLE); } }
 
     /** Read-only status of the selected saved printer (no commands are sent). Offline/stealth modes are respected. */
     private void refreshStatus() {

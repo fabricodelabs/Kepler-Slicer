@@ -21,6 +21,7 @@
     "app/src/main/java/com/orcamobile/app/ImportActivity.java",
     "app/src/main/java/com/orcamobile/app/PrimitiveShapes.java",
     "app/src/main/java/com/orcamobile/app/ShareProvider.java",
+    "app/src/main/java/com/orcamobile/app/Project3mfWriter.java",
     "app/src/main/java/com/orcamobile/app/GcodeExportActivity.java",
     "app/src/main/java/com/orcamobile/app/GcodePreviewActivity.java",
     "app/src/main/java/com/orcamobile/app/GcodeAnalysis.java",

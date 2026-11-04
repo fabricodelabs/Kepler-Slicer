@@ -176,4 +176,16 @@
     <string name="kv3_target">цель %1$s</string>
     <string name="kv3_no_target">без цели</string>
     <string name="kv3_time_left">осталось %1$d ч %2$d мин</string>
+    <string name="kv3_tool_option_missing">Параметр %1$s отсутствует в схеме профиля.</string>
+    <string name="kv3_support_off">Выключены</string>
+    <string name="kv3_tool_applied">Сохранено для этого объекта и применится при следующей нарезке.</string>
+    <string name="kv3_measure_result">Размер X %1$s мм · Y %2$s мм · Z %3$s мм\nДиагональ %4$s мм</string>
+    <string name="kv3_measure_sampled">Большая модель: измерено по сетке предпросмотра.</string>
+    <string name="kv3_tool_cut_detail">Для разреза нужно разбиение сетки в движке нарезки, в этой сборке его пока нет.</string>
+    <string name="kv3_tool_text_detail">Для объёмного текста нужен инструмент текста в движке, в этой сборке его пока нет.</string>
+    <string name="kv3_tool_assembly_detail">Для сборки нужно несколько объектов на пластине, эта сборка нарезает один объект.</string>
+    <string name="kv3_camera_unsupported">Трансляция доступна для камер OctoPrint и Moonraker; %1$s здесь поток не отдаёт.</string>
+    <string name="kv3_3mf_unavailable">Проект 3MF доступен для моделей STL и 3MF (STEP и OBJ преобразуются только при нарезке).</string>
+    <string name="kv3_3mf_copied">Проект сохранён со своими пластинами и настройками: %1$s.</string>
+    <string name="kv3_3mf_written">Проект 3MF сохранён: %1$d треугольников на пластине (геометрия и размещение, без профилей).</string>
 </resources>
