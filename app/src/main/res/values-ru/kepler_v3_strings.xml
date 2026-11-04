@@ -188,4 +188,23 @@
     <string name="kv3_3mf_unavailable">Проект 3MF доступен для моделей STL и 3MF (STEP и OBJ преобразуются только при нарезке).</string>
     <string name="kv3_3mf_copied">Проект сохранён со своими пластинами и настройками: %1$s.</string>
     <string name="kv3_3mf_written">Проект 3MF сохранён: %1$d треугольников на пластине (геометрия и размещение, без профилей).</string>
+    <string name="kv3_cut_height">Высота разреза, мм</string>
+    <string name="kv3_cut_keep_upper">Оставить верхнюю часть</string>
+    <string name="kv3_cut_keep_lower">Оставить нижнюю часть</string>
+    <string name="kv3_cut_apply">Разрезать</string>
+    <string name="kv3_cut_hint">Высота модели %1$s мм. Верхняя часть кладётся на плоскость разреза.</string>
+    <string name="kv3_cut_name">%1$s (разрез).3mf</string>
+    <string name="kv3_text_value">Текст</string>
+    <string name="kv3_text_height">Высота букв, мм</string>
+    <string name="kv3_text_depth">Толщина, мм</string>
+    <string name="kv3_text_apply">Добавить текст</string>
+    <string name="kv3_text_name">%1$s + текст.3mf</string>
+    <string name="kv3_assembly_detail">Объединить все объекты и копии на столе в одну сборку. Детали сохраняют положение и двигаются вместе.</string>
+    <string name="kv3_assembly_apply">Объединить</string>
+    <string name="kv3_assembly_name">%1$s (сборка).3mf</string>
+    <string name="kv3_edit_working">Движок изменяет модель…</string>
+    <string name="kv3_edit_failed">Не удалось изменить модель</string>
+    <string name="kv3_edit_number">Введите число в каждом поле.</string>
+    <string name="kv3_3mf_project_written">Проект 3MF сохранён с настройками принтера, процесса и материала: %1$s.</string>
+    <string name="kv3_ok">Понятно</string>
 </resources>

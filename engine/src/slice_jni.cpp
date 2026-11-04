@@ -704,6 +704,78 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_cloneModelWithPreferences(JNIEnv
     return nullptr;
 }
 
+namespace {
+// Loads the current model for an editing tool and applies the Tools transform. A 3MF is read as geometry only;
+// a model with several objects or copies keeps its own placement, so its transform must be the identity.
+Slic3r::Model load_editable_model(const std::string &path,const kepler::ModelTransform &t,const Slic3r::DynamicPrintConfig &config) {
+    const auto ext=std::filesystem::path(path).extension().string();
+    if(ext!=".stl"&&ext!=".obj"&&ext!=".3mf")throw std::invalid_argument("Editing tools need an STL, OBJ or 3MF model");
+    if(ext==".stl")validate_stl_before_import(path);
+    Slic3r::Model model=ext==".3mf"
+        ? Slic3r::Model::read_from_file(path,nullptr,nullptr,Slic3r::LoadStrategy::LoadModel|Slic3r::LoadStrategy::AddDefaultInstances|Slic3r::LoadStrategy::Silence)
+        : Slic3r::Model::read_from_file(path);
+    if(model.objects.empty())throw std::invalid_argument("The model has no objects");
+    const bool identity=t.rotation_x==0&&t.rotation_y==0&&t.rotation_z==0&&t.scale_x==1&&t.scale_y==1&&t.scale_z==1&&t.offset_x==0&&t.offset_y==0;
+    if(model.objects.size()==1&&model.objects.front()->instances.size()==1) {
+        if(ext!=".3mf"||!identity){
+            const auto *area=config.opt<Slic3r::ConfigOptionPoints>("printable_area");
+            if(!area)throw std::runtime_error("Missing printer build area");
+            const auto *extruder_areas=config.opt<Slic3r::ConfigOptionPointsGroups>("extruder_printable_area");
+            const auto *extruder_heights=config.opt<Slic3r::ConfigOptionFloatsNullable>("extruder_printable_height");
+            const std::vector<std::vector<Slic3r::Vec2d>> empty_areas;const std::vector<double> empty_heights;
+            Slic3r::BuildVolume volume(area->values,config.opt_float("printable_height"),
+                extruder_areas?extruder_areas->values:empty_areas,extruder_heights?extruder_heights->values:empty_heights);
+            kepler::apply_model_transform(model,volume,t);
+        }
+    } else if(!identity) throw std::invalid_argument("Reset Move/Rotate/Scale before editing a model with several objects");
+    return model;
+}
+}
+
+// op 1: cut at height a (mm), b = 1 keep upper | 2 keep lower; op 2: text (a = letter height, b = depth, text, font);
+// op 3: join all objects into one assembly. Writes job/model.3mf and returns its path; the source is never changed.
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_editModel(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
+    jstring job_path,jdoubleArray params,jstring settings_json,jint op,jdouble a,jdouble b,jstring text,jstring font_path) {
+    try {
+        const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),job_name=standard_utf8(env,job_path),settings=standard_utf8(env,settings_json);
+        auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
+        Slic3r::Model source=load_editable_model(path,transform,config);
+        Slic3r::Model edited;
+        if(op==1){const int keep=static_cast<int>(b);edited=kepler::cut_model_at_z(source,config,a,(keep&1)!=0,(keep&2)!=0);}
+        else if(op==2){if(!text||!font_path)throw std::invalid_argument("Text and font are required");edited=kepler::add_text_object(source,config,standard_utf8(env,text),standard_utf8(env,font_path),a,b);}
+        else if(op==3)edited=kepler::assemble_objects(source);
+        else throw std::invalid_argument("Unknown model edit");
+        const auto job=create_job_directory(job_name,data),output=job/"model.3mf";
+        if(!Slic3r::store_3mf(output.string().c_str(),&edited,nullptr,false)||!std::filesystem::is_regular_file(output))throw std::runtime_error("Cannot export the edited model");
+        return env->NewStringUTF(output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown model edit error");}
+    return nullptr;
+}
+
+// Project 3MF with the resolved printer/process/filament settings and the current placement (upstream writer).
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_exportProject3mf(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
+    jstring job_path,jdoubleArray params,jstring settings_json) {
+    try {
+        const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),job_name=standard_utf8(env,job_path),settings=standard_utf8(env,settings_json);
+        auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
+        Slic3r::Model model=load_editable_model(path,transform,config);
+        const auto job=create_job_directory(job_name,data),output=job/"project.3mf";
+        kepler::store_project_3mf(model,config,output.string());
+        return env->NewStringUTF(output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown project export error");}
+    return nullptr;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_keplerslicer_engine_ExperimentalSlicer_setNativeLogLevel(JNIEnv *env,jclass,jstring level) {
     try {const auto requested=standard_utf8(env,level);std::lock_guard<std::mutex> guard(engine_mutex);return env->NewStringUTF(kepler::set_native_log_level(requested).c_str());}

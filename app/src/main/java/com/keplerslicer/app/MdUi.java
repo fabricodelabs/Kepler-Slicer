@@ -35,6 +35,7 @@ final class MdUi {
     static android.app.AlertDialog.Builder alert(Activity a) { return new android.app.AlertDialog.Builder(new android.view.ContextThemeWrapper(a,R.style.KeplerAlertDark)) {
         @Override public android.app.AlertDialog.Builder setMessage(CharSequence m) { return super.setMessage(EngineText.clean(m)); }
         @Override public android.app.AlertDialog.Builder setTitle(CharSequence t) { return super.setTitle(EngineText.clean(t)); }
+        @Override public android.app.AlertDialog create() { return com.keplerslicer.app.glass.GlassDialog.style(super.create()); }
     }; }
     int dp(float n) { return (int)(n*context.getResources().getDisplayMetrics().density+.5f); }
     LinearLayout vertical() { LinearLayout l=new LinearLayout(context); l.setOrientation(LinearLayout.VERTICAL); return l; }

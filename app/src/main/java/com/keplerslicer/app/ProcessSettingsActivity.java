@@ -174,5 +174,5 @@ public final class ProcessSettingsActivity extends Activity {
     @Override protected void onDestroy(){if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback);super.onDestroy();}
     @android.annotation.SuppressLint("GestureBackNavigation") @Override public void onBackPressed() { back(); }
     private static String message(Throwable e) { return EngineText.clean(e.getMessage()==null?e.getClass().getSimpleName():e.getMessage()); }
-    private void showError(Throwable e) { MdUi.alert(this).setTitle("Проверьте параметры").setMessage(message(e)).setPositiveButton("Понятно",null).show(); }
+    private void showError(Throwable e) { MdUi.alert(this).setTitle("Проверьте параметры").setMessage(message(e)).setPositiveButton(R.string.kv3_ok,null).show(); }
 }

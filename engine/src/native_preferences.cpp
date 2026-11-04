@@ -1,6 +1,9 @@
 #include "native_preferences.hpp"
 
 #include "libslic3r/Arrange.hpp"
+#include "libslic3r/CutUtils.hpp"
+#include "libslic3r/Emboss.hpp"
+#include "libslic3r/Format/bbs_3mf.hpp"
 #include "libslic3r/BuildVolume.hpp"
 #include "libslic3r/ClipperUtils.hpp"
 #include "libslic3r/FlushVolCalc.hpp"
@@ -373,8 +376,15 @@ Slic3r::Model clone_and_arrange(const Model &source, const DynamicPrintConfig &c
         object->add_instance(*original)->set_offset(copy_offset);
     }
     if (!auto_arrange) return candidate;
+    arrange_on_plate(candidate, config);
+    return candidate;
+}
+
+void arrange_on_plate(Model &candidate, const DynamicPrintConfig &config)
+{
+    const auto volume = build_volume(config);
     if (const auto *belt = config.option<ConfigOptionBool>("belt_printer"); belt && belt->value)
-        throw std::invalid_argument("Belt clone arrangement requires the belt plate session; source model preserved");
+        throw std::invalid_argument("Belt arrangement requires the belt plate session; source model preserved");
 
     arrangement::ArrangePolygons items;
     std::vector<ModelInstance *> instances;
@@ -413,13 +423,12 @@ Slic3r::Model clone_and_arrange(const Model &source, const DynamicPrintConfig &c
     if (bed.size() < 3) throw std::invalid_argument("No usable area remains on the bed");
     arrangement::arrange(items, excludes, bed, params);
     for (const auto &item : items) {
-        if (item.bed_idx != 0) throw std::runtime_error("The cloned model does not fit on the current plate");
+        if (item.bed_idx != 0) throw std::runtime_error("The model does not fit on the current plate");
         if (item.itemid < 0 || static_cast<std::size_t>(item.itemid) >= instances.size()) throw std::runtime_error("Invalid native arrange result");
         instances[static_cast<std::size_t>(item.itemid)]->apply_arrange_result(item.translation.cast<double>(), item.rotation);
         instances[static_cast<std::size_t>(item.itemid)]->arrange_order = item.itemid;
     }
     require_arrange_fit(candidate, config, volume, items, excludes);
-    return candidate;
 }
 
 std::string model_placements_json(const Model &model)
@@ -562,6 +571,156 @@ std::string native_preferences_self_test()
     results["passed"] = true;
     results["count"] = results["checks"].size();
     return results.dump();
+}
+
+
+// ---- Model editing tools (Kepler Tools sheet: Cut, Text, Assembly; Project 3MF export) ----
+
+namespace {
+BoundingBoxf3 model_bounds(const Model &model)
+{
+    BoundingBoxf3 box;
+    for (const auto *object : model.objects)
+        for (std::size_t i = 0; i < object->instances.size(); ++i) box.merge(object->instance_bounding_box(i, false));
+    return box;
+}
+
+bool fits_on_bed(const Model &model, const DynamicPrintConfig &config)
+{
+    const auto volume = build_volume(config);
+    const auto bed = volume.bounding_volume2d();
+    const auto box = model_bounds(model);
+    return box.defined && box.min.x() >= bed.min.x() && box.min.y() >= bed.min.y() && box.max.x() <= bed.max.x() && box.max.y() <= bed.max.y()
+        && box.max.z() <= volume.printable_height() + EPSILON;
+}
+
+void require_objects(const Model &model, const char *what)
+{
+    if (model.objects.empty()) throw std::invalid_argument(std::string(what) + ": the model has no objects");
+    for (const auto *object : model.objects)
+        if (object->instances.empty() || object->volumes.empty()) throw std::invalid_argument(std::string(what) + ": an object has no instance or mesh");
+}
+} // namespace
+
+Model cut_model_at_z(const Model &source, const DynamicPrintConfig &config, double z_mm, bool keep_upper, bool keep_lower)
+{
+    require_objects(source, "Cut");
+    if (!std::isfinite(z_mm)) throw std::invalid_argument("Cut height must be finite");
+    if (!keep_upper && !keep_lower) throw std::invalid_argument("Keep at least one part of the cut");
+    const auto whole = model_bounds(source);
+    if (!whole.defined || z_mm <= whole.min.z() + EPSILON || z_mm >= whole.max.z() - EPSILON)
+        throw std::invalid_argument("The cut plane must cross the model");
+    using CA = ModelObjectCutAttribute;
+    const ModelObjectCutAttributes attributes = keep_upper && keep_lower ? (CA::KeepUpper | CA::KeepLower | CA::PlaceOnCutUpper | CA::InvalidateCutInfo)
+        : keep_upper ? (CA::KeepUpper | CA::PlaceOnCutUpper | CA::InvalidateCutInfo) : (CA::KeepLower | CA::InvalidateCutInfo);
+    // Upstream Cut works in instance space without the instance offset, so the plane is given relative to it.
+    Model result;
+    std::size_t crossed = 0;
+    for (const auto *object : source.objects) {
+        for (std::size_t i = 0; i < object->instances.size(); ++i) {
+            const auto box = object->instance_bounding_box(i, false);
+            if (!box.defined || z_mm <= box.min.z() + EPSILON || z_mm >= box.max.z() - EPSILON) {
+                // The plane misses this instance: keep it whole on the side the user kept.
+                const bool above = box.defined && box.min.z() >= z_mm;
+                if ((above && keep_upper) || (!above && keep_lower)) {
+                    auto *copy = result.add_object(*object); copy->clear_instances(); copy->add_instance(*object->instances[i]);
+                }
+                continue;
+            }
+            const Transform3d plane = Geometry::translation_transform(Vec3d(0., 0., z_mm - object->instances[i]->get_offset().z()));
+            Cut cut(object, static_cast<int>(i), plane, attributes);
+            const auto &parts = cut.perform_with_plane();
+            for (const auto *part : parts) if (part && !part->volumes.empty()) result.add_object(*part);
+            ++crossed;
+        }
+    }
+    if (crossed == 0) throw std::invalid_argument("The cut plane must cross the model");
+    require_objects(result, "Cut");
+    for (auto *object : result.objects) { object->invalidate_bounding_box(); object->ensure_on_bed(false); }
+    arrange_on_plate(result, config);
+    return result;
+}
+
+Model add_text_object(const Model &source, const DynamicPrintConfig &config, const std::string &text, const std::string &font_path,
+    double letter_height_mm, double depth_mm)
+{
+    if (text.empty() || text.size() > 512) throw std::invalid_argument("Text must have 1 to 512 bytes");
+    if (!std::isfinite(letter_height_mm) || letter_height_mm < 1. || letter_height_mm > 300.) throw std::invalid_argument("Letter height must be 1 to 300 mm");
+    if (!std::isfinite(depth_mm) || depth_mm < .1 || depth_mm > 100.) throw std::invalid_argument("Text depth must be 0.1 to 100 mm");
+    auto file = Emboss::create_font_file(font_path.c_str());
+    if (!file) throw std::runtime_error("Cannot load the font file");
+    Emboss::FontFileWithCache font(std::move(file));
+    FontProp prop(static_cast<float>(letter_height_mm));
+    HealedExPolygons shapes = Emboss::text2shapes(font, text.c_str(), prop);
+    if (shapes.expolygons.empty()) throw std::invalid_argument("The text has no printable glyphs in this font");
+    const double scale = Emboss::get_text_shape_scale(prop, *font.font_file);
+    indexed_triangle_set its = Emboss::polygons2model(shapes.expolygons, Emboss::ProjectScale(std::make_unique<Emboss::ProjectZ>(depth_mm / scale), scale));
+    if (its.indices.empty()) throw std::runtime_error("Text mesh is empty");
+    Model result = source.objects.empty() ? Model() : Model::make_copy(source);
+    auto *object = result.add_object();
+    object->name = "Text: " + text.substr(0, 40);
+    object->add_volume(TriangleMesh(std::move(its)));
+    object->add_instance();
+    object->center_around_origin(false);
+    object->invalidate_bounding_box();
+    object->ensure_on_bed(false);
+    // Place the text in front of the existing model, centred under it; arrange only when it would leave the bed.
+    const auto volume = build_volume(config);
+    const auto bed = volume.bounding_volume2d();
+    const auto text_box = object->instance_bounding_box(0, false);
+    Vec3d offset(bed.center().x(), bed.center().y(), 0.);
+    if (result.objects.size() > 1) {
+        BoundingBoxf3 others;
+        for (std::size_t o = 0; o + 1 < result.objects.size(); ++o)
+            for (std::size_t i = 0; i < result.objects[o]->instances.size(); ++i) others.merge(result.objects[o]->instance_bounding_box(i, false));
+        if (others.defined) offset = Vec3d(others.center().x(), others.min.y() - 5. - text_box.size().y() / 2., 0.);
+    }
+    object->instances.front()->set_offset(Vec3d(offset.x(), offset.y(), object->instances.front()->get_offset().z()));
+    object->invalidate_bounding_box();
+    if (!fits_on_bed(result, config)) arrange_on_plate(result, config);
+    return result;
+}
+
+Model assemble_objects(const Model &source)
+{
+    require_objects(source, "Assembly");
+    std::size_t instances = 0;
+    for (const auto *object : source.objects) instances += object->instances.size();
+    if (instances < 2) throw std::invalid_argument("Assembly needs at least two objects or copies");
+    Model result;
+    auto *assembled = result.add_object();
+    assembled->name = source.objects.front()->name.empty() ? "Assembly" : source.objects.front()->name + " (assembly)";
+    for (const auto *object : source.objects)
+        for (const auto *instance : object->instances)
+            for (const auto *volume : object->volumes) {
+                auto *part = assembled->add_volume(*volume, volume->type());
+                part->set_transformation(instance->get_matrix() * volume->get_matrix());
+                if (part->name.empty()) part->name = object->name;
+            }
+    // One instance at the parts' common centre, so the parts keep their world placement.
+    BoundingBoxf3 box;
+    for (const auto *part : assembled->volumes) box.merge(part->mesh().transformed_bounding_box(part->get_matrix()));
+    if (!box.defined) throw std::runtime_error("Assembly has no geometry");
+    const Vec3d centre(box.center().x(), box.center().y(), box.min.z());
+    for (auto *part : assembled->volumes) part->set_offset(part->get_offset() - centre);
+    assembled->add_instance()->set_offset(centre);
+    assembled->invalidate_bounding_box();
+    assembled->ensure_on_bed(false);
+    return result;
+}
+
+void store_project_3mf(Model &model, DynamicPrintConfig &config, const std::string &path)
+{
+    require_objects(model, "Project export");
+    std::set<std::pair<int, int>> membership;
+    for (std::size_t o = 0; o < model.objects.size(); ++o)
+        for (std::size_t i = 0; i < model.objects[o]->instances.size(); ++i) membership.insert({static_cast<int>(o), static_cast<int>(i)});
+    PlateData plate(0, membership, false);
+    StoreParams params;
+    params.path = path; params.model = &model; params.config = &config; params.plate_data_list = {&plate};
+    params.strategy = SaveStrategy::Zip64 | SaveStrategy::Silence;
+    if (!store_bbs_3mf(params) || !std::filesystem::is_regular_file(path) || std::filesystem::file_size(path) == 0)
+        throw std::runtime_error("Cannot write the project 3MF");
 }
 
 }

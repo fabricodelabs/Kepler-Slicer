@@ -299,7 +299,7 @@ public class MainActivity extends Activity {
     private void gap(LinearLayout l, int h) { View v = new View(this); l.addView(v, lp(1, h)); }
     private void click(View view, Runnable action) { view.setOnClickListener(v -> action.run()); view.setFocusable(true); }
     private void dialog(String title, String message) {
-        MdUi.alert(this).setTitle(title).setMessage(message).setPositiveButton("Понятно", null).show();
+        MdUi.alert(this).setTitle(title).setMessage(message).setPositiveButton(R.string.kv3_ok, null).show();
     }
 
     private void updatePalette() {
@@ -456,7 +456,7 @@ public class MainActivity extends Activity {
         StlView.MoveCallback moved = next -> commitDrag(view, next, transform, move); viewportMove = move; viewportTransform = transform; viewportMoveCallback = moved;
         if (hasModel) view.setModelTransform(modelTransform, error -> {
             if (isDestroyed() || stlView != view) return;
-            previewReady = error == null; transform.setEnabled(previewReady&&editable); transform.setAlpha(previewReady&&editable ? 1 : .38f);
+            previewReady = error == null; transform.setEnabled(previewReady&&hasModel); transform.setAlpha(previewReady&&hasModel ? 1 : .38f);
             view.setMoveMode(previewReady&&editable&&moveMode&&toolsMode&&activeTool==0, moved);
             boolean sliceable = previewReady&&canSliceModel(); ui.setEnabled(slice, sliceable);
             refreshToolFields();
@@ -502,7 +502,9 @@ public class MainActivity extends Activity {
                 else if (index == 7) objectTool(label, "fuzzy_skin", false);
                 else if (index == 9) measure();
                 else if (index == 11) objectTool(label, "brim_type", false);
-                else com.keplerslicer.app.glass.GlassBottomSheet.info(this, root, false, label, getString(index == 4 ? R.string.kv3_tool_cut_detail : index == 8 ? R.string.kv3_tool_text_detail : R.string.kv3_tool_assembly_detail));
+                else if (index == 4) cutTool(label);
+                else if (index == 8) textTool(label);
+                else if (index == 10) assemblyTool(label);
             });
         }
         sheet.addView(ui.grid(toolTiles, 4), ui.below(10));
@@ -741,6 +743,77 @@ public class MainActivity extends Activity {
         }, "measure").start();
     }
     private static String fmt(double mm) { return String.format(java.util.Locale.getDefault(), "%.2f", mm); }
+
+    // ---- Cut / Text / Assembly: edited by the engine into a derived 3MF that replaces the current model ----
+    private void cutTool(String title) {
+        if (mesh == null || mesh.vertices.length < 9 || loadingMesh) { dialog(title, getString(R.string.kv3_no_model_detail)); return; }
+        final float[] v = mesh.vertices; final double max = Math.max(mesh.size[0], Math.max(mesh.size[1], mesh.size[2])) / 1.6; final ModelTransform t = modelTransform;
+        new Thread(() -> {
+            // Height of the model as placed (same maths as Measure); the engine re-checks the plane against the real mesh.
+            double ax = Math.toRadians(t.rx), ay = Math.toRadians(t.ry), cx = Math.cos(ax), sx = Math.sin(ax), cy = Math.cos(ay), sy = Math.sin(ay);
+            double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
+            for (int i = 0; i + 2 < v.length; i += 3) {
+                double x = v[i]*max*t.sx, y = v[i+1]*max*t.sy, z = v[i+2]*max*t.sz;
+                double z1 = y*sx + z*cx, z2 = -x*sy + z1*cy; lo = Math.min(lo, z2); hi = Math.max(hi, z2);
+            }
+            final double height = Math.max(0, hi - lo);
+            runOnUiThread(() -> { if (!isDestroyed()) showCutDialog(title, height); });
+        }, "cut-height").start();
+    }
+    private void showCutDialog(String title, double height) {
+        LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(dp(20), dp(8), dp(20), 0);
+        TextView hint = new com.keplerslicer.app.glass.KeplerUi(this).line(getString(R.string.kv3_cut_hint, fmt(height)), 13, 400, com.keplerslicer.app.glass.KeplerUi.SECONDARY); hint.setSingleLine(false); hint.setMaxLines(5); hint.setEllipsize(null); form.addView(hint);
+        android.widget.EditText z = numberField(form, getString(R.string.kv3_cut_height), fmt(height / 2));
+        android.widget.CheckBox upper = check(form, getString(R.string.kv3_cut_keep_upper)), lower = check(form, getString(R.string.kv3_cut_keep_lower));
+        MdUi.alert(this).setTitle(title).setView(form).setNegativeButton(R.string.general_project_cancel, null)
+            .setPositiveButton(R.string.kv3_cut_apply, (d, w) -> {
+                Double at = number(z); if (at == null) { dialog(title, getString(R.string.kv3_edit_number)); return; }
+                int keep = (upper.isChecked() ? 1 : 0) | (lower.isChecked() ? 2 : 0);
+                runEdit(title, NativePreferenceActions.EDIT_CUT, at, keep, null);
+            }).show();
+    }
+    private void textTool(String title) {
+        LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(dp(20), dp(8), dp(20), 0);
+        android.widget.EditText value = new android.widget.EditText(this); value.setHint(R.string.kv3_text_value); value.setSingleLine(true);
+        value.setTextColor(0xFFFFFFFF); value.setHintTextColor(0x99FFFFFF); value.setText("Kepler"); form.addView(value);
+        android.widget.EditText h = numberField(form, getString(R.string.kv3_text_height), "10"), depth = numberField(form, getString(R.string.kv3_text_depth), "2");
+        MdUi.alert(this).setTitle(title).setView(form).setNegativeButton(R.string.general_project_cancel, null)
+            .setPositiveButton(R.string.kv3_text_apply, (d, w) -> {
+                Double height = number(h), thick = number(depth); String text = value.getText().toString().trim();
+                if (height == null || thick == null || text.isEmpty()) { dialog(title, getString(R.string.kv3_edit_number)); return; }
+                runEdit(title, NativePreferenceActions.EDIT_TEXT, height, thick, text);
+            }).show();
+    }
+    private void assemblyTool(String title) {
+        if (mesh == null || loadingMesh) { dialog(title, getString(R.string.kv3_no_model_detail)); return; }
+        MdUi.alert(this).setTitle(title).setMessage(R.string.kv3_assembly_detail).setNegativeButton(R.string.general_project_cancel, null)
+            .setPositiveButton(R.string.kv3_assembly_apply, (d, w) -> runEdit(title, NativePreferenceActions.EDIT_ASSEMBLY, 0, 0, null)).show();
+    }
+    private void runEdit(String title, int op, double a, double b, String text) {
+        if (loadingMesh) return;
+        loadingMesh = true; render();
+        new Thread(() -> {
+            try {
+                NativePreferenceActions.editModel(getApplicationContext(), op, a, b, text);
+                runOnUiThread(() -> { if (isDestroyed()) return; loadingMesh = false; restoreModel(); ControlPreferences.scheduleAutoSlice(this); });
+            } catch (Exception | LinkageError e) {
+                final String m = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+                runOnUiThread(() -> { if (isDestroyed()) return; loadingMesh = false; render(); dialog(getString(R.string.kv3_edit_failed), m); });
+            }
+        }, "native-model-edit").start();
+    }
+    private android.widget.EditText numberField(LinearLayout form, String label, String initial) {
+        TextView caption = new com.keplerslicer.app.glass.KeplerUi(this).line(label, 12, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY); caption.setPadding(0, dp(12), 0, 0); form.addView(caption);
+        android.widget.EditText field = new android.widget.EditText(this); field.setSingleLine(true); field.setText(initial);
+        field.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL); field.setTextColor(0xFFFFFFFF);
+        form.addView(field); return field;
+    }
+    private android.widget.CheckBox check(LinearLayout form, String label) {
+        android.widget.CheckBox box = new android.widget.CheckBox(this); box.setText(label); box.setChecked(true); box.setTextColor(0xFFFFFFFF); form.addView(box); return box;
+    }
+    private static Double number(android.widget.EditText field) {
+        try { double v = Double.parseDouble(field.getText().toString().trim().replace(',', '.')); return Double.isFinite(v) ? v : null; } catch (NumberFormatException e) { return null; }
+    }
     /** Applies a complete transform with the same save/rollback rules as the X/Y/Z fields. */
     private void applyTransform(ModelTransform next) {
         if (stlView == null || meshFileName == null || !previewReady || !transformSupported()) return;
@@ -754,7 +827,7 @@ public class MainActivity extends Activity {
     }
 
     private void openTools() {
-        boolean editable = previewReady && mesh != null && !loadingMesh && mesh.vertices.length > 0 && transformSupported();
+        boolean editable = previewReady && mesh != null && !loadingMesh && mesh.vertices.length > 0; // Move/Rotate/Scale check transformSupported() themselves
         if (!editable) { dialog(getString(R.string.kv3_mode_tools), getString(R.string.kv3_tools_unavailable)); return; }
         if (layersMode) showPreparation();
         setToolsMode(true);
@@ -976,7 +1049,7 @@ public class MainActivity extends Activity {
     private void cancelLayerWork(){layerRequest++;Thread worker=layerReader;layerReader=null;if(worker!=null)worker.interrupt();}
     private void updatePreviewTabs(){if(modeBar!=null)modeBar.select(layersMode?1:toolsMode?2:0);syncPanels();}
     private void showPreparation(){cancelLayerWork();layersMode=false;layerAnalysis=null;StlView view=stlView;if(view!=null)view.clearToolpaths();if(layerPanel!=null)layerPanel.setVisibility(View.GONE);if(bedHint!=null)bedHint.setVisibility(View.VISIBLE);updatePreviewTabs();
-        boolean editable=previewReady&&mesh!=null&&mesh.vertices.length>0&&transformSupported();if(viewportTransform!=null){viewportTransform.setEnabled(editable);viewportTransform.setAlpha(editable?1:.38f);}if(viewportMove!=null){viewportMove.setEnabled(editable);viewportMove.setAlpha(editable?1:.38f);}if(view!=null)view.setMoveMode(editable&&moveMode&&toolsMode&&activeTool==0,viewportMoveCallback);
+        boolean editable=previewReady&&mesh!=null&&mesh.vertices.length>0&&transformSupported();boolean toolsOpen=previewReady&&mesh!=null&&mesh.vertices.length>0;if(viewportTransform!=null){viewportTransform.setEnabled(toolsOpen);viewportTransform.setAlpha(toolsOpen?1:.38f);} // Cut/Text/Assembly also work on 3MF modelsif(viewportMove!=null){viewportMove.setEnabled(editable);viewportMove.setAlpha(editable?1:.38f);}if(view!=null)view.setMoveMode(editable&&moveMode&&toolsMode&&activeTool==0,viewportMoveCallback);
         if(viewportMode!=null)viewportMode.setText(plateCaption());}
     private void maybeOpenRequestedLayers(){if(!pendingLayerPreview||!visibleWorkspace||isDestroyed()||isFinishing())return;if(loadingMesh)return;if(mesh==null||mesh.vertices.length==0){pendingLayerPreview=false;dialog("Предпросмотр слоёв","Откройте непустую модель и выполните нарезку.");return;}if(!previewReady||loadedBed==null)return;pendingLayerPreview=false;openLayerPreview();}
     private void openLayerPreview(){

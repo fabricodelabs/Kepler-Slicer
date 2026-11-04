@@ -227,6 +227,109 @@ final class NativePreferenceActions {
         catch (LinkageError | RuntimeException e) { throw new IOException(message(e), e); }
     }
 
+    static final int EDIT_CUT = 1, EDIT_TEXT = 2, EDIT_ASSEMBLY = 3;
+
+    /**
+     * Cut / Text / Assembly through the engine. Same contract as cloning: an immutable model snapshot and profile
+     * session; the derived 3MF is published only while that model and selection are still current.
+     * Cut: a = height (mm), b = 1 keep upper | 2 keep lower. Text: a = letter height, b = depth (mm).
+     */
+    static String editModel(Context context, int op, double a, double b, String text) throws IOException {
+        requireWorker();
+        final Context app = context.getApplicationContext();
+        interrupted(app);
+        final CurrentModelStore.RestoreSelection expected = CurrentModelStore.captureRestoreSelection(app);
+        final EngineProfileSession session = EngineProfileSession.capture(app);
+        final File staging = Files.createTempDirectory(app.getCacheDir().toPath(), "native-edit-").toFile();
+        final File job = session.newJob("edit");
+        try {
+            final CurrentModelStore.Snapshot source = CurrentModelStore.snapshotToDirectory(app, staging);
+            requireUnchanged(app, source, session);
+            final ProcessOverridesStore.Identity id = session.id;
+            final String font = op == EDIT_TEXT ? textFont(session) : null;
+            final String result = ExperimentalSlicer.editModel(
+                id.printer.vendor, id.process.vendor, id.filament.vendor,
+                id.printerName, id.processName, id.filamentName,
+                source.file.getAbsolutePath(), session.resources.getAbsolutePath(), session.data.getAbsolutePath(),
+                job.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides,
+                op, a, b, op == EDIT_TEXT ? text : null, font);
+            interrupted(app);
+            final File derived = derivedResult(app, job, result);
+            requireUnchanged(app, source, session);
+            String base = source.name == null ? "Model" : source.name; int dot = base.lastIndexOf('.'); if (dot > 0) base = base.substring(0, dot);
+            // Drop suffixes left by earlier edits, so repeated edits do not grow the name.
+            for (boolean stripped = true; stripped; ) {
+                stripped = false;
+                for (int nameId : new int[]{R.string.kv3_cut_name, R.string.kv3_text_name, R.string.kv3_assembly_name}) {
+                    String tail = app.getString(nameId, "").replaceAll("(?i)\\.3mf$", "");
+                    if (!tail.isEmpty() && base.endsWith(tail) && base.length() > tail.length()) { base = base.substring(0, base.length() - tail.length()); stripped = true; }
+                }
+            }
+            final String name = app.getString(op == EDIT_CUT ? R.string.kv3_cut_name : op == EDIT_TEXT ? R.string.kv3_text_name : R.string.kv3_assembly_name, base);
+            ProcessOverridesStore.changeSelection(app, false, () -> {
+                interrupted(app);
+                if (!session.stillCurrent(app)) throw new IOException(app.getString(R.string.native_actions_profiles_changed));
+                CurrentModelStore.replaceDerived(app, derived, name, expected);
+            });
+            return name;
+        } catch (LinkageError e) {
+            throw new IOException(app.getString(R.string.native_actions_engine_unavailable), e);
+        } catch (RuntimeException e) {
+            throw new IOException(app.getString(R.string.native_actions_native_error, EngineText.clean(message(e))), e);
+        } finally {
+            deletePrivateJob(staging);
+            deletePrivateJob(job);
+        }
+    }
+
+    /** Writes the current model as a project 3MF with the resolved settings (engine writer) into {@code out}. */
+    static long exportProject(Context context, java.io.OutputStream out) throws IOException {
+        requireWorker();
+        final Context app = context.getApplicationContext();
+        final EngineProfileSession session = EngineProfileSession.capture(app);
+        final File staging = Files.createTempDirectory(app.getCacheDir().toPath(), "native-project-").toFile();
+        final File job = session.newJob("project");
+        try {
+            final CurrentModelStore.Snapshot source = CurrentModelStore.snapshotToDirectory(app, staging);
+            requireUnchanged(app, source, session);
+            final ProcessOverridesStore.Identity id = session.id;
+            final String result = ExperimentalSlicer.exportProject3mf(
+                id.printer.vendor, id.process.vendor, id.filament.vendor,
+                id.printerName, id.processName, id.filamentName,
+                source.file.getAbsolutePath(), session.resources.getAbsolutePath(), session.data.getAbsolutePath(),
+                job.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides);
+            final File project = derivedResult(app, job, result);
+            long n = 0;
+            try (java.io.InputStream in = new java.io.FileInputStream(project)) { byte[] buf = new byte[65536]; int r; while ((r = in.read(buf)) != -1) { out.write(buf, 0, r); n += r; } }
+            return n;
+        } catch (LinkageError e) {
+            throw new IOException(app.getString(R.string.native_actions_engine_unavailable), e);
+        } catch (RuntimeException e) {
+            throw new IOException(app.getString(R.string.native_actions_native_error, EngineText.clean(message(e))), e);
+        } finally {
+            deletePrivateJob(staging);
+            deletePrivateJob(job);
+        }
+    }
+
+    private static File derivedResult(Context app, File job, String result) throws IOException {
+        if (result == null || result.isEmpty()) throw new IOException(app.getString(R.string.native_actions_invalid_result));
+        final File derived = new File(result).getCanonicalFile();
+        if (!job.getCanonicalFile().equals(derived.getParentFile()) ||
+            !derived.getName().toLowerCase(Locale.ROOT).endsWith(".3mf") || !derived.isFile() || derived.length() == 0)
+            throw new IOException(app.getString(R.string.native_actions_invalid_result));
+        return derived;
+    }
+
+    /** A system font with Latin and Cyrillic glyphs; falls back to the fonts bundled with the engine resources. */
+    private static String textFont(EngineProfileSession session) throws IOException {
+        String[] candidates = {"/system/fonts/Roboto-Regular.ttf", "/system/fonts/RobotoStatic-Regular.ttf", "/system/fonts/NotoSans-Regular.ttf", "/system/fonts/DroidSans.ttf"};
+        for (String c : candidates) if (new File(c).isFile()) return c;
+        File bundled = new File(session.resources, "fonts/NanumGothic-Regular.ttf");
+        if (bundled.isFile()) return bundled.getAbsolutePath();
+        throw new IOException("No font available for text");
+    }
+
     private static String cloneName(Context app, String sourceName) {
         String base = sourceName == null ? "Model" : sourceName;
         int dot = base.lastIndexOf('.');

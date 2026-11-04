@@ -46,6 +46,22 @@ Slic3r::Model clone_and_arrange(const Slic3r::Model &source,
     std::size_t instance_index, std::size_t copies, bool auto_arrange);
 std::string model_placements_json(const Slic3r::Model &model);
 
+// Arranges every printable instance on the current plate (same rules as clone arrangement).
+void arrange_on_plate(Slic3r::Model &model, const Slic3r::DynamicPrintConfig &config);
+
+// Model editing tools. Each returns a new model and never changes the source.
+// Cut every object with a horizontal plane at world height z_mm (upstream Cut, plane mode).
+// Kept parts become separate objects; the upper part is placed on its cut face.
+Slic3r::Model cut_model_at_z(const Slic3r::Model &source, const Slic3r::DynamicPrintConfig &config,
+    double z_mm, bool keep_upper, bool keep_lower);
+// Adds an embossed text object (upstream Emboss) made from a TrueType/OpenType font file.
+Slic3r::Model add_text_object(const Slic3r::Model &source, const Slic3r::DynamicPrintConfig &config,
+    const std::string &text, const std::string &font_path, double letter_height_mm, double depth_mm);
+// Joins all objects into one object whose parts keep their current world placement.
+Slic3r::Model assemble_objects(const Slic3r::Model &source);
+// Writes a project 3MF with the resolved settings, one plate holding every instance (upstream writer).
+void store_project_3mf(Slic3r::Model &model, Slic3r::DynamicPrintConfig &config, const std::string &path);
+
 // Uses the real upstream Boost filter. The returned value is the actual level:
 // upstream prerelease builds may enforce a more verbose minimum.
 std::string set_native_log_level(const std::string &level);
