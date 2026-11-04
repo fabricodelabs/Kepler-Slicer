@@ -59,9 +59,9 @@ public final class SliceActivity extends Activity {
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); ui.bars(this, root);
         setContentView(root);
         ScrollView scroll = new ScrollView(this); root.addView(scroll, new LinearLayout.LayoutParams(-1, -1));
-        LinearLayout content = new LinearLayout(this); content.setPadding(dp(24), dp(24), dp(24), dp(32)); content.setOrientation(LinearLayout.VERTICAL); scroll.addView(content);
-        TextView back = label("‹   Назад", 15, true); back.setPadding(0, dp(8), 0, dp(12)); back.setOnClickListener(v -> finish()); content.addView(back);
-        content.addView(label("Нарезка модели", 28, true)); space(content, 12);
+        LinearLayout content = new LinearLayout(this); content.setPadding(dp(20), dp(8), dp(20), dp(32)); content.setOrientation(LinearLayout.VERTICAL); scroll.addView(content);
+        com.orcamobile.app.glass.KeplerUi kv = new com.orcamobile.app.glass.KeplerUi(this); content.addView(kv.subHeader(getString(R.string.kv3_slice_title), getString(R.string.kv3_back), this::finish, null)); space(content, 16);
+        // Title is in the Kepler v3 top bar above.
         content.addView(label("Экспериментальный движок OrcaSlicer. Результат сохраняется только на устройстве; соответствие настольной версии и пригодность к печати ещё не подтверждены.", 14, false)); space(content, 24);
         content.addView(label("ПРИНТЕР", 11, true)); printerSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(printerSummary);space(content,14);
         content.addView(label("ПРОЦЕСС", 11, true)); processSummary=label(getString(R.string.native_slice_profiles_loading),15,false);content.addView(processSummary);space(content,14);
@@ -92,7 +92,7 @@ public final class SliceActivity extends Activity {
     }
     @Override protected void onStart() { super.onStart(); synchronized (LOCK) { observer = new WeakReference<>(this); } requestResultRefresh();requestProfileSummary();if(pendingAutoSlice){pendingAutoSlice=false;if(ControlPreferences.currentAutoRequest(this,pendingAutoRequest))startSlice(pendingAutoRequest);} }
     @Override protected void onStop() { resultQueryGeneration++;profileQueryGeneration++;Thread reader=profileReader;profileReader=null;if(reader!=null)reader.interrupt();shownResult=null;synchronized (LOCK) { if (observer.get() == this) observer.clear(); } super.onStop(); }
-    private TextView label(String value, int size, boolean bold) { TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(ui.ink); t.setTypeface(Typeface.create("sans-serif", bold ? Typeface.BOLD : Typeface.NORMAL)); t.setLineSpacing(dp(2), 1); return t; }
+    private TextView label(String value, int size, boolean bold) { TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(ui.ink); com.orcamobile.app.glass.GlassTypography.apply(t, bold ? 700 : 500); t.setLineSpacing(dp(2), 1); return t; }
     private void space(LinearLayout parent, int height) { parent.addView(new View(this), new LinearLayout.LayoutParams(1, dp(height))); }
     private void refresh() {
         boolean available = shownResult != null;

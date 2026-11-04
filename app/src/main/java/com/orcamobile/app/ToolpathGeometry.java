@@ -10,6 +10,41 @@ final class ToolpathGeometry {
     final FloatBuffer vertices;
     final int[] layerEnds; // cumulative vertex count; index zero displays no layers
     final int layerCount, skippedLayersWithoutZ;
+    /** RGB per vertex for the active Preview colour mode, aligned with {@link #vertices}; null draws one colour. */
+    volatile FloatBuffer colors;
+    static final int MODE_FEATURE = 0, MODE_SPEED = 1, MODE_FLOW = 2, MODE_HEIGHT = 3, MODE_TEMPERATURE = 4;
+    /** Figma Preview legend colours (node 3:394): other, outer wall, inner wall, sparse, solid, support, bridge. */
+    static final int[] FEATURE_COLORS = {0xFF9DA3AD, 0xFFFF9F43, 0xFFF5D06B, 0xFFFF7A6E, 0xFFB06CF0, 0xFF6FD0C4, 0xFF6F9CF0};
+    private static final int[] RAMP = {0xFF6F9CF0, 0xFF6FD0C4, 0xFFF5D06B, 0xFFFF9F43, 0xFFFF7A6E};
+    static int ramp(double t) { if (!Double.isFinite(t)) t = 0; t = Math.max(0, Math.min(1, t)) * (RAMP.length - 1); int i = Math.min(RAMP.length - 2, (int) t); double f = t - i; int a = RAMP[i], b = RAMP[i + 1];
+        int r = (int) Math.round(((a >> 16) & 255) * (1 - f) + ((b >> 16) & 255) * f), g = (int) Math.round(((a >> 8) & 255) * (1 - f) + ((b >> 8) & 255) * f), bl = (int) Math.round((a & 255) * (1 - f) + (b & 255) * f); return 0xFF000000 | (r << 16) | (g << 8) | bl; }
+    /** Range [min,max] used by a numeric mode, for the legend. */
+    static double[] range(GcodeAnalysis a, int mode) {
+        if (mode == MODE_SPEED) return new double[]{a.minFeed / 60.0, a.maxFeed / 60.0};
+        if (mode == MODE_FLOW) return new double[]{a.minFlow, a.maxFlow};
+        if (mode == MODE_TEMPERATURE) return new double[]{a.minTemp, a.maxTemp};
+        double lo = Double.POSITIVE_INFINITY, hi = 0, prev = 0; for (GcodeAnalysis.Layer l : a.layers) { if (!Double.isFinite(l.z)) continue; double h = l.z - prev; prev = l.z; if (h > 1e-4) { lo = Math.min(lo, h); hi = Math.max(hi, h); } }
+        return new double[]{lo, hi};
+    }
+    /** Builds vertex colours for a mode with the same layer filtering as {@link #build}. */
+    static FloatBuffer colors(GcodeAnalysis a, int mode, int vertexCount) throws IOException {
+        FloatBuffer out = ByteBuffer.allocateDirect(Math.max(1, vertexCount) * 3 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        double[] r = mode == MODE_FEATURE ? null : range(a, mode); double prev = 0;
+        for (GcodeAnalysis.Layer l : a.layers) {
+            if (Thread.currentThread().isInterrupted()) throw new IOException("Подготовка предпросмотра отменена.");
+            if (!Double.isFinite(l.z) || Math.abs(l.z) > Float.MAX_VALUE) continue;
+            double height = l.z - prev; prev = l.z;
+            for (int s = 0; s < l.size / 4; s++) {
+                int c;
+                if (mode == MODE_FEATURE) c = FEATURE_COLORS[s < l.types.length ? Math.max(0, Math.min(FEATURE_COLORS.length - 1, l.types[s])) : 0];
+                else { double v = mode == MODE_SPEED ? (s < l.feed.length ? l.feed[s] / 60.0 : 0) : mode == MODE_FLOW ? (s < l.flow.length ? l.flow[s] : 0) : mode == MODE_TEMPERATURE ? (s < l.temp.length ? l.temp[s] : 0) : height;
+                    c = ramp(r[1] > r[0] ? (v - r[0]) / (r[1] - r[0]) : 0.5); }
+                float cr = ((c >> 16) & 255) / 255f, cg = ((c >> 8) & 255) / 255f, cb = (c & 255) / 255f;
+                out.put(cr).put(cg).put(cb).put(cr).put(cg).put(cb);
+            }
+        }
+        out.position(0); return out;
+    }
     private ToolpathGeometry(FloatBuffer vertices,int[] layerEnds,int skipped) {
         this.vertices=vertices.asReadOnlyBuffer();this.layerEnds=layerEnds;layerCount=layerEnds.length-1;skippedLayersWithoutZ=skipped;
     }
