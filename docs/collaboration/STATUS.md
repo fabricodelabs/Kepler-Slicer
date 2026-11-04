@@ -1,4 +1,11 @@
-# Current increment — 2026-11-04
+# Current checkpoint — 2026-11-04
+
+UI-008 Settings hub is in progress at Claude checkpoint `e68d8e9`. Its
+components compile and await the hub wiring. Technical JNI diagnostics are
+built at Codex checkpoint `a847f46` and await device validation. See the
+[checkpoint report](INCREMENT-2026-11-04-UI008.md) for exact scope.
+
+## Accepted UI-007 increment — 2026-11-04
 
 UI-007 is accepted on Android and integrated at `180e64b`. The shared
 bottom navigation uses the original Kepler Glass UI v3 icons in Settings,
