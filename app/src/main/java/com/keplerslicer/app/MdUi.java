@@ -47,7 +47,7 @@ final class MdUi {
     GradientDrawable shape(int color,int radius) { GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); if(color==KeplerUi.GLASS)d.setStroke(Math.max(1,dp(1)),KeplerUi.GLASS_STROKE); return d; }
     void clickable(View v,int color,int radius,Runnable action) { v.setBackground(com.keplerslicer.app.glass.LiquidPress.apply(v,color==bg?null:shape(color,radius),dp(radius))); v.setFocusable(true); v.setClickable(true); v.setOnClickListener(w->action.run()); }
     /** Primary: white r26 h52 with on-active 16/700 label (Figma "Slice plate"); secondary: glass with white label. */
-    TextView button(String label,boolean filled,Runnable action) { TextView b=text(label,filled?16:15,true); b.setGravity(Gravity.CENTER); b.setMinHeight(dp(52)); pad(b,20,12,20,12); b.setTextColor(filled?KeplerUi.ON_ACTIVE:ink); clickable(b,filled?KeplerUi.WHITE:KeplerUi.GLASS,26,action); return b; }
+    TextView button(String label,boolean filled,Runnable action) { TextView b=text(label,filled?16:15,true); b.setGravity(Gravity.CENTER); b.setMinHeight(dp(52)); pad(b,20,12,20,12); b.setTextColor(filled?KeplerUi.ON_ACTIVE:ink); clickable(b,filled?KeplerUi.WHITE:KeplerUi.GLASS,26,action); return KeplerUi.breathe(b); }
     void bars(Activity a,View root) {
         a.getWindow().setStatusBarColor(android.graphics.Color.rgb(74,79,89)); a.getWindow().setNavigationBarColor(android.graphics.Color.rgb(56,61,70));
         a.getWindow().getDecorView().setSystemUiVisibility(0);

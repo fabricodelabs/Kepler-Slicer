@@ -128,7 +128,7 @@ public final class PreferencesActivity extends Activity {
         }
         return getString(R.string.native_preferences_log_applied,requested,actual);
     });}
-    private void note(String text){ui.space(content,8);content.addView(ui.text(text,12,400,ui.tokens.textSecondary));ui.space(content,8);}
+    private void note(String text){ui.space(content,12);TextView t=ui.text(text,12,400,ui.tokens.textSecondary);t.setPadding(ui.dp(4),0,ui.dp(4),0);t.setLineSpacing(0,1.15f);content.addView(t);ui.space(content,16);}
     private void clearChoice(String key){ControlPreferences.clearRememberedChoice(this,key);Toast.makeText(this,R.string.pref_choice_cleared,Toast.LENGTH_SHORT).show();}
     private interface Operation {String run()throws Exception;}
     private void work(int title,Operation operation){if(busy){Toast.makeText(this,R.string.pref_working,Toast.LENGTH_SHORT).show();return;}busy=true;Toast.makeText(this,R.string.pref_working,Toast.LENGTH_SHORT).show();worker.execute(()->{try{String result=operation.run();runOnUiThread(()->{busy=false;if(!dead){render();message(s(title),result);}});}catch(Exception|LinkageError e){runOnUiThread(()->{busy=false;if(!dead)message(s(title),e.getMessage()==null?e.getClass().getSimpleName():e.getMessage());});}});}
