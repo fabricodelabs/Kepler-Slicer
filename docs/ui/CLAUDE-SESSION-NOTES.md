@@ -182,6 +182,20 @@ Preferences: cloud, auto-sync, sync now) were removed at the owner's request: si
 localhost return did not work on the owner's phone. Backend classes (CloudProfileOAuth/Sync/Store,
 PresetRepository cloud fields) stay for the host tests; automatic profile sync is forced off.
 
+## Audit fixes and modules (2026-11-05)
+
+- Modules: :app, :core (Android-free Java, JUnit), :engine (JNI + .so in engine/jniLibs). See
+  docs/architecture/MODULES-AND-KOTLIN.md (also the Kotlin recommendation: no rewrite, Kotlin for new code).
+- Checks: ./gradlew assembleDebug :core:test; pwsh tools/run_host_tests.ps1 -JsonJar <json jar>; CI in
+  .github/workflows/ci.yml. GitHub reports startup_failure with no jobs on the private repo (likely Actions
+  billing/minutes): the owner must check Settings - Billing.
+- versionCode = commit count; release-out/ ignored; coverage audit hashes refreshed.
+- Bambu LAN certificate pinning (trust on first use, per serial, forgotten when the connection is saved again).
+- Profile cloud code removed; status polls cancel the previous one; link downloads check every redirect.
+- Not done: automatic code formatting (downloading google-java-format was refused by the session's safety check),
+  Play Asset Delivery for the 161 MB assets (needs a decision: GitHub APK vs Play AAB), R8, full MainActivity
+  split, lifecycle-bound executor for the ~60 background threads, storage schema versions.
+
 ## Known defects to fix next
 
 - Hard-coded Russian text remains only in protocol/model helper classes (error messages; they are compiled by host tests without Android context). Screens are localised.
