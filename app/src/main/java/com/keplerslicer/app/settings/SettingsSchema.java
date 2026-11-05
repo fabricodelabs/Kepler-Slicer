@@ -1,4 +1,5 @@
 package com.keplerslicer.app.settings;
+import com.keplerslicer.app.L;
 
 import android.content.Context;
 import org.json.JSONArray;
@@ -226,15 +227,15 @@ public final class SettingsSchema {
             String text = value == null ? "" : value.toString();
             if ("1".equals(text) || "true".equalsIgnoreCase(text)) return true;
             if ("0".equals(text) || "false".equalsIgnoreCase(text)) return false;
-            throw new IllegalArgumentException("Булево значение не задано или не распознано");
+            throw new IllegalArgumentException(L.t("Булево значение не задано или не распознано"));
         }
         /** Returns a new JSON value, preserving the engine's string storage for ordinary scalar inputs. */
         public Object parseInput(String input, Object current) {
-            if (input == null) throw new IllegalArgumentException("Введите значение");
+            if (input == null) throw new IllegalArgumentException(L.t("Введите значение"));
             String text = input.trim();
             if (isVector() || current instanceof JSONArray || current instanceof List) {
                 Object value = StrictJson.parse(text);
-                if (!(value instanceof JSONArray)) throw new IllegalArgumentException("Нужен JSON-массив");
+                if (!(value instanceof JSONArray)) throw new IllegalArgumentException(L.t("Нужен JSON-массив"));
                 return value;
             }
             if (isBoolean()) {
@@ -245,26 +246,26 @@ public final class SettingsSchema {
             }
             if ("coInt".equals(type) || "coFloat".equals(type) || "coPercent".equals(type) || "coFloatOrPercent".equals(type)) {
                 boolean percent = text.endsWith("%");
-                if (percent && !("coPercent".equals(type) || "coFloatOrPercent".equals(type))) throw new IllegalArgumentException("Проценты здесь не поддерживаются");
+                if (percent && !("coPercent".equals(type) || "coFloatOrPercent".equals(type))) throw new IllegalArgumentException(L.t("Проценты здесь не поддерживаются"));
                 String raw = (percent ? text.substring(0,text.length()-1).trim() : text).replace(',', '.');
-                if (!NUMBER.matcher(raw).matches()) throw new IllegalArgumentException("Введите корректное число");
+                if (!NUMBER.matcher(raw).matches()) throw new IllegalArgumentException(L.t("Введите корректное число"));
                 double value;
-                try { value = Double.parseDouble(raw); } catch (NumberFormatException ex) { throw new IllegalArgumentException("Введите корректное число"); }
-                if (!Double.isFinite(value)) throw new IllegalArgumentException("Число должно быть конечным");
-                if ("coInt".equals(type) && !INTEGER.matcher(raw).matches()) throw new IllegalArgumentException("Нужно целое число");
-                if (min != null && value < min) throw new IllegalArgumentException("Значение меньше минимума: " + min);
-                if (max != null && value > max) throw new IllegalArgumentException("Значение больше максимума: " + max);
+                try { value = Double.parseDouble(raw); } catch (NumberFormatException ex) { throw new IllegalArgumentException(L.t("Введите корректное число")); }
+                if (!Double.isFinite(value)) throw new IllegalArgumentException(L.t("Число должно быть конечным"));
+                if ("coInt".equals(type) && !INTEGER.matcher(raw).matches()) throw new IllegalArgumentException(L.t("Нужно целое число"));
+                if (min != null && value < min) throw new IllegalArgumentException(L.t("Значение меньше минимума: ") + min);
+                if (max != null && value > max) throw new IllegalArgumentException(L.t("Значение больше максимума: ") + max);
                 if (!percent && current instanceof String && ((String) current).trim().endsWith("%")) percent = true;
                 if (current instanceof Number && !percent) {
-                    if ("coInt".equals(type)) { try { return Long.parseLong(raw); } catch (NumberFormatException ex) { throw new IllegalArgumentException("Целое число вне допустимого диапазона"); } }
+                    if ("coInt".equals(type)) { try { return Long.parseLong(raw); } catch (NumberFormatException ex) { throw new IllegalArgumentException(L.t("Целое число вне допустимого диапазона")); } }
                     return value;
                 }
                 return raw + (percent ? "%" : "");
             }
-            if (enumComplete && !enumValues.isEmpty() && !enumValues.contains(text)) throw new IllegalArgumentException("Значение отсутствует в списке допустимых значений");
+            if (enumComplete && !enumValues.isEmpty() && !enumValues.contains(text)) throw new IllegalArgumentException(L.t("Значение отсутствует в списке допустимых значений"));
             if (type == null && (current instanceof JSONObject || current instanceof Boolean || current instanceof Number)) {
                 Object parsed = StrictJson.parse(text);
-                if (current instanceof JSONObject && !(parsed instanceof JSONObject) || current instanceof Boolean && !(parsed instanceof Boolean) || current instanceof Number && !(parsed instanceof Number)) throw new IllegalArgumentException("Тип JSON должен сохраняться");
+                if (current instanceof JSONObject && !(parsed instanceof JSONObject) || current instanceof Boolean && !(parsed instanceof Boolean) || current instanceof Number && !(parsed instanceof Number)) throw new IllegalArgumentException(L.t("Тип JSON должен сохраняться"));
                 return parsed;
             }
             return input;
@@ -280,13 +281,13 @@ public final class SettingsSchema {
         StrictJson(String text) { this.text = text; }
         static Object parse(String text) {
             try { StrictJson p = new StrictJson(text); Object value = p.value(0); p.ws(); if (p.at != text.length()) throw p.error(); return value; }
-            catch (JSONException | NumberFormatException ex) { throw new IllegalArgumentException("Некорректный JSON", ex); }
+            catch (JSONException | NumberFormatException ex) { throw new IllegalArgumentException(L.t("Некорректный JSON"), ex); }
         }
-        IllegalArgumentException error() { return new IllegalArgumentException("Некорректный JSON, позиция " + at); }
+        IllegalArgumentException error() { return new IllegalArgumentException(L.t("Некорректный JSON, позиция ") + at); }
         void ws() { while (at < text.length() && " \t\r\n".indexOf(text.charAt(at)) >= 0) at++; }
         boolean eat(char ch) { ws(); if (at < text.length() && text.charAt(at) == ch) { at++; return true; } return false; }
         Object value(int depth) throws JSONException {
-            if (depth > 128) throw new IllegalArgumentException("Слишком глубокий JSON");
+            if (depth > 128) throw new IllegalArgumentException(L.t("Слишком глубокий JSON"));
             ws(); if (at >= text.length()) throw error(); char c = text.charAt(at);
             if (c == '"') return quoted();
             if (c == '[') { at++; JSONArray a = new JSONArray(); if (eat(']')) return a; do { a.put(value(depth+1)); } while (eat(',')); if (!eat(']')) throw error(); return a; }

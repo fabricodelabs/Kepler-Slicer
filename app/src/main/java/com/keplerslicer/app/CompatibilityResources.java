@@ -18,11 +18,11 @@ import java.util.zip.ZipInputStream;
 final class CompatibilityResources {
     final File resources, data;
     private CompatibilityResources(File root) { resources = new File(root, "resources"); data = new File(root, "data"); }
-    private static void mkdir(File f) throws IOException { if (!f.isDirectory() && !f.mkdirs()) throw new IOException("Не удалось подготовить каталог профилей."); }
+    private static void mkdir(File f) throws IOException { if (!f.isDirectory() && !f.mkdirs()) throw new IOException(L.t("Не удалось подготовить каталог профилей.")); }
     private static void delete(File f) { if (f.isDirectory()) { File[] children=f.listFiles(); if(children!=null) for(File c:children) delete(c); } f.delete(); }
     private static void requireVendor(String vendor) throws IOException {
         if (vendor == null || vendor.isEmpty() || vendor.equals(".") || vendor.equals("..") || vendor.indexOf('/') >= 0 || vendor.indexOf('\\') >= 0)
-            throw new IOException("Недопустимый производитель профиля.");
+            throw new IOException(L.t("Недопустимый производитель профиля."));
     }
     private static String key(Set<String> vendors) throws IOException {
         try {
@@ -57,8 +57,8 @@ final class CompatibilityResources {
             try (ZipInputStream zip = new ZipInputStream(context.getAssets().open("kepler_profiles.zip"))) {
                 ZipEntry entry;
                 while ((entry = zip.getNextEntry()) != null) {
-                    if (Thread.currentThread().isInterrupted()) throw new IOException("Загрузка отменена.");
-                    if (++count > 50000) throw new IOException("Слишком много файлов профилей.");
+                    if (Thread.currentThread().isInterrupted()) throw new IOException(L.t("Загрузка отменена."));
+                    if (++count > 50000) throw new IOException(L.t("Слишком много файлов профилей."));
                     if (entry.isDirectory()) continue;
                     String name = entry.getName(); boolean include = false;
                     for (String v : vendors) if (name.equals(v + ".json") || name.startsWith(v + "/")) {
@@ -66,32 +66,32 @@ final class CompatibilityResources {
                     }
                     if (!include) continue;
                     File out = new File(system,name);
-                    if (!out.getCanonicalPath().startsWith(system.getCanonicalPath() + File.separator)) throw new IOException("Недопустимый путь в архиве профилей.");
+                    if (!out.getCanonicalPath().startsWith(system.getCanonicalPath() + File.separator)) throw new IOException(L.t("Недопустимый путь в архиве профилей."));
                     mkdir(out.getParentFile());
                     try (FileOutputStream file = new FileOutputStream(out)) {
                         byte[] b = new byte[8192]; int n;
-                        while ((n = zip.read(b)) != -1) { total += n; if (total > 256L*1024*1024) throw new IOException("Профили слишком велики."); file.write(b,0,n); }
+                        while ((n = zip.read(b)) != -1) { total += n; if (total > 256L*1024*1024) throw new IOException(L.t("Профили слишком велики.")); file.write(b,0,n); }
                     }
                 }
             }
-            if (!manifests.containsAll(vendors)) throw new IOException("Не найден каталог выбранного производителя.");
+            if (!manifests.containsAll(vendors)) throw new IOException(L.t("Не найден каталог выбранного производителя."));
             try (ZipInputStream zip = new ZipInputStream(context.getAssets().open("upstream_resources.zip"))) {
                 ZipEntry entry; boolean found = false;
                 while ((entry = zip.getNextEntry()) != null) {
-                    if (Thread.currentThread().isInterrupted()) throw new IOException("Загрузка отменена.");
+                    if (Thread.currentThread().isInterrupted()) throw new IOException(L.t("Загрузка отменена."));
                     if (!entry.getName().equals("info/legacy_compatible_printers.json")) continue;
                     File file = new File(resources, entry.getName()); mkdir(file.getParentFile());
                     try (FileOutputStream out = new FileOutputStream(file)) {
                         byte[] b = new byte[8192]; int n, size = 0;
-                        while ((n = zip.read(b)) != -1) { size += n; if (size > 8*1024*1024) throw new IOException("Файл совместимости слишком велик."); out.write(b,0,n); }
+                        while ((n = zip.read(b)) != -1) { size += n; if (size > 8*1024*1024) throw new IOException(L.t("Файл совместимости слишком велик.")); out.write(b,0,n); }
                     }
                     found = true; break;
                 }
-                if (!found) throw new IOException("Не найден файл совместимости профилей.");
+                if (!found) throw new IOException(L.t("Не найден файл совместимости профилей."));
             }
             snapshot.install(new File(staging,"data"));
-            if (!new File(staging,".complete").createNewFile()) throw new IOException("Не удалось подготовить профили.");
-            if (!staging.renameTo(finalRoot)) throw new IOException("Не удалось сохранить кэш профилей.");
+            if (!new File(staging,".complete").createNewFile()) throw new IOException(L.t("Не удалось подготовить профили."));
+            if (!staging.renameTo(finalRoot)) throw new IOException(L.t("Не удалось сохранить кэш профилей."));
             complete = true; return new CompatibilityResources(finalRoot);
         } finally { if (!complete) delete(staging); }
     }

@@ -57,9 +57,9 @@ public final class ProcessSettingsActivity extends Activity {
         root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackground(new com.keplerslicer.app.glass.KeplerUi(this).backdrop());
         ui.bars(this,root);
         setContentView(root);
-        {LinearLayout v3=new com.keplerslicer.app.glass.KeplerUi(this).subHeader("Параметры печати",getString(R.string.kv3_back),this::back,null);LinearLayout.LayoutParams v3p=new LinearLayout.LayoutParams(-1,-2);v3p.setMargins(dp(20),dp(8),dp(20),dp(8));root.addView(v3,v3p);}
+        {LinearLayout v3=new com.keplerslicer.app.glass.KeplerUi(this).subHeader(L.t("Параметры печати"),getString(R.string.kv3_back),this::back,null);LinearLayout.LayoutParams v3p=new LinearLayout.LayoutParams(-1,-2);v3p.setMargins(dp(20),dp(8),dp(20),dp(8));root.addView(v3,v3p);}
         TextView title=text("",1,INK,true); title.setVisibility(View.GONE); root.addView(title);
-        status=text("Загружаем настройки профиля…",13,MUTED,false); status.setPadding(dp(20),0,dp(20),dp(10)); root.addView(status);
+        status=text(L.t("Загружаем настройки профиля…"),13,MUTED,false); status.setPadding(dp(20),0,dp(20),dp(10)); root.addView(status);
         ScrollView scroll=new ScrollView(this); scroll.setFillViewport(false); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         body=new LinearLayout(this); body.setOrientation(LinearLayout.VERTICAL); body.setPadding(dp(20),dp(16),dp(20),dp(24)); scroll.addView(body);
         actions=new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL); actions.setPadding(dp(16),dp(8),dp(16),dp(12)); root.addView(actions,lp(-1,-2));
@@ -88,14 +88,14 @@ public final class ProcessSettingsActivity extends Activity {
                         renderPage(); renderActions();
                     } catch(Exception e) { showError(e); }
                 });
-            } catch(Throwable e) { runOnUiThread(()->{ if(!isDestroyed()&&!isFinishing()) status.setText("Не удалось загрузить параметры: "+message(e)); }); }
+            } catch(Throwable e) { runOnUiThread(()->{ if(!isDestroyed()&&!isFinishing()) status.setText(L.t("Не удалось загрузить параметры: ")+message(e)); }); }
         },"kepler-process-settings").start();
     }
     private static JSONObject readTranslations(android.content.Context context) {
         try(InputStream in=context.getAssets().open("kepler_ui_ru.json")) { ByteArrayOutputStream out=new ByteArrayOutputStream(); byte[] b=new byte[8192]; int n,total=0; while((n=in.read(b))!=-1) { total+=n; if(total>4*1024*1024) return new JSONObject(); out.write(b,0,n); } return new JSONObject(new String(out.toByteArray(),StandardCharsets.UTF_8)); } catch(Exception ignored) { return new JSONObject(); }
     }
     private String tr(String source) { String s=russian.optString(source,source); return s.isEmpty()?source:s; }
-    private String pageName(String s) { switch(s) { case "Quality":return "Качество";case "Strength":return "Прочность";case "Speed":return "Скорость";case "Support":return "Поддержки";case "Multimaterial":return "Мультиматериал";default:return "Прочее"; } }
+    private String pageName(String s) { switch(s) { case "Quality":return L.t("Качество");case "Strength":return L.t("Прочность");case "Speed":return L.t("Скорость");case "Support":return L.t("Поддержки");case "Multimaterial":return L.t("Мультиматериал");default:return L.t("Прочее"); } }
     private void renderPage() {
         body.removeAllViews(); controls.clear();
         if(selected.isEmpty()) { renderLanding(); return; }
@@ -109,18 +109,18 @@ public final class ProcessSettingsActivity extends Activity {
             if(!o.tooltip.isEmpty()) { TextView hint=text(tr(o.tooltip),12,MUTED,false); body.addView(hint); }
             if(!o.editable) {
                 String value=String.valueOf(o.value), shortValue=value.length()>240?value.substring(0,240)+"…":value;
-                TextView readOnly=text(shortValue+"  ·  только просмотр",13,MUTED,false); readOnly.setPadding(0,dp(6),0,dp(4)); body.addView(readOnly);
-                if(value.length()>240) readOnly.setOnClickListener(v->MdUi.alert(this).setTitle(titleFor(o)).setMessage(value).setPositiveButton("Закрыть",null).show());
+                TextView readOnly=text(shortValue+L.t("  ·  только просмотр"),13,MUTED,false); readOnly.setPadding(0,dp(6),0,dp(4)); body.addView(readOnly);
+                if(value.length()>240) readOnly.setOnClickListener(v->MdUi.alert(this).setTitle(titleFor(o)).setMessage(value).setPositiveButton(L.t("Закрыть"),null).show());
             } else {
                 String value=raw.containsKey(o.key)?raw.get(o.key):String.valueOf(o.value);
                 View field=createControl(o,value); controls.put(o.key,field); body.addView(field,lp(-1,52));
             }
             gap(body,12);
         }
-        if(count==0) body.addView(text("Нет параметров для выбранного профиля.",14,MUTED,false));
+        if(count==0) body.addView(text(L.t("Нет параметров для выбранного профиля."),14,MUTED,false));
     }
     private void renderLanding() {
-        String[] descriptions={"Высота слоя, ширина линий и шов", "Стенки, оболочка и заполнение", "Первый слой, печать и перемещения", "Поддержки, интерфейс и подложка", "Переходы, башня очистки и материалы", "Юбка, кайма, поверхность и другие параметры"};
+        String[] descriptions={L.t("Высота слоя, ширина линий и шов"), L.t("Стенки, оболочка и заполнение"), L.t("Первый слой, печать и перемещения"), L.t("Поддержки, интерфейс и подложка"), L.t("Переходы, башня очистки и материалы"), L.t("Юбка, кайма, поверхность и другие параметры")};
         String[] glyphs={"◇","▧","◴","⌁","◫","⋯"};
         for(int i=0;i<PAGES.length;i++) {
             String page=PAGES[i];
@@ -130,8 +130,8 @@ public final class ProcessSettingsActivity extends Activity {
     }
     private String titleFor(ProcessOption o) { return tr(o.label.isEmpty()?o.key:o.label); }
     private View createControl(ProcessOption o,String value) {
-        if(o.type.equals("boolean")) { Switch s=new Switch(this); s.setText("Включено"); s.setTextColor(INK); s.setChecked(Boolean.parseBoolean(value)); s.setContentDescription(titleFor(o)); return s; }
-        if(o.type.equals("enum")) { Spinner s=new Spinner(this); ArrayList<String> labels=new ArrayList<>(); int index=-1; for(int i=0;i<o.choices.size();i++) { ProcessOption.Choice c=o.choices.get(i); labels.add(tr(c.label)); if(c.value.equals(value)) index=i; } if(index<0) {index=labels.size();labels.add("Недопустимое значение");}
+        if(o.type.equals("boolean")) { Switch s=new Switch(this); s.setText(L.t("Включено")); s.setTextColor(INK); s.setChecked(Boolean.parseBoolean(value)); s.setContentDescription(titleFor(o)); return s; }
+        if(o.type.equals("enum")) { Spinner s=new Spinner(this); ArrayList<String> labels=new ArrayList<>(); int index=-1; for(int i=0;i<o.choices.size();i++) { ProcessOption.Choice c=o.choices.get(i); labels.add(tr(c.label)); if(c.value.equals(value)) index=i; } if(index<0) {index=labels.size();labels.add(L.t("Недопустимое значение"));}
             ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,labels) {
                 @Override public View getView(int position,View convert,android.view.ViewGroup parent) { TextView v=(TextView)super.getView(position,convert,parent); v.setTextColor(INK); return v; }
                 @Override public View getDropDownView(int position,View convert,android.view.ViewGroup parent) { TextView v=(TextView)super.getDropDownView(position,convert,parent); v.setTextColor(INK); v.setBackgroundColor(SURFACE); return v; }
@@ -145,7 +145,7 @@ public final class ProcessSettingsActivity extends Activity {
     private void renderActions() {
         actions.removeAllViews(); actions.setVisibility(selected.isEmpty()?View.GONE:View.VISIBLE);
         if(selected.isEmpty()) return;
-        TextView reset=button("Сбросить всё",false), save=button("Сохранить",true);
+        TextView reset=button(L.t("Сбросить всё"),false), save=button(L.t("Сохранить"),true);
         LinearLayout.LayoutParams a=new LinearLayout.LayoutParams(0,dp(48),1); a.setMargins(0,0,dp(8),0); actions.addView(reset,a); actions.addView(save,new LinearLayout.LayoutParams(0,dp(48),1));
         reset.setOnClickListener(v->{ if(saving)return; raw.clear(); renderPage(); });
         save.setOnClickListener(v->{ if(saving)return; try { capture(); Map<String,Object> changes=new LinkedHashMap<>(); for(ProcessOption o:options) if(o.editable&&raw.containsKey(o.key)) { String input=raw.get(o.key); if(input.equals(String.valueOf(o.value))) continue; Object value=o.parseInput(input); if(!same(o,value,o.value)) changes.put(o.key,value); } validateAndSave(ProcessOption.encodeOverrides(changes)); } catch(Exception e){showError(e);} });
@@ -160,13 +160,13 @@ public final class ProcessSettingsActivity extends Activity {
         return a.equals(b);
     }
     private void validateAndSave(String json) {
-        saving=true; actions.setAlpha(.5f); status.setText("Проверяем параметры и совместимость…");
+        saving=true; actions.setAlpha(.5f); status.setText(L.t("Проверяем параметры и совместимость…"));
         ProcessOverridesStore.Identity id=identity; CompatibilityResources r=resources; android.content.Context app=getApplicationContext();
         new Thread(()->{ try {
             ExperimentalSlicer.validateProcessSettings(id.printer.vendor,id.process.vendor,id.filament.vendor,id.printer.name,id.process.name,id.filament.name,r.resources.getAbsolutePath(),r.data.getAbsolutePath(),json);
             ProcessOverridesStore.save(app,id,json);
             runOnUiThread(()->{if(!isDestroyed()&&!isFinishing()){setResult(RESULT_OK);finish();}});
-        } catch(Throwable e) {runOnUiThread(()->{if(!isDestroyed()&&!isFinishing()){saving=false;actions.setAlpha(1f);status.setText("Параметры не сохранены");showError(e);}});} },"kepler-validate-process").start();
+        } catch(Throwable e) {runOnUiThread(()->{if(!isDestroyed()&&!isFinishing()){saving=false;actions.setAlpha(1f);status.setText(L.t("Параметры не сохранены"));showError(e);}});} },"kepler-validate-process").start();
     }
     @Override protected void onSaveInstanceState(Bundle out) { capture(); out.putString("page",selected); out.putStringArrayList("draft_keys",new ArrayList<>(raw.keySet())); out.putStringArrayList("draft_values",new ArrayList<>(raw.values())); super.onSaveInstanceState(out); }
     private void back() { if(saving)return; if(!selected.isEmpty()&&options!=null) {capture();selected="";renderPage();renderActions();} else finish(); }
@@ -174,5 +174,5 @@ public final class ProcessSettingsActivity extends Activity {
     @Override protected void onDestroy(){if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback);super.onDestroy();}
     @android.annotation.SuppressLint("GestureBackNavigation") @Override public void onBackPressed() { back(); }
     private static String message(Throwable e) { return EngineText.clean(e.getMessage()==null?e.getClass().getSimpleName():e.getMessage()); }
-    private void showError(Throwable e) { MdUi.alert(this).setTitle("Проверьте параметры").setMessage(message(e)).setPositiveButton(R.string.kv3_ok,null).show(); }
+    private void showError(Throwable e) { MdUi.alert(this).setTitle(L.t("Проверьте параметры")).setMessage(message(e)).setPositiveButton(R.string.kv3_ok,null).show(); }
 }

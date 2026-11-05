@@ -6,4 +6,10 @@
         <item quantity="many">%d слоёв</item>
         <item quantity="other">%d слоя</item>
     </plurals>
+    <plurals name="kv3_profiles_count">
+        <item quantity="one">%d профиль</item>
+        <item quantity="few">%d профиля</item>
+        <item quantity="many">%d профилей</item>
+        <item quantity="other">%d профиля</item>
+    </plurals>
 </resources>

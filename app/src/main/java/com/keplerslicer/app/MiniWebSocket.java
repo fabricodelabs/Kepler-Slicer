@@ -34,10 +34,10 @@ final class MiniWebSocket implements Closeable {
             String key = Base64.getEncoder().encodeToString(nonce);
             String request = "GET " + path + " HTTP/1.1\r\nHost: " + host + ":" + port + "\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: " + key + "\r\nSec-WebSocket-Version: 13\r\n\r\n";
             out.write(request.getBytes(StandardCharsets.US_ASCII)); out.flush();
-            String status = line(); if (!status.startsWith("HTTP/1.1 101")) throw new IOException("WebSocket upgrade refused: " + status);
+            String status = line(); if (!status.startsWith("HTTP/1.1 101")) throw new IOException(L.t("WebSocket upgrade refused: ") + status);
             String accept = null; for (String h; !(h = line()).isEmpty(); ) if (h.toLowerCase(java.util.Locale.ROOT).startsWith("sec-websocket-accept:")) accept = h.substring(21).trim();
             String expected = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-1").digest((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").getBytes(StandardCharsets.US_ASCII)));
-            if (!expected.equals(accept)) throw new IOException("WebSocket handshake mismatch");
+            if (!expected.equals(accept)) throw new IOException(L.t("WebSocket handshake mismatch"));
             ok = true;
         } catch (java.security.NoSuchAlgorithmException e) { throw new IOException(e); }
         finally { if (!ok) { cancel.clearCloser(socket); try { socket.close(); } catch (IOException ignored) { } } }
@@ -66,11 +66,11 @@ final class MiniWebSocket implements Closeable {
             try { b0 = in.readUnsignedByte(); } catch (SocketTimeoutException t) { return null; }
             b1 = in.readUnsignedByte();
             long len = b1 & 127; if (len == 126) len = in.readUnsignedShort(); else if (len == 127) len = in.readLong();
-            if (len < 0 || len > 4 * 1024 * 1024) throw new IOException("WebSocket frame too large");
+            if (len < 0 || len > 4 * 1024 * 1024) throw new IOException(L.t("WebSocket frame too large"));
             byte[] mask = (b1 & 0x80) != 0 ? new byte[4] : null; if (mask != null) in.readFully(mask);
             byte[] data = new byte[(int) len]; in.readFully(data); if (mask != null) for (int i = 0; i < data.length; i++) data[i] ^= mask[i & 3];
             int op = b0 & 15;
-            if (op == 8) throw new IOException("WebSocket closed by the printer");
+            if (op == 8) throw new IOException(L.t("WebSocket closed by the printer"));
             if (op == 9) { sendControl(0x8A, data); continue; }
             if (op == 10) continue;
             if (op == 1 || op == 0) { message.write(data); if ((b0 & 0x80) != 0) return message.toString("UTF-8"); }

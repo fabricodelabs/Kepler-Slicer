@@ -22,6 +22,7 @@ $stateSources=@(
 $stateSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
 $stateSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\state_stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
 $stateSources+=Join-Path $PSScriptRoot 'tests\SettingsStateTest.java'
+$stateSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $stateClasses @stateSources
 if($LASTEXITCODE -ne 0){throw 'Settings-state tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') -cp ($stateClasses+';'+$JsonJar) com.keplerslicer.app.SettingsStateTest (Join-Path $stateTestRoot 'data') (Join-Path $stateProjectRoot 'app\src\main\assets')

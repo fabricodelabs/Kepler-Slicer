@@ -18,6 +18,7 @@ $stepResourceFile=Join-Path $stepGenerated 'R.java'
 $stepResourceBody | Set-Content -LiteralPath $stepResourceFile -Encoding utf8NoBOM
 $stepSources=@((Join-Path $stepProjectRoot 'app/src/main/java/com/keplerslicer/app/StepImportPreferences.java'),(Join-Path $stepProjectRoot 'app/src/main/java/com/keplerslicer/app/EngineText.java'),(Join-Path $stepProjectRoot 'app/src/main/java/com/keplerslicer/app/ModelFilename.java'),(Join-Path $PSScriptRoot 'tests/StepImportPreferencesTest.java'),$stepResourceFile)
 $stepSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests/step_stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
+$stepSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
 & (Join-Path $JavaHome 'bin/javac.exe') -encoding UTF-8 -cp ($JsonJar+';'+$AndroidJar) -d $stepClasses @stepSources
 if($LASTEXITCODE -ne 0){throw 'STEP Java host compilation failed'}
 & (Join-Path $JavaHome 'bin/java.exe') -cp ($stepClasses+';'+$JsonJar+';'+$AndroidJar) com.keplerslicer.app.StepImportPreferencesTest (Join-Path $stepTestRoot 'data')

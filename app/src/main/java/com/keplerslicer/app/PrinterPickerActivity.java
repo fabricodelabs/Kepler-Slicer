@@ -98,12 +98,12 @@ public class PrinterPickerActivity extends Activity {
     }
     private HashMap<String,String> readCovers() throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (InputStream in = getAssets().open("kepler_printer_models.json")) { byte[] b=new byte[8192]; int n,total=0; while((n=in.read(b))!=-1) { total+=n; if(total>2*1024*1024) throw new java.io.IOException("Слишком большой индекс моделей"); out.write(b,0,n); } }
+        try (InputStream in = getAssets().open("kepler_printer_models.json")) { byte[] b=new byte[8192]; int n,total=0; while((n=in.read(b))!=-1) { total+=n; if(total>2*1024*1024) throw new java.io.IOException(L.t("Слишком большой индекс моделей")); out.write(b,0,n); } }
         JSONObject index = new JSONObject(new String(out.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
-        if (!PrinterProfileCatalog.UPSTREAM_REVISION.equals(index.optString("revision"))) throw new java.io.IOException("Версии каталогов не совпадают");
+        if (!PrinterProfileCatalog.UPSTREAM_REVISION.equals(index.optString("revision"))) throw new java.io.IOException(L.t("Версии каталогов не совпадают"));
         HashMap<String,String> result = new HashMap<>(); JSONArray rows=index.getJSONArray("models");
         for(int i=0;i<rows.length();i++) { JSONObject row=rows.getJSONObject(i); String filename=row.optString("cover", "");
-            if (!filename.isEmpty() && !filename.matches("[0-9a-f]{64}\\.png")) throw new java.io.IOException("Некорректный индекс изображения");
+            if (!filename.isEmpty() && !filename.matches("[0-9a-f]{64}\\.png")) throw new java.io.IOException(L.t("Некорректный индекс изображения"));
             result.put(row.getString("vendor")+"\u0000"+row.getString("model"),filename);
         }
         return result;
@@ -160,7 +160,7 @@ public class PrinterPickerActivity extends Activity {
                 LinearLayout group = ui.row(); group.setPadding(ui.dp(4), ui.dp(4), ui.dp(4), ui.dp(4)); group.setBackground(ui.shape(com.keplerslicer.app.glass.KeplerUi.FIELD, 0, 16));
                 android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this); hs.setHorizontalScrollBarEnabled(false); hs.setFillViewport(true); hs.addView(group, new FrameLayout.LayoutParams(-1, -2));
                 for (PrinterProfileCatalog.Profile p : current.variants) {
-                    boolean on = p.path.equals(selection.path); String label = p.variant == null || p.variant.trim().isEmpty() ? "—" : p.variant;
+                    boolean on = p.path.equals(selection.path); String label = variantLabel(p);
                     TextView seg = ui.line(label, 13, 700, on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : white); seg.setGravity(Gravity.CENTER); seg.setPadding(ui.dp(12), 0, ui.dp(12), 0); seg.setMinHeight(ui.dp(36));
                     if (on) seg.setBackground(ui.shape(white, 0, 12)); else { ui.pressable(seg, null, 12); final Model model = current; seg.setOnClickListener(v -> saveVariant(model, p, false)); }
                     seg.setContentDescription(getString(R.string.kv3_nozzle_caption) + " " + label + (on ? ", " + getString(R.string.glass_selected) : ""));
@@ -196,6 +196,12 @@ public class PrinterPickerActivity extends Activity {
         b.addView(ui.image(R.drawable.kv3_check, 16, 0xFF12302A), new FrameLayout.LayoutParams(ui.dp(16), ui.dp(16), Gravity.CENTER));
         b.setLayoutParams(ui.lp(24, 24)); b.setContentDescription(getString(R.string.glass_selected)); return b;
     }
+    /** Nozzle diameter of a profile: its variant, else the "0.4 nozzle" part of the name (user copies keep it there). */
+    private static String variantLabel(PrinterProfileCatalog.Profile p) {
+        if (p.variant != null && !p.variant.trim().isEmpty()) return p.variant.trim();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:mm\\s*)?nozzle", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(p.name == null ? "" : p.name);
+        return m.find() ? m.group(1) : "—";
+    }
     private void saveVariant(Model model, PrinterProfileCatalog.Profile variant, boolean close) {
         try {
             PrinterProfileCatalog.Profile previous = PrinterProfileCatalog.loadSelection(this);
@@ -227,7 +233,7 @@ public class PrinterPickerActivity extends Activity {
                 LinearLayout labels = ui.column(); LinearLayout.LayoutParams lp2 = ui.weight(); lp2.leftMargin = ui.dp(12); lp2.rightMargin = ui.dp(8);
                 labels.addView(ui.caption(EngineText.clean(m.vendor)));
                 TextView title = ui.text(m.name, 16, 700, white); title.setMaxLines(2); labels.addView(title, ui.below(2));
-                labels.addView(ui.line(m.variants.size() + getString(R.string.l10n_pp_profiles_short), 12, 500, secondary), ui.below(2)); item.addView(labels, lp2);
+                labels.addView(ui.line(getResources().getQuantityString(R.plurals.kv3_profiles_count, m.variants.size(), m.variants.size()), 12, 500, secondary), ui.below(2)); item.addView(labels, lp2);
                 item.addView(ui.image(R.drawable.kv3_chevron_right, 20, white));
                 LinearLayout wrapper = ui.column(); wrapper.addView(item, ui.lp(-1, -2)); wrapper.addView(ui.spacer(10)); return wrapper;
             }
@@ -248,7 +254,7 @@ public class PrinterPickerActivity extends Activity {
         LinearLayout card = ui.card(24);
         for (int i = 0; i < chosenModel.variants.size(); i++) {
             PrinterProfileCatalog.Profile p = chosenModel.variants.get(i);
-            String variant = p.variant == null || p.variant.trim().isEmpty() ? getString(R.string.l10n_pp_no_variant) : getString(R.string.l10n_pp_variant) + p.variant;
+            String variant = variantLabel(p).equals("—") ? getString(R.string.l10n_pp_no_variant) : getString(R.string.l10n_pp_variant) + variantLabel(p);
             boolean selected = chosenVariant != null && p.path.equals(chosenVariant.path);
             View trailing = selected ? selectedBadge() : null;
             LinearLayout row = ui.listRow(0, variant, p.name, trailing, () -> { chosenVariant = p; detailScrollY = scroll.getScrollY(); render(); });
@@ -266,7 +272,7 @@ public class PrinterPickerActivity extends Activity {
     private FrameLayout coverView(Model model,int size) {
         FrameLayout box=new FrameLayout(this); box.setBackground(shape(com.keplerslicer.app.glass.KeplerUi.FIELD,size>100?20:16)); box.setClipToOutline(true);
         TextView fallback=text("▧",size>100?48:26,com.keplerslicer.app.glass.KeplerUi.SECONDARY,false); fallback.setGravity(Gravity.CENTER); fallback.setContentDescription(getString(R.string.l10n_pp_no_image)); box.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
-        ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); image.setPadding(dp(8),dp(8),dp(8),dp(8)); image.setContentDescription("Изображение "+model.name+getString(R.string.l10n_pp_from_catalog));
+        ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); image.setPadding(dp(8),dp(8),dp(8),dp(8)); image.setContentDescription(L.t("Изображение ")+model.name+getString(R.string.l10n_pp_from_catalog));
         box.addView(image,new FrameLayout.LayoutParams(-1,-1));
         if(model.cover.isEmpty()) { image.setVisibility(View.GONE); return box; }
         image.setTag(model.cover); Bitmap cached=images.get(model.cover);

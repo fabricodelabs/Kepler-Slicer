@@ -99,31 +99,31 @@ public final class CloudProfileStore {
     public void resetCursor()throws IOException{synchronized(LOCK){try{JSONObject root=read();root.put("cursor",0);write(root);}catch(JSONException e){throw new IOException(e);}}}
     public void upsertAcknowledged(String id,String name,JSONObject content,long updatedTime)throws IOException{synchronized(LOCK){try{JSONObject root=read(),profiles=getObject(root,"profiles"),conflicts=getObject(root,"conflicts"),tombstones=getObject(root,"deleted_versions");long deleted=tombstones.optLong(id,0);if(updatedTime<newestRevision(profiles.optJSONObject(id),conflicts.optJSONObject(id),deleted)||(deleted>0&&updatedTime<=deleted))throw new IOException("Stale upload acknowledgment; newer mirror retained");profiles.put(id,new JSONObject().put("id",id).put("name",name).put("content",new JSONObject(content.toString())).put("updated_time",updatedTime).put("dirty",false));conflicts.remove(id);tombstones.remove(id);write(root);}catch(JSONException e){throw new IOException(e);}}}
     /** Complete reviewed server versions, including the preserved server side of dirty mirror conflicts. */
-    public JSONArray serverProfiles()throws IOException{synchronized(LOCK){try{JSONObject root=read(),profiles=getObject(root,"profiles"),conflicts=getObject(root,"conflicts");JSONObject server=new JSONObject(profiles.toString());for(Iterator<String> keys=profiles.keys();keys.hasNext();){String id=keys.next();JSONObject local=profiles.getJSONObject(id);if(local.optBoolean("dirty",false)){JSONObject baseline=local.optJSONObject("server_baseline");if(baseline==null||baseline.optJSONObject("content")==null)throw new IOException("Получите полный снимок сервера перед разбором конфликта.");server.put(id,baseline);}}for(Iterator<String> keys=conflicts.keys();keys.hasNext();){String id=keys.next();JSONObject conflict=conflicts.optJSONObject(id);if(conflict==null)throw new IOException("Invalid conflict record");if(conflict.optBoolean("needs_refresh",false))throw new IOException("Получите полную актуальную версию сервера перед разбором конфликта.");if(conflict.optBoolean("deleted",false))server.remove(id);else{JSONObject remote=conflict.optJSONObject("server");if(remote==null||remote.optJSONObject("content")==null)throw new IOException("Получите полный снимок сервера перед разбором конфликта.");server.put(id,remote);}}JSONArray out=new JSONArray();for(Iterator<String> keys=server.keys();keys.hasNext();)out.put(server.getJSONObject(keys.next()));return out;}catch(JSONException e){throw new IOException(e);}}}
+    public JSONArray serverProfiles()throws IOException{synchronized(LOCK){try{JSONObject root=read(),profiles=getObject(root,"profiles"),conflicts=getObject(root,"conflicts");JSONObject server=new JSONObject(profiles.toString());for(Iterator<String> keys=profiles.keys();keys.hasNext();){String id=keys.next();JSONObject local=profiles.getJSONObject(id);if(local.optBoolean("dirty",false)){JSONObject baseline=local.optJSONObject("server_baseline");if(baseline==null||baseline.optJSONObject("content")==null)throw new IOException(L.t("Получите полный снимок сервера перед разбором конфликта."));server.put(id,baseline);}}for(Iterator<String> keys=conflicts.keys();keys.hasNext();){String id=keys.next();JSONObject conflict=conflicts.optJSONObject(id);if(conflict==null)throw new IOException("Invalid conflict record");if(conflict.optBoolean("needs_refresh",false))throw new IOException(L.t("Получите полную актуальную версию сервера перед разбором конфликта."));if(conflict.optBoolean("deleted",false))server.remove(id);else{JSONObject remote=conflict.optJSONObject("server");if(remote==null||remote.optJSONObject("content")==null)throw new IOException(L.t("Получите полный снимок сервера перед разбором конфликта."));server.put(id,remote);}}JSONArray out=new JSONArray();for(Iterator<String> keys=server.keys();keys.hasNext();)out.put(server.getJSONObject(keys.next()));return out;}catch(JSONException e){throw new IOException(e);}}}
     public JSONObject conflicts() throws IOException {synchronized(LOCK){try {JSONObject c=read().optJSONObject("conflicts");return c==null?new JSONObject():new JSONObject(c.toString());}catch(JSONException e){throw new IOException(e);}}}
     /** A destructive conflict resolution is explicit; unknown/incomplete server data is rejected. */
     public void acceptServer(String id) throws IOException {synchronized(LOCK){try {
         JSONObject root=read(),conflicts=getObject(root,"conflicts"),c=conflicts.optJSONObject(id);
-        if(c==null)throw new IOException("Конфликт не найден.");
+        if(c==null)throw new IOException(L.t("Конфликт не найден."));
         JSONObject profiles=getObject(root,"profiles");
-        JSONObject reviewed=c.optJSONObject("server");long revision=c.optBoolean("deleted",false)?c.optLong("server_cursor",0):reviewed==null?0:reviewed.optLong("updated_time",0);if(c.optBoolean("needs_refresh",false)||revision<newestRevision(profiles.optJSONObject(id),c,getObject(root,"deleted_versions").optLong(id,0)))throw new IOException("Обновите полную версию сервера перед принятием конфликта.");
+        JSONObject reviewed=c.optJSONObject("server");long revision=c.optBoolean("deleted",false)?c.optLong("server_cursor",0):reviewed==null?0:reviewed.optLong("updated_time",0);if(c.optBoolean("needs_refresh",false)||revision<newestRevision(profiles.optJSONObject(id),c,getObject(root,"deleted_versions").optLong(id,0)))throw new IOException(L.t("Обновите полную версию сервера перед принятием конфликта."));
         if(c.optBoolean("deleted",false))profiles.remove(id);
         else {
             JSONObject server=c.optJSONObject("server");
-            if(server==null||server.optJSONObject("content")==null)throw new IOException("Обновите профиль из облака для получения полной версии сервера.");
+            if(server==null||server.optJSONObject("content")==null)throw new IOException(L.t("Обновите профиль из облака для получения полной версии сервера."));
             profiles.put(id,new JSONObject(server.toString()).put("dirty",false));
         }
         conflicts.remove(id);write(root);
     }catch(JSONException e){throw new IOException(e);}}}
     public void edit(String id,JSONObject content) throws IOException {synchronized(LOCK){try {
         JSONObject root=read(),p=getObject(root,"profiles").optJSONObject(id);
-        if(p==null||content==null)throw new IOException("Профиль не найден.");
+        if(p==null||content==null)throw new IOException(L.t("Профиль не найден."));
         if(!p.optBoolean("dirty",false)){JSONObject baseline=new JSONObject(p.toString());baseline.remove("server_baseline");p.put("server_baseline",baseline);}
         p.put("content",new JSONObject(content.toString())).put("dirty",true);write(root);
-    }catch(JSONException e){throw new IOException("Не удалось сохранить профиль.",e);}}}
+    }catch(JSONException e){throw new IOException(L.t("Не удалось сохранить профиль."),e);}}}
     public void markPushed(String id,String sentContent,long updatedTime) throws IOException {synchronized(LOCK){try {
         JSONObject root=read(),p=getObject(root,"profiles").optJSONObject(id);
-        if(p==null)throw new IOException("Профиль изменился во время синхронизации.");
+        if(p==null)throw new IOException(L.t("Профиль изменился во время синхронизации."));
         if(updatedTime<newestRevision(p,getObject(root,"conflicts").optJSONObject(id),getObject(root,"deleted_versions").optLong(id,0)))throw new IOException("Stale upload acknowledgment; newer mirror retained");
         p.put("updated_time",updatedTime);
         if(p.optJSONObject("content")!=null&&p.optJSONObject("content").toString().equals(sentContent)){p.put("dirty",false);p.remove("server_baseline");}

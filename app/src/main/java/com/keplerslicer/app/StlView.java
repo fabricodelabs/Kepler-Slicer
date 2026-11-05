@@ -106,13 +106,13 @@ final class StlView extends GLSurfaceView {
     interface TransformCallback { void completed(Exception error); }
     /** Geometry is built off-thread by ToolpathGeometry.build; completion runs on UI thread. */
     void setToolpaths(ToolpathGeometry geometry,int visibleLayers,TransformCallback callback) {
-        if(geometry==null||visibleLayers<1||visibleLayers>geometry.layerCount)throw new IllegalArgumentException("Некорректный слой предпросмотра.");
+        if(geometry==null||visibleLayers<1||visibleLayers>geometry.layerCount)throw new IllegalArgumentException(L.t("Некорректный слой предпросмотра."));
         cancelDrag();moveMode=false;toolpathMode=true;final int revision=pathRevision.incrementAndGet();
         setContentDescription(cameraDescription(false,true));
         queueEvent(()->{
             if(revision!=pathRevision.get())return;
             try {
-                if(bed==null||!volumeReady||renderer.sceneScale<=0)throw new IllegalStateException("Область печати ещё не готова.");
+                if(bed==null||!volumeReady||renderer.sceneScale<=0)throw new IllegalStateException(L.t("Область печати ещё не готова."));
                 renderer.setToolpaths(geometry,visibleLayers);requestRender();
                 if(callback!=null)post(()->{if(revision==pathRevision.get())callback.completed(null);});
             } catch(RuntimeException error) {
@@ -131,7 +131,7 @@ final class StlView extends GLSurfaceView {
     }
     /** Object editing is separate from camera gestures. Completion runs on the UI thread. */
     void setModelTransform(ModelTransform transform, TransformCallback callback) {
-        if (transform == null || sourceMesh == null) throw new IllegalArgumentException("Требуется модель и её преобразование.");
+        if (transform == null || sourceMesh == null) throw new IllegalArgumentException(L.t("Требуется модель и её преобразование."));
         final int revision = transformRevision.incrementAndGet();
         queueEvent(() -> {
             if (revision != transformRevision.get()) return;
@@ -152,20 +152,65 @@ final class StlView extends GLSurfaceView {
     private float[] previewGeometry(ModelTransform transform) {
         if(sourceMesh==null||sourceMesh.vertices.length==0)return new float[0];
         if(projectBounds==null)return transform.previewVertices(sourceMesh.vertices,sourceMesh.size);
-        if(projectBounds.length!=6)throw new IllegalArgumentException("Не удалось определить координаты проекта 3MF.");
-        if(transform.rx!=0||transform.ry!=0||transform.rz!=0||transform.sx!=1||transform.sy!=1||transform.sz!=1||transform.offsetX!=0||transform.offsetY!=0)throw new IllegalArgumentException("Преобразование проекта 3MF пока не поддерживается.");
-        for(double value:projectBounds)if(!Double.isFinite(value))throw new IllegalArgumentException("Некорректные координаты проекта 3MF.");
-        return sourceMesh.vertices;
+        if(projectBounds.length!=6)throw new IllegalArgumentException(L.t("Не удалось определить координаты проекта 3MF."));
+        for(double value:projectBounds)if(!Double.isFinite(value))throw new IllegalArgumentException(L.t("Некорректные координаты проекта 3MF."));
+        boolean identity=transform.rx==0&&transform.ry==0&&transform.rz==0&&transform.sx==1&&transform.sy==1&&transform.sz==1&&transform.offsetX==0&&transform.offsetY==0;
+        if(identity)return sourceMesh.vertices;
+        // The project moves as one group (engine: apply_group_transform): rotate/scale around its centre, move by the
+        // offset from where it was, then stand on the bed again.
+        float[] moved=transform.previewVertices(sourceMesh.vertices,sourceMesh.size);
+        double unit=Math.max(sourceMesh.size[0],Math.max(sourceMesh.size[1],sourceMesh.size[2]))/1.6,cz=(projectBounds[2]+projectBounds[5])/2;float minZ=Float.MAX_VALUE;
+        for(int i=2;i<moved.length;i+=3)minZ=Math.min(minZ,moved[i]);
+        float dz=(float)((projectBounds[2]-cz)/unit-minZ);for(int i=2;i<moved.length;i+=3)moved[i]+=dz;
+        return moved;
     }
     /** Converts normalized native-preview points to the bed-centred scene, retaining world Z. */
     static float[] projectVertices(float[] vertices,double[] size,double[] bounds,double bedCenterX,double bedCenterY,double scale) {
-        if(bounds==null||bounds.length!=6||size==null||size.length!=3||!(scale>0)||!Double.isFinite(scale))throw new IllegalArgumentException("Некорректная геометрия проекта.");
+        if(bounds==null||bounds.length!=6||size==null||size.length!=3||!(scale>0)||!Double.isFinite(scale))throw new IllegalArgumentException(L.t("Некорректная геометрия проекта."));
         double unit=Math.max(size[0],Math.max(size[1],size[2]))/1.6,cx=bounds[0]/2+bounds[3]/2,cy=bounds[1]/2+bounds[4]/2,cz=bounds[2]/2+bounds[5]/2;
-        if(!(unit>0)||!Double.isFinite(unit)||!Double.isFinite(cx)||!Double.isFinite(cy)||!Double.isFinite(cz))throw new IllegalArgumentException("Некорректные размеры проекта.");
-        float[] result=new float[vertices.length];for(int i=0;i<vertices.length;i+=3){double x=(vertices[i]*unit+cx-bedCenterX)*scale,y=(vertices[i+1]*unit+cy-bedCenterY)*scale,z=(vertices[i+2]*unit+cz)*scale;if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||Math.abs(x)>Float.MAX_VALUE||Math.abs(y)>Float.MAX_VALUE||Math.abs(z)>Float.MAX_VALUE)throw new IllegalArgumentException("Координаты проекта вне диапазона предпросмотра.");result[i]=(float)x;result[i+1]=(float)y;result[i+2]=(float)z;}return result;
+        if(!(unit>0)||!Double.isFinite(unit)||!Double.isFinite(cx)||!Double.isFinite(cy)||!Double.isFinite(cz))throw new IllegalArgumentException(L.t("Некорректные размеры проекта."));
+        float[] result=new float[vertices.length];for(int i=0;i<vertices.length;i+=3){double x=(vertices[i]*unit+cx-bedCenterX)*scale,y=(vertices[i+1]*unit+cy-bedCenterY)*scale,z=(vertices[i+2]*unit+cz)*scale;if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||Math.abs(x)>Float.MAX_VALUE||Math.abs(y)>Float.MAX_VALUE||Math.abs(z)>Float.MAX_VALUE)throw new IllegalArgumentException(L.t("Координаты проекта вне диапазона предпросмотра."));result[i]=(float)x;result[i+1]=(float)y;result[i+2]=(float)z;}return result;
+    }
+    // ---- Paint brush: one finger paints the triangles under a sphere brush, two fingers keep moving the camera ----
+    interface PaintCallback { void painted(int[] previewTriangles); }
+    private volatile PaintCallback paintCallback; private volatile float paintRadiusMm = 3f;
+    void setPaintMode(PaintCallback callback, float radiusMm) { paintCallback = callback; paintRadiusMm = Math.max(0.2f, radiusMm); }
+    boolean paintMode() { return paintCallback != null; }
+    private void paintAt(float x, float y) {
+        final int w = getWidth(), h = getHeight(); final PaintCallback cb = paintCallback; if (cb == null || w <= 0 || h <= 0) return;
+        float[] p = new float[16], camera = new float[16], mvp = new float[16], inverse = new float[16];
+        Matrix.perspectiveM(p, 0, 40, (float) w / h, .1f, 20f); cameraMatrix(camera); Matrix.multiplyMM(mvp, 0, p, 0, camera, 0);
+        if (!Matrix.invertM(inverse, 0, mvp, 0)) return;
+        float nx = 2f * x / w - 1, ny = 1 - 2f * y / h; float[] a = new float[4], b = new float[4];
+        Matrix.multiplyMV(a, 0, inverse, 0, new float[]{nx, ny, -1, 1}, 0); Matrix.multiplyMV(b, 0, inverse, 0, new float[]{nx, ny, 1, 1}, 0);
+        if (a[3] == 0 || b[3] == 0) return;
+        final float ox = a[0] / a[3], oy = a[1] / a[3], oz = a[2] / a[3], dx = b[0] / b[3] - ox, dy = b[1] / b[3] - oy, dz = b[2] / b[3] - oz;
+        final double scale = renderer.sceneScale; final float radius = (float) (paintRadiusMm * (scale > 0 ? scale : 0.01));
+        queueEvent(() -> {
+            float[] v = renderer.sceneVertices; int best = -1; float bestT = Float.MAX_VALUE;
+            for (int i = 0; i + 8 < v.length; i += 9) { // Moller-Trumbore
+                float e1x = v[i+3]-v[i], e1y = v[i+4]-v[i+1], e1z = v[i+5]-v[i+2], e2x = v[i+6]-v[i], e2y = v[i+7]-v[i+1], e2z = v[i+8]-v[i+2];
+                float px = dy*e2z-dz*e2y, py = dz*e2x-dx*e2z, pz = dx*e2y-dy*e2x, det = e1x*px+e1y*py+e1z*pz; if (Math.abs(det) < 1e-12f) continue;
+                float inv = 1/det, tx = ox-v[i], ty = oy-v[i+1], tz = oz-v[i+2], u = (tx*px+ty*py+tz*pz)*inv; if (u < 0 || u > 1) continue;
+                float qx = ty*e1z-tz*e1y, qy = tz*e1x-tx*e1z, qz = tx*e1y-ty*e1x, vv = (dx*qx+dy*qy+dz*qz)*inv; if (vv < 0 || u+vv > 1) continue;
+                float t = (e2x*qx+e2y*qy+e2z*qz)*inv; if (t > 0 && t < bestT) { bestT = t; best = i / 9; }
+            }
+            if (best < 0) return;
+            float hx = ox+dx*bestT, hy = oy+dy*bestT, hz = oz+dz*bestT, r2 = radius*radius; int[] hit = new int[64]; int n = 0;
+            for (int i = 0; i + 8 < v.length; i += 9) {
+                float cx = (v[i]+v[i+3]+v[i+6])/3-hx, cy = (v[i+1]+v[i+4]+v[i+7])/3-hy, cz = (v[i+2]+v[i+5]+v[i+8])/3-hz;
+                if (cx*cx+cy*cy+cz*cz <= r2 || i / 9 == best) { if (n == hit.length) hit = java.util.Arrays.copyOf(hit, n * 2); hit[n++] = i / 9; }
+            }
+            final int[] result = java.util.Arrays.copyOf(hit, n);
+            post(() -> { PaintCallback current = paintCallback; if (current != null) current.painted(result); });
+        });
     }
     @Override public boolean onTouchEvent(MotionEvent e) {
         int action=e.getActionMasked();
+        if (paintCallback != null && e.getPointerCount() == 1 && (action == MotionEvent.ACTION_DOWN || (action == MotionEvent.ACTION_MOVE && !pinchGesture))) {
+            if (action == MotionEvent.ACTION_DOWN) { getParent().requestDisallowInterceptTouchEvent(true); lastX = e.getX(); lastY = e.getY(); pinchGesture = false; lastDistance = 0; }
+            paintAt(e.getX(), e.getY()); return true;
+        }
         if(action==MotionEvent.ACTION_DOWN) { getParent().requestDisallowInterceptTouchEvent(true);lastX=e.getX();lastY=e.getY();lastDistance=0;pinchGesture=false;mouseAction=mouseAction(e);
             if(moveMode&&mouseAction==0&&sourceMesh!=null&&volumeReady&&renderer.sceneScale>0&&moveCallback!=null){double[] p=bedPoint(lastX,lastY);if(p!=null){dragging=true;dragStartX=p[0];dragStartY=p[1];dragBase=currentTransform;}} return true; }
         if(action==MotionEvent.ACTION_POINTER_DOWN&&e.getPointerCount()>=2){cancelDrag();pinchGesture=true;lastDistance=distance(e);lastMidX=(e.getX(0)+e.getX(1))/2;lastMidY=(e.getY(0)+e.getY(1))/2;return true;}
@@ -185,9 +230,9 @@ final class StlView extends GLSurfaceView {
     }
     private static boolean isMouse(MotionEvent e){return (e.getSource()&android.view.InputDevice.SOURCE_MOUSE)==android.view.InputDevice.SOURCE_MOUSE;}
     private String cameraDescription(boolean moving,boolean paths){
-        String subject=paths?"Траектории печати на трёхмерном столе. ":"Трёхмерный стол. ";
-        if(moving)return subject+(swapGestures?"Одним пальцем перемещайте модель, двумя вращайте или изменяйте масштаб вида.":"Одним пальцем перемещайте модель, двумя панорамируйте или изменяйте масштаб вида.");
-        return subject+(swapGestures?"Одним пальцем панорамируйте; двумя вращайте или изменяйте масштаб вида.":"Одним пальцем вращайте; двумя панорамируйте или изменяйте масштаб вида.");
+        String subject=paths?L.t("Траектории печати на трёхмерном столе. "):L.t("Трёхмерный стол. ");
+        if(moving)return subject+(swapGestures?L.t("Одним пальцем перемещайте модель, двумя вращайте или изменяйте масштаб вида."):L.t("Одним пальцем перемещайте модель, двумя панорамируйте или изменяйте масштаб вида."));
+        return subject+(swapGestures?L.t("Одним пальцем панорамируйте; двумя вращайте или изменяйте масштаб вида."):L.t("Одним пальцем вращайте; двумя панорамируйте или изменяйте масштаб вида."));
     }
     private int mouseAction(MotionEvent e) {
         if(!isMouse(e))return 0;
@@ -250,6 +295,7 @@ final class StlView extends GLSurfaceView {
     private static float distance(MotionEvent e) { return (float)Math.hypot(e.getX(0)-e.getX(1), e.getY(0)-e.getY(1)); }
 
     private static final class MeshRenderer implements Renderer {
+        volatile float[] sceneVertices = new float[0];
         FloatBuffer positions, normals, gridPositions, bedPositions, tints; int count, gridCount, bedCount; int tint = -1;
         /** ARGB per preview triangle (material slot colours), or null for the default model colour. */
         int[] triangleColors;
@@ -335,11 +381,11 @@ final class StlView extends GLSurfaceView {
                     minZ = Math.min(minZ, vertices[i+2] * mmPerUnit); maxZ = Math.max(maxZ, vertices[i+2] * mmPerUnit);
                 }
                 if (vertices.length > 0) sceneSpan = Math.max(sceneSpan,Math.max(maxZ-minZ,Math.max(maxX-minX,maxY-minY)));
-                if (!Double.isFinite(sceneSpan) || sceneSpan <= 0) throw new IllegalArgumentException("Не удалось рассчитать масштаб стола.");
-                if(worldBounds!=null && vertices.length>0){if(worldBounds.length!=6)throw new IllegalArgumentException("Не удалось определить координаты проекта 3MF.");for(double value:worldBounds)if(!Double.isFinite(value))throw new IllegalArgumentException("Некорректные координаты проекта 3MF.");
+                if (!Double.isFinite(sceneSpan) || sceneSpan <= 0) throw new IllegalArgumentException(L.t("Не удалось рассчитать масштаб стола."));
+                if(worldBounds!=null && vertices.length>0){if(worldBounds.length!=6)throw new IllegalArgumentException(L.t("Не удалось определить координаты проекта 3MF."));for(double value:worldBounds)if(!Double.isFinite(value))throw new IllegalArgumentException(L.t("Некорректные координаты проекта 3MF."));
                     sceneSpan=Math.max(sceneSpan,2*Math.max(Math.max(Math.abs(worldBounds[0]-bed.centerX),Math.abs(worldBounds[3]-bed.centerX)),Math.max(Math.abs(worldBounds[1]-bed.centerY),Math.abs(worldBounds[4]-bed.centerY))));sceneSpan=Math.max(sceneSpan,2*Math.max(Math.abs(worldBounds[2]),Math.abs(worldBounds[5])));
                 }
-                if(!Double.isFinite(sceneSpan)||sceneSpan<=0)throw new IllegalArgumentException("Недопустимые границы проекта 3MF.");
+                if(!Double.isFinite(sceneSpan)||sceneSpan<=0)throw new IllegalArgumentException(L.t("Недопустимые границы проекта 3MF."));
                 bedScale = 3.2 / sceneSpan;
                 if(worldBounds!=null && vertices.length>0)scene=projectVertices(vertices,sourceSize,worldBounds,bed.centerX,bed.centerY,bedScale);
                 else {scene = new float[vertices.length];for (int i=0; i<vertices.length; i+=3) {
@@ -351,7 +397,7 @@ final class StlView extends GLSurfaceView {
             sceneScale = bed == null ? 0 : bedScale;
             bedCenterX=bed==null?0:bed.centerX;bedCenterY=bed==null?0:bed.centerY;
             count = scene.length / 3; buildGizmo(scene);
-            positions = buffer(scene);
+            positions = buffer(scene); sceneVertices = scene;
             float[] n = new float[scene.length];
             for (int i=0; i<scene.length; i+=9) {
                 float ax=scene[i+3]-scene[i], ay=scene[i+4]-scene[i+1], az=scene[i+5]-scene[i+2];

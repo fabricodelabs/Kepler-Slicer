@@ -51,8 +51,11 @@ public final class LegacyControlTest {
             String auth = x.getRequestHeaders().getFirst("Authorization"); String reply;
             if (path.endsWith("/user/login")) reply = body.contains("\"code\":\"123456\"") ? "{\"accessToken\":\"tok\",\"refreshToken\":\"ref\"}" : "{\"accessToken\":\"\",\"loginType\":\"verifyCode\"}";
             else if (path.endsWith("/sendemail/code")) reply = "{}";
+            else if (path.endsWith("/user/refreshtoken")) reply = body.contains("\"refreshToken\":\"ref\"") ? "{\"accessToken\":\"tok2\",\"refreshToken\":\"ref2\",\"expiresIn\":7776000}" : null;
             else if (path.endsWith("/my/profile")) reply = "Bearer tok".equals(auth) ? "{\"uid\":4242}" : null;
             else if (path.endsWith("/user/bind")) reply = "Bearer tok".equals(auth) ? "{\"devices\":[{\"dev_id\":\"01P00A123456789\",\"name\":\"P1S\",\"online\":true,\"dev_product_name\":\"P1S\"},{\"dev_id\":\"bad id\"}]}" : null;
+            else if (path.endsWith("/api/user/upload")) reply = "Bearer tok".equals(auth) && x.getRequestURI().getQuery().contains("filename=a.gcode") ? "{\"urls\":[{\"type\":\"filename\",\"url\":\"" + "http://127.0.0.1:" + x.getLocalAddress().getPort() + "/s3/file\"},{\"type\":\"size\",\"url\":\"" + "http://127.0.0.1:" + x.getLocalAddress().getPort() + "/s3/size\"}]}" : null;
+            else if (path.startsWith("/s3/")) reply = x.getRequestHeaders().containsKey("Authorization") ? null : "";
             else reply = null;
             byte[] b = (reply == null ? "{}" : reply).getBytes(StandardCharsets.UTF_8); x.sendResponseHeaders(reply == null ? 401 : 200, b.length); x.getResponseBody().write(b); x.close();
         });
@@ -68,11 +71,16 @@ public final class LegacyControlTest {
         boolean rejected = false; try { BambuCloud.devices("Europe", "wrong", t); } catch (java.io.IOException e) { rejected = e.getMessage().contains("войдите снова"); }
         check(rejected, "an expired token asks to sign in again");
         check(bodies.stream().noneMatch(b -> b.contains("\"password\":\"\"")), "an empty password is never sent");
-        s.stop(0); BambuCloud.testBase = null;
+        BambuCloud.Login renewed = BambuCloud.refresh("Europe", done.refresh, t);
+        check("tok2".equals(renewed.token) && "ref2".equals(renewed.refresh) && renewed.expiresAt > System.currentTimeMillis() + 80L * 24 * 3600 * 1000, "the refresh token renews the access token and its expiry");
+        check(new JSONObject(renewed.session()).getString("refresh_token").equals("ref2"), "the renewed session keeps the refresh token");
         java.util.Map<String, String> ex = new java.util.LinkedHashMap<>(); ex.put("uid", "4242"); ex.put("region", "Europe");
         PrinterEndpoint cloud = new PrinterEndpoint(PrinterEndpoint.Type.BAMBU_CLOUD, "https://api.bambulab.com", PrinterEndpoint.Auth.BEARER, "01P00A123456789", "tok", "", ex);
-        boolean noUpload = false; try { new PrinterHostClient(cloud).upload(new java.io.File("build.gradle"), "a.gcode", t); } catch (java.io.IOException e) { noUpload = e.getMessage().contains("LAN"); }
-        check(noUpload || !new java.io.File("build.gradle").isFile(), "cloud upload is refused with a pointer to LAN");
+        java.io.File gcode = java.io.File.createTempFile("kepler-cloud", ".gcode"); java.nio.file.Files.write(gcode.toPath(), "G28\nG1 X10\n".getBytes(StandardCharsets.UTF_8));
+        PrinterHostClient.UploadResult up = new PrinterHostClient(cloud).upload(gcode, "a.gcode", t); gcode.delete();
+        check(bodies.stream().anyMatch(b -> b.equals("/s3/file G28\nG1 X10\n")) && bodies.stream().anyMatch(b -> b.equals("/s3/size 11")), "cloud upload PUTs the file and its size to the signed URLs");
+        check(up.remotePath == null && up.message.contains("Handy"), "cloud upload starts no print and says how to start it");
+        s.stop(0); BambuCloud.testBase = null;
         check("us.mqtt.bambulab.com".equals(BambuCloud.mqttHost("Europe")) && "cn.mqtt.bambulab.com".equals(BambuCloud.mqttHost("China")), "broker follows the account region");
     }
 
@@ -165,10 +173,47 @@ public final class LegacyControlTest {
             JSONObject req = new JSONObject(got.get(0));
             check("sdcp/request/ABC123def".equals(req.getString("Topic")) && req.getJSONObject("Data").getInt("Cmd") == 0 && "ABC123def".equals(req.getJSONObject("Data").getString("MainboardID")), "SDCP status request uses the discovered mainboard");
         }
-        boolean cc2 = false;
-        try { java.util.Map<String, String> x = new java.util.LinkedHashMap<>(); x.put("model", "Elegoo Centauri Carbon 2");
-            new PrinterHostClient(new PrinterEndpoint(PrinterEndpoint.Type.ELEGOOLINK, "http://127.0.0.1", PrinterEndpoint.Auth.NONE, "", "", "", x)).job(PrinterHostClient.Job.PAUSE, new NetworkHttp.Cancellation()); }
-        catch (java.io.IOException expected) { cc2 = expected.getMessage().contains("Carbon 2"); }
-        check(cc2, "Centauri Carbon 2 control is refused, not guessed");
+        cc2();
+    }
+
+    private static int u16(byte[] b, int at) { return ((b[at] & 255) << 8) | (b[at + 1] & 255); }
+    // ---- Centauri Carbon 2: printer-side MQTT broker with registration and JSON-RPC ----
+    private static void pub(OutputStream out, String topic, String payload) throws java.io.IOException {
+        ByteArrayOutputStream b = new ByteArrayOutputStream(); byte[] t = topic.getBytes(StandardCharsets.UTF_8); b.write(t.length >> 8); b.write(t.length & 255); b.write(t); b.write(payload.getBytes(StandardCharsets.UTF_8));
+        byte[] body = b.toByteArray(); ByteArrayOutputStream f = new ByteArrayOutputStream(); f.write(0x30); int n = body.length; do { int d = n % 128; n /= 128; if (n > 0) d |= 128; f.write(d); } while (n > 0); f.write(body); out.write(f.toByteArray()); out.flush();
+    }
+    private static byte[] mqttPacket(DataInputStream in, int[] header) throws java.io.IOException {
+        header[0] = in.readUnsignedByte(); int len = 0, mult = 1, d; do { d = in.readUnsignedByte(); len += (d & 127) * mult; mult *= 128; } while ((d & 128) != 0);
+        byte[] body = new byte[len]; in.readFully(body); return body;
+    }
+    private static void cc2() throws Exception {
+        List<String> methods = new CopyOnWriteArrayList<>(); List<String> creds = new CopyOnWriteArrayList<>();
+        try (DatagramSocket udp = new DatagramSocket(0, InetAddress.getLoopbackAddress()); ServerSocket broker = new ServerSocket(0, 4, InetAddress.getLoopbackAddress())) {
+            ElegooCc2.discoveryPort = udp.getLocalPort(); ElegooCc2.mqttPort = broker.getLocalPort();
+            Thread discovery = new Thread(() -> { try { for (int k = 0; k < 2; k++) { byte[] b = new byte[256]; DatagramPacket p = new DatagramPacket(b, b.length); udp.receive(p);
+                if (new JSONObject(new String(b, 0, p.getLength(), StandardCharsets.UTF_8)).optInt("method") == 7000) { byte[] r = "{\"id\":0,\"result\":{\"sn\":\"CC2SN0001\",\"token_status\":0}}".getBytes(StandardCharsets.UTF_8); udp.send(new DatagramPacket(r, r.length, p.getSocketAddress())); } } } catch (Exception ignored) { } });
+            Thread printer = new Thread(() -> { try { for (int k = 0; k < 2; k++) { try (Socket s = broker.accept()) {
+                DataInputStream in = new DataInputStream(s.getInputStream()); OutputStream out = s.getOutputStream(); int[] h = new int[1];
+                byte[] connect = mqttPacket(in, h); int p = 10; int idLen = u16(connect, p); p += 2 + idLen; int ul = u16(connect, p); String user = new String(connect, p + 2, ul, StandardCharsets.UTF_8); p += 2 + ul; int pl = u16(connect, p); creds.add(user + ":" + new String(connect, p + 2, pl, StandardCharsets.UTF_8));
+                out.write(new byte[]{0x20, 2, 0, 0}); out.flush(); String clientId = null;
+                while (true) {
+                    byte[] body = mqttPacket(in, h); int type = h[0] >> 4; if (type == 14) break; if (type != 3) continue;
+                    int tl = u16(body, 0); String topic = new String(body, 2, tl, StandardCharsets.UTF_8); JSONObject msg = new JSONObject(new String(body, 2 + tl, body.length - 2 - tl, StandardCharsets.UTF_8));
+                    if (topic.equals("elegoo/CC2SN0001/api_register")) { clientId = msg.getString("client_id"); pub(out, "elegoo/CC2SN0001/" + msg.getString("request_id") + "/register_response", "{\"client_id\":\"" + clientId + "\",\"error\":\"ok\"}"); }
+                    else if (topic.equals("elegoo/CC2SN0001/" + clientId + "/api_request")) { int method = msg.getInt("method"); methods.add(method + ""); String result = method == 1002
+                        ? "{\"error_code\":0,\"extruder\":{\"temperature\":215.5,\"target\":220},\"heater_bed\":{\"temperature\":60,\"target\":60},\"ztemperature_sensor\":{\"temperature\":33},\"print_status\":{\"state\":\"printing\",\"progress\":40,\"remaining_time_sec\":1200,\"filename\":\"/local/cube.gcode\"}}" : "{\"error_code\":0}";
+                        pub(out, "elegoo/CC2SN0001/" + clientId + "/api_response", "{\"id\":" + msg.getInt("id") + ",\"method\":" + method + ",\"result\":" + result + "}"); }
+                } } } } catch (Exception ignored) { } });
+            discovery.start(); printer.start();
+            java.util.Map<String, String> x = new java.util.LinkedHashMap<>(); x.put("model", "Elegoo Centauri Carbon 2");
+            PrinterHostClient client = new PrinterHostClient(new PrinterEndpoint(PrinterEndpoint.Type.ELEGOOLINK, "http://127.0.0.1", PrinterEndpoint.Auth.NONE, "", "", "", x));
+            PrinterHostClient.Status st = client.status(new NetworkHttp.Cancellation()); JSONObject k = new JSONObject(st.rawJson).getJSONObject("kepler");
+            check("printing".equals(st.state) && k.getJSONArray("nozzle").getDouble(0) == 215.5 && k.getJSONArray("chamber").getDouble(0) == 33, "CC2 status: state and temperatures");
+            check(Math.abs(k.getDouble("progress") - 0.4) < 1e-9 && k.getLong("seconds_left") == 1200 && "cube.gcode".equals(k.getString("file")), "CC2 status: progress, time and file");
+            client.job(PrinterHostClient.Job.PAUSE, new NetworkHttp.Cancellation());
+            printer.join(5000); discovery.join(2000);
+            check(methods.equals(java.util.Arrays.asList("1002", "1021")), "CC2 uses method 1002 for status and 1021 for pause, one request each");
+            check(creds.size() == 2 && creds.get(0).equals("elegoo:123456"), "CC2 broker login is elegoo with the default access code");
+        }
     }
 }

@@ -4,4 +4,8 @@
         <item quantity="one">%d layer</item>
         <item quantity="other">%d layers</item>
     </plurals>
+    <plurals name="kv3_profiles_count">
+        <item quantity="one">%d profile</item>
+        <item quantity="other">%d profiles</item>
+    </plurals>
 </resources>

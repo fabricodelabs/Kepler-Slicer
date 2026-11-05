@@ -26,8 +26,22 @@ final class BambuCloud {
     static String mqttHost(String region) { return china(region) ? "cn.mqtt.bambulab.com" : "us.mqtt.bambulab.com"; }
 
     static final class Login {
-        final String token, refresh, uid; final boolean needsCode, needsTfa;
-        Login(String token, String refresh, String uid, boolean needsCode, boolean needsTfa) { this.token = token; this.refresh = refresh; this.uid = uid; this.needsCode = needsCode; this.needsTfa = needsTfa; }
+        final String token, refresh, uid; final boolean needsCode, needsTfa; final long expiresAt;
+        Login(String token, String refresh, String uid, boolean needsCode, boolean needsTfa) { this(token, refresh, uid, needsCode, needsTfa, 0); }
+        Login(String token, String refresh, String uid, boolean needsCode, boolean needsTfa, long expiresAt) { this.token = token; this.refresh = refresh; this.uid = uid; this.needsCode = needsCode; this.needsTfa = needsTfa; this.expiresAt = expiresAt; }
+        /** Encrypted connection session: access and refresh token with the expiry time. */
+        String session() throws JSONException { return new JSONObject().put("access_token", token).put("refresh_token", refresh == null ? "" : refresh).put("expires_at", expiresAt).toString(); }
+    }
+    private static long expiry(JSONObject r) { long s = r.optLong("expiresIn", 0); return s > 0 ? System.currentTimeMillis() + s * 1000 : System.currentTimeMillis() + 30L * 24 * 3600 * 1000; }
+
+    /** New access token from the refresh token (sign-in again if this fails). */
+    static Login refresh(String region, String refreshToken, NetworkHttp.Cancellation c) throws IOException {
+        if (refreshToken == null || refreshToken.isEmpty()) throw new IOException(L.t("Bambu: войдите в облако заново."));
+        try {
+            JSONObject r = post(region, "v1/user-service/user/refreshtoken", new JSONObject().put("refreshToken", refreshToken), null, c);
+            String token = r.optString("accessToken", ""); if (token.isEmpty()) throw new IOException(L.t("Bambu: войдите в облако заново."));
+            String next = r.optString("refreshToken", ""); return new Login(token, next.isEmpty() ? refreshToken : next, null, false, false, expiry(r));
+        } catch (JSONException e) { throw new IOException(L.t("Bambu вернул некорректный ответ."), e); }
     }
     static final class Device {
         final String serial, name, model; final boolean online;
@@ -36,10 +50,10 @@ final class BambuCloud {
 
     /** Password sign-in, or code sign-in when {@code code} is not empty. A verification code is e-mailed when Bambu asks for one. */
     static Login signIn(String region, String email, String password, String code, NetworkHttp.Cancellation c) throws IOException {
-        if (email == null || !email.matches("[^@\\s]{1,128}@[^@\\s]{1,128}")) throw new IOException("Bambu: введите адрес почты аккаунта.");
+        if (email == null || !email.matches("[^@\\s]{1,128}@[^@\\s]{1,128}")) throw new IOException(L.t("Bambu: введите адрес почты аккаунта."));
         try {
             JSONObject body = new JSONObject().put("account", email.trim());
-            if (code != null && !code.trim().isEmpty()) { if (!code.trim().matches("[0-9]{4,8}")) throw new IOException("Bambu: код из письма состоит из цифр."); body.put("code", code.trim()); }
+            if (code != null && !code.trim().isEmpty()) { if (!code.trim().matches("[0-9]{4,8}")) throw new IOException(L.t("Bambu: код из письма состоит из цифр.")); body.put("code", code.trim()); }
             else if (password == null || password.isEmpty()) { post(region, "v1/user-service/user/sendemail/code", new JSONObject().put("email", email.trim()).put("type", "codeLogin"), null, c); return new Login(null, null, null, true, false); }
             else body.put("password", password);
             JSONObject r = post(region, "v1/user-service/user/login", body, null, c);
@@ -48,17 +62,17 @@ final class BambuCloud {
                 String type = r.optString("loginType", "");
                 if ("verifyCode".equals(type)) { post(region, "v1/user-service/user/sendemail/code", new JSONObject().put("email", email.trim()).put("type", "codeLogin"), null, c); return new Login(null, null, null, true, false); }
                 if ("tfa".equals(type)) return new Login(null, null, null, false, true);
-                throw new IOException("Bambu не выдал токен входа.");
+                throw new IOException(L.t("Bambu не выдал токен входа."));
             }
             String uid = profileUid(region, token, c);
-            return new Login(token, r.optString("refreshToken", ""), uid, false, false);
-        } catch (JSONException e) { throw new IOException("Bambu вернул некорректный ответ.", e); }
+            return new Login(token, r.optString("refreshToken", ""), uid, false, false, expiry(r));
+        } catch (JSONException e) { throw new IOException(L.t("Bambu вернул некорректный ответ."), e); }
     }
 
     static String profileUid(String region, String token, NetworkHttp.Cancellation c) throws IOException {
         JSONObject p = get(region, "v1/user-service/my/profile", token, c);
         String uid = p.has("uid") ? String.valueOf(p.opt("uid")) : "";
-        if (!uid.matches("[0-9]{1,20}")) throw new IOException("Bambu не сообщил идентификатор аккаунта.");
+        if (!uid.matches("[0-9]{1,20}")) throw new IOException(L.t("Bambu не сообщил идентификатор аккаунта."));
         return uid;
     }
 
@@ -73,6 +87,26 @@ final class BambuCloud {
         return out;
     }
 
+    /**
+     * Puts a file into the account's cloud storage: the API returns signed upload URLs, the file is PUT to them
+     * unchanged (no extra headers, they would break the signature). No print is started.
+     */
+    static String upload(String region, String token, java.io.File file, String name, NetworkHttp.Cancellation c) throws IOException {
+        if (name == null || !name.matches("[^/\\\\\\p{Cntrl}]{1,200}")) throw new IOException(L.t("Недопустимое имя файла."));
+        long size = file.length();
+        NetworkHttp.Response r = NetworkHttp.request("GET", URI.create(apiBase(region) + "/v1/iot-service/api/user/upload?filename=" + java.net.URLEncoder.encode(name, "UTF-8").replace("+", "%20") + "&size=" + size), headers(token), null, c);
+        JSONObject info = reply(r); String fileUrl = info.optString("upload_url", ""), sizeUrl = "";
+        JSONArray urls = info.optJSONArray("urls");
+        for (int i = 0; urls != null && i < urls.length(); i++) { JSONObject u = urls.optJSONObject(i); if (u == null) continue; String type = u.optString("type"), url = u.optString("url");
+            if ("filename".equals(type) && fileUrl.isEmpty()) fileUrl = url; else if ("size".equals(type)) sizeUrl = url; }
+        if (fileUrl.isEmpty() && urls != null && urls.optJSONObject(0) != null) fileUrl = urls.optJSONObject(0).optString("url", "");
+        if (!fileUrl.startsWith("https://") && !(testBase != null && fileUrl.startsWith(testBase))) throw new IOException(L.t("Bambu не выдал адрес загрузки."));
+        NetworkHttp.Response put = NetworkHttp.request("PUT", URI.create(fileUrl), new LinkedHashMap<>(), NetworkHttp.file(file), c, 64 * 1024);
+        if (put.status / 100 != 2) throw new IOException(L.t("Облако Bambu не приняло файл (HTTP ") + put.status + ").");
+        if (sizeUrl.startsWith("https://") || (testBase != null && sizeUrl.startsWith(testBase))) { try { NetworkHttp.request("PUT", URI.create(sizeUrl), new LinkedHashMap<>(), NetworkHttp.bytes(String.valueOf(size).getBytes(StandardCharsets.UTF_8)), c, 64 * 1024); } catch (IOException ignored) { } }
+        return name;
+    }
+
     private static Map<String, String> headers(String token) {
         Map<String, String> h = new LinkedHashMap<>(); h.put("Content-Type", "application/json"); h.put("User-Agent", "KeplerSlicer");
         if (token != null) h.put("Authorization", "Bearer " + token); return h;
@@ -84,8 +118,8 @@ final class BambuCloud {
         return reply(NetworkHttp.request("GET", URI.create(apiBase(region) + "/" + path), headers(token), null, c));
     }
     private static JSONObject reply(NetworkHttp.Response r) throws IOException {
-        if (r.status == 401 || r.status == 403) throw new IOException("Bambu отклонил вход: проверьте почту, пароль или код и войдите снова.");
-        if (r.status / 100 != 2) throw new IOException("Bambu: ошибка сервера (HTTP " + r.status + ").");
-        try { return new JSONObject(r.text()); } catch (JSONException e) { throw new IOException("Bambu вернул некорректный ответ.", e); }
+        if (r.status == 401 || r.status == 403) throw new IOException(L.t("Bambu отклонил вход: проверьте почту, пароль или код и войдите снова."));
+        if (r.status / 100 != 2) throw new IOException(L.t("Bambu: ошибка сервера (HTTP ") + r.status + ").");
+        try { return new JSONObject(r.text()); } catch (JSONException e) { throw new IOException(L.t("Bambu вернул некорректный ответ."), e); }
     }
 }

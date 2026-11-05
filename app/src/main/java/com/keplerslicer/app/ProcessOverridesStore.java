@@ -32,7 +32,7 @@ final class ProcessOverridesStore {
             PrinterProfileCatalog.Profile p = PrinterProfileCatalog.loadSelection(context);
             PrintProfileCatalog.Profile process = PrintProfileCatalog.loadSelection(context, PrintProfileCatalog.PROCESS);
             PrintProfileCatalog.Profile filament = PrintProfileCatalog.loadSelection(context, PrintProfileCatalog.FILAMENT);
-            if (p == null || p.imported || process == null || filament == null) throw new IOException("Сначала выберите системные профили принтера, процесса и материала.");
+            if (p == null || p.imported || process == null || filament == null) throw new IOException(L.t("Сначала выберите системные профили принтера, процесса и материала."));
             SettingsState.Snapshot profileSettings=SettingsState.capture(context);
             requireMatchingOverlay(profileSettings,"printer",p.vendor,p.name,p.path);
             requireMatchingOverlay(profileSettings,"process",process.vendor,process.name,process.path);
@@ -48,14 +48,14 @@ final class ProcessOverridesStore {
         private static void requireMatchingOverlay(SettingsState.Snapshot snapshot,String kind,String vendor,String name,String path)throws IOException {
             SettingsState.Overlay overlay=snapshot.overlays.get(kind);
             if(overlay==null||!name.equals(overlay.name)||!path.equals(overlay.path)||!vendor.equals(SettingsState.requireOverlayPath(kind,overlay.path)))
-                throw new IOException("Профили изменились при подготовке снимка. Повторите операцию.");
+                throw new IOException(L.t("Профили изменились при подготовке снимка. Повторите операцию."));
         }
         private static String hash(String[] fields)throws IOException {
             try {
                 MessageDigest digest=MessageDigest.getInstance("SHA-256");
-                for(String field:fields){if(field==null||field.isEmpty())throw new IOException("Выбран неполный профиль.");byte[] bytes=field.getBytes(StandardCharsets.UTF_8);int n=bytes.length;digest.update((byte)(n>>>24));digest.update((byte)(n>>>16));digest.update((byte)(n>>>8));digest.update((byte)n);digest.update(bytes);}
+                for(String field:fields){if(field==null||field.isEmpty())throw new IOException(L.t("Выбран неполный профиль."));byte[] bytes=field.getBytes(StandardCharsets.UTF_8);int n=bytes.length;digest.update((byte)(n>>>24));digest.update((byte)(n>>>16));digest.update((byte)(n>>>8));digest.update((byte)n);digest.update(bytes);}
                 StringBuilder result=new StringBuilder(64);for(byte b:digest.digest())result.append(String.format(java.util.Locale.ROOT,"%02x",b&255));return result.toString();
-            }catch(NoSuchAlgorithmException e){throw new IOException("Не удалось проверить выбранные профили.",e);}
+            }catch(NoSuchAlgorithmException e){throw new IOException(L.t("Не удалось проверить выбранные профили."),e);}
 
         }
     }
@@ -63,7 +63,7 @@ final class ProcessOverridesStore {
     /** Snapshot identity and overrides together; call under the same lock as selection writers. */
     static String load(Context context, Identity expected) throws IOException {
         synchronized (LOCK) {
-            if (!Identity.capture(context).fingerprint.equals(expected.fingerprint)) throw new IOException("Выбор профилей изменился. Откройте параметры снова.");
+            if (!Identity.capture(context).fingerprint.equals(expected.fingerprint)) throw new IOException(L.t("Выбор профилей изменился. Откройте параметры снова."));
             SharedPreferences p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             String id = p.getString(ID, "");
             boolean same=expected.legacyFingerprint.equals(id);
@@ -71,7 +71,7 @@ final class ProcessOverridesStore {
             if (!same&&!migrate) return "{}";
             String stored=validateStoredJson(p.getString(JSON, "{}"));
             if(migrate&&!p.edit().putString(ID,expected.legacyFingerprint).commit()){
-                p.edit().putString(ID,id).apply();throw new IOException("Не удалось перенести сохранённые параметры процесса.");
+                p.edit().putString(ID,id).apply();throw new IOException(L.t("Не удалось перенести сохранённые параметры процесса."));
             }
             return stored;
         }
@@ -95,18 +95,18 @@ final class ProcessOverridesStore {
                 if(modelKey.startsWith(object.modelFileName+"\n")&&modelKey.endsWith("\n"+object.plateIndex)&&modelKey.equals(CurrentModelStore.selectionKey(context)))
                     return ResultFingerprint.of(modelKey,snapshot.identity.fingerprint,snapshot.overrides);
             }
-            throw new IOException("Модель или стол изменились при проверке результата. Повторите операцию.");
+            throw new IOException(L.t("Модель или стол изменились при проверке результата. Повторите операцию."));
         }
     }
     static void save(Context context, Identity expected, String overrides) throws IOException {
         synchronized (LOCK) {
-            if (!Identity.capture(context).fingerprint.equals(expected.fingerprint)) throw new IOException("Выбор профилей изменился. Откройте параметры снова.");
+            if (!Identity.capture(context).fingerprint.equals(expected.fingerprint)) throw new IOException(L.t("Выбор профилей изменился. Откройте параметры снова."));
             String validated = validateStoredJson(overrides);
             SharedPreferences p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             String oldId = p.getString(ID, ""), oldJson = p.getString(JSON, "{}");
             if (!p.edit().putString(ID, expected.legacyFingerprint).putString(JSON, validated).commit()) {
                 p.edit().putString(ID, oldId).putString(JSON, oldJson).apply();
-                throw new IOException("Не удалось сохранить параметры процесса.");
+                throw new IOException(L.t("Не удалось сохранить параметры процесса."));
             }
         }
     }
@@ -123,13 +123,13 @@ final class ProcessOverridesStore {
     static void changeSelection(Context context, boolean clearLegacy, SelectionWrite operation) throws IOException {
         synchronized (LOCK) {
             if(clearLegacy){SharedPreferences p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE);
-                if(!p.edit().clear().commit())throw new IOException("Не удалось сбросить параметры перед сменой профиля.");}
+                if(!p.edit().clear().commit())throw new IOException(L.t("Не удалось сбросить параметры перед сменой профиля."));}
             operation.commit();
         }
     }
     private static String validateStoredJson(String text) throws IOException {
-        if (text == null || text.length() > 65536) throw new IOException("Параметры слишком велики.");
+        if (text == null || text.length() > 65536) throw new IOException(L.t("Параметры слишком велики."));
         try { return new JSONObject(text).toString(); }
-        catch (JSONException e) { throw new IOException("Не удалось прочитать параметры процесса.", e); }
+        catch (JSONException e) { throw new IOException(L.t("Не удалось прочитать параметры процесса."), e); }
     }
 }

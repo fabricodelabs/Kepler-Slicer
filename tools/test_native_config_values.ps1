@@ -21,6 +21,7 @@ $nativeSources=@(
 )
 $nativeSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
 $nativeSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\native_config_stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
+$nativeSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $nativeClasses @nativeSources
 if($LASTEXITCODE -ne 0){throw 'Native config value host tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') -cp ($nativeClasses+';'+$JsonJar) com.keplerslicer.app.NativeTypedConfigSnapshotTest (Join-Path $nativeProjectRoot 'app\src\main\assets') (Join-Path $nativeTestRoot 'parser-data')

@@ -22,7 +22,7 @@ public final class ShareProvider extends ContentProvider {
     }
     static File directory(Context context) throws IOException {
         File dir = new File(context.getCacheDir(), "share").getCanonicalFile();
-        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Не удалось подготовить файл для отправки.");
+        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException(L.t("Не удалось подготовить файл для отправки."));
         return dir;
     }
     private File resolve(Uri uri) throws FileNotFoundException {

@@ -29,6 +29,7 @@
 #include "native_preferences.hpp"
 #include "step_import.hpp"
 #include "libslic3r/Format/3mf.hpp"
+#include "libslic3r/TriangleSelector.hpp"
 #include <nlohmann/json.hpp>
 
 // Experimental proof of the upstream API, not integrated into the app.
@@ -149,7 +150,7 @@ std::string slice_model(const std::string &model_file, const std::string &output
 {
     const auto extension=std::filesystem::path(model_file).extension().string();
     if(extension==".stl") validate_stl_before_import(model_file);
-    Slic3r::Model model = prepared ? std::move(*prepared) : extension==".stl" ? Slic3r::Model::read_from_file(model_file) : kepler::load_plate_model(model_file,plate);
+    Slic3r::Model model = prepared ? std::move(*prepared) : extension==".stl" ? Slic3r::Model::read_from_file(model_file) : kepler::load_plate_model(model_file,plate,&config);
     if(model.objects.empty()) throw std::runtime_error("Model has no objects");
     if (extension==".stl" && (model.objects.size() != 1 || model.objects.front()->instances.size() != 1))
         throw std::runtime_error("Only one STL object and one instance are supported");
@@ -187,7 +188,7 @@ std::string slice_model(const std::string &model_file, const std::string &output
         const kepler::ModelTransform unchanged{0,0,0,1,1,1,0,0};
         kepler::place_step_geometry(model,volume,transform?*transform:unchanged);
     } else if(extension==".3mf") {
-        if(!identity) throw std::runtime_error("Editing a 3MF project transform is not yet supported; the original layout is preserved");
+        if(!identity) kepler::apply_group_transform(model,*transform);
     } else if(extension==".obj" && (model.objects.size()!=1 || model.objects.front()->instances.size()!=1)) {
         if(!identity) throw std::runtime_error("Transforming a multi-object OBJ is not yet supported");
         auto box=model.bounding_box_exact(); if(!box.defined || !box.min.allFinite() || !box.max.allFinite()) throw std::runtime_error("Invalid model bounds");
@@ -727,7 +728,7 @@ Slic3r::Model load_editable_model(const std::string &path,const kepler::ModelTra
                 extruder_areas?extruder_areas->values:empty_areas,extruder_heights?extruder_heights->values:empty_heights);
             kepler::apply_model_transform(model,volume,t);
         }
-    } else if(!identity) throw std::invalid_argument("Reset Move/Rotate/Scale before editing a model with several objects");
+    } else if(!identity) kepler::apply_group_transform(model,t);
     return model;
 }
 }
@@ -858,6 +859,26 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_assignMaterials(JNIEnv *env,jcla
                     if(!target)throw std::invalid_argument("Part index is outside the object");
                     target->config.set_key_value("extruder",new Slic3r::ConfigOptionInt(slot));
                 }
+            }
+        }
+        // Brush strokes: whole source triangles set to a state (support/seam: 0 none, 1 enforce, 2 block; colour: slot).
+        if(request.contains("paint")){
+            const auto &paint=request.at("paint");if(!paint.is_array()||paint.size()>4096)throw std::invalid_argument("paint must be an array");
+            for(const auto &item:paint){
+                const int o=item.at("object").get<int>(),p=item.value("part",0);const std::string kind=item.at("kind").get<std::string>();
+                if(o<0||o>=static_cast<int>(model.objects.size()))throw std::invalid_argument("Object index is outside the model");
+                int seen=0;Slic3r::ModelVolume *volume=nullptr;
+                for(auto *v:model.objects[o]->volumes)if(v->is_model_part()){if(seen==p){volume=v;break;}++seen;}
+                if(!volume)throw std::invalid_argument("Part index is outside the object");
+                Slic3r::FacetsAnnotation &facets=kind=="support"?volume->supported_facets:kind=="seam"?volume->seam_facets:kind=="colour"?volume->mmu_segmentation_facets:
+                    throw std::invalid_argument("Unknown paint kind");
+                if(item.value("clear",false)){facets.reset();continue;}
+                const int state=item.at("state").get<int>(),top=kind=="colour"?slots:2;
+                if(state<0||state>top)throw std::invalid_argument("Paint state is outside the allowed range");
+                Slic3r::TriangleSelector selector(volume->mesh());if(!facets.empty())selector.deserialize(facets.get_data(),false);
+                const int n=static_cast<int>(volume->mesh().its.indices.size());
+                for(const auto &t:item.at("triangles")){const int index=t.get<int>();if(index<0||index>=n)throw std::invalid_argument("Painted triangle is outside the part");selector.set_facet(index,static_cast<Slic3r::EnforcerBlockerType>(state));}
+                facets.set(selector);
             }
         }
         // Nothing may point past the slot count (a source that had more filaments).

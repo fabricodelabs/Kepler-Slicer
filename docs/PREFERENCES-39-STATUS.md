@@ -34,17 +34,17 @@ All 39 entries remain visible in their desktop sections and order. A missing cap
 | 26 | Stable updates only | Real stable/prerelease selection for official upstream release checks. No automatic desktop binary installation. |
 | 27 | Automatic profile sync | Explicit opt-in, account-scoped pull/merge/push through the actual user preset repository; conflict handling and tombstones. Real cloud account verification remains outstanding. |
 | 28 | Built-in profile updates | Blocked: compatible profile-pack validation/catalog rebuild/rollback is absent. Release checking is separate. |
-| 29 | Filament sync mode | Blocked: Bambu/AMS device state and mappings unavailable. |
-| 30 | Enable network plug-in | Blocked: no compatible Android Bambu provider. Java HTTP is not that plug-in. |
-| 31 | Network plug-in version | Blocked: no provider distributions/ABI lifecycle. |
+| 29 | Filament sync mode | Colour only, or colour and material: AMS sync also picks a compatible system filament per tray (Bambu LAN/cloud). |
+| 30 | Enable network plug-in | Switches the built-in Bambu Lab networking (LAN and cloud) on or off. |
+| 31 | Network plug-in version | Shows the built-in implementation (MQTT/TLS, FTPS, account API); no plug-in is downloaded. |
 | 32 | Associate: STL | Android VIEW/SEND route and format-validated file-picker test. Android owns default-handler selection. |
 | 33 | Associate: 3MF | Same Android association route for 3MF, preserving native import guards. |
 | 34 | Associate: OBJ | Same Android association route for OBJ. |
 | 35 | Developer mode | Reveals application diagnostics/gallery and filters schema entries explicitly marked comDevelop. No claim of additional native debug APIs. |
-| 36 | Skip AMS check | Blocked: Bambu provider and actual AMS compatibility path absent. |
-| 37 | Allow abnormal storage | Blocked: no provider storage-state report/upload gate. |
+| 36 | Skip AMS check | Off: a Bambu start is refused when a used material slot is empty or holds another material type. |
+| 37 | Allow abnormal storage | Off: a Bambu upload is refused when the printer reports no usable SD card. |
 | 38 | Log level | Structured Java event filtering plus the real upstream native Boost severity setter/readback. Requested Java and actual native levels are distinct: the pinned prerelease engine may enforce a more verbose minimum. No automatic diagnostic upload is implied. |
-| 39 | Reload plug-in | Blocked: Bambu provider lifecycle absent. |
+| 39 | Reload plug-in | Restarts Bambu connections and clears the saved AMS state. |
 
 There are **8 entirely blocked entries**: **#23, #28, #29, #30, #31, #36, #37 and #39**. The other 31 entries have a consumer or platform adaptation with the boundaries above; this is not “31 exact desktop features complete”. In particular, native project settings, STEP, material editing and cloning remain partial contracts rather than a complete Workspace/File port.
 

@@ -38,11 +38,11 @@ public final class PrintProfileCatalog {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] bytes = new byte[8192]; int n, size = 0;
             while ((n = in.read(bytes)) != -1) {
-                size += n; if (size > 8 * 1024 * 1024) throw new IOException("Каталог слишком большой");
+                size += n; if (size > 8 * 1024 * 1024) throw new IOException(L.t("Каталог слишком большой"));
                 out.write(bytes, 0, n);
             }
             JSONObject root = new JSONObject(new String(out.toByteArray(), StandardCharsets.UTF_8));
-            if (!PrinterProfileCatalog.UPSTREAM_REVISION.equals(root.optString("revision"))) throw new IOException("Версии профилей не совпадают");
+            if (!PrinterProfileCatalog.UPSTREAM_REVISION.equals(root.optString("revision"))) throw new IOException(L.t("Версии профилей не совпадают"));
             JSONArray rows = root.getJSONArray("profiles"); List<Profile> result = new ArrayList<>();
             for (int i = 0; i < rows.length(); i++) {
                 JSONObject row = rows.getJSONObject(i);
@@ -52,12 +52,12 @@ public final class PrintProfileCatalog {
                 result.add(new Profile(kind, row.getString("vendor"), row.getString("name"), row.getString("path"), printers));
             }
             return Collections.unmodifiableList(result);
-        } catch (JSONException e) { throw new IOException("Не удалось прочитать профили", e); }
+        } catch (JSONException e) { throw new IOException(L.t("Не удалось прочитать профили"), e); }
     }
 
     /** Bind selection to exact printer profile so a changed nozzle cannot silently reuse stale settings. */
     public static void saveSelection(Context context, Profile profile, PrinterProfileCatalog.Profile printer) throws IOException {
-        if (profile == null || printer == null || printer.imported || printer.path.isEmpty()) throw new IOException("Сначала выберите системный профиль принтера");
+        if (profile == null || printer == null || printer.imported || printer.path.isEmpty()) throw new IOException(L.t("Сначала выберите системный профиль принтера"));
         requireKind(profile.kind);
         SharedPreferences prefs=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE);
         String[] keys={profile.kind+"_vendor",profile.kind+"_name",profile.kind+"_path",profile.kind+"_printer"};
@@ -65,8 +65,8 @@ public final class PrintProfileCatalog {
         SharedPreferences.Editor edit=prefs.edit();
         edit.putString(keys[0],profile.vendor).putString(keys[1],profile.name).putString(keys[2],profile.path).putString(keys[3],printer.path);
         if(!edit.commit()){
-            try{SettingsState.restoreKeys(prefs,before,keys);}catch(IOException restore){IOException failure=new IOException("Не удалось сохранить профиль; восстановление прежнего выбора не подтверждено");failure.addSuppressed(restore);throw failure;}
-            throw new IOException("Не удалось сохранить профиль");
+            try{SettingsState.restoreKeys(prefs,before,keys);}catch(IOException restore){IOException failure=new IOException(L.t("Не удалось сохранить профиль; восстановление прежнего выбора не подтверждено"));failure.addSuppressed(restore);throw failure;}
+            throw new IOException(L.t("Не удалось сохранить профиль"));
         }
     }
 

@@ -10,7 +10,7 @@ final class ResultFingerprint {
         try {
             MessageDigest digest=MessageDigest.getInstance("SHA-256");
             for(String value:new String[]{"kepler-result-v1",modelKey,profileFingerprint,overrides}) {
-                if(value==null)throw new IllegalArgumentException("Не указан снимок задания.");
+                if(value==null)throw new IllegalArgumentException(L.t("Не указан снимок задания."));
                 byte[] bytes=value.getBytes(StandardCharsets.UTF_8);digest.update(ByteBuffer.allocate(4).putInt(bytes.length).array());digest.update(bytes);
             }
             StringBuilder result=new StringBuilder();for(byte b:digest.digest())result.append(String.format(java.util.Locale.ROOT,"%02x",b&255));return result.toString();

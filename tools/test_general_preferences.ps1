@@ -11,6 +11,7 @@ $generalJava=Join-Path $generalRoot 'app\src\main\java\com\keplerslicer\app'
 $generalSources=@('GeneralBackupArchive.java','GeneralProjectPolicy.java','ProjectMaterialValidation.java','ModelTransform.java') | ForEach-Object {Join-Path $generalJava $_}
 $generalSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\general_stubs') -Recurse -Filter '*.java' | ForEach-Object FullName
 $generalSources+=Join-Path $PSScriptRoot 'tests\GeneralPreferencesTest.java'
+$generalSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $generalClasses @generalSources
 if($LASTEXITCODE -ne 0){throw 'General preference host tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') -cp ($generalClasses+';'+$JsonJar) com.keplerslicer.app.GeneralPreferencesTest (Join-Path $generalTest 'data')
@@ -21,6 +22,7 @@ $restoreSources=@('CurrentModelStore.java','ProjectMaterialValidation.java','Mod
 $restoreSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Recurse -Filter '*.java' | Where-Object {$_.FullName -notmatch '[\\/]net[\\/]Uri.java$'} | ForEach-Object FullName
 $restoreSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\model_restore_stubs') -Recurse -Filter '*.java' | ForEach-Object FullName
 $restoreSources+=Join-Path $PSScriptRoot 'tests\ModelRestoreTest.java'
+$restoreSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $restoreClasses @restoreSources
 if($LASTEXITCODE -ne 0){throw 'Model restore host tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') -cp ($restoreClasses+';'+$JsonJar) com.keplerslicer.app.ModelRestoreTest (Join-Path $generalTest 'restore-data')

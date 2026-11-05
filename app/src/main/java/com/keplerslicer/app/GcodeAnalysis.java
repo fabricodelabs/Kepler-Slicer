@@ -55,7 +55,7 @@ final class GcodeAnalysis {
     double linearMinX = Double.POSITIVE_INFINITY, linearMinY = Double.POSITIVE_INFINITY, linearMaxX = Double.NEGATIVE_INFINITY, linearMaxY = Double.NEGATIVE_INFINITY;
 
     static GcodeAnalysis read(File file) throws IOException {
-        if (file.length() > 200L * 1024 * 1024) throw new IOException("Файл G-code больше 200 МБ.");
+        if (file.length() > 200L * 1024 * 1024) throw new IOException(L.t("Файл G-code больше 200 МБ."));
         GcodeAnalysis out = new GcodeAnalysis();
         boolean absoluteXYZ = true, absoluteE = true, xKnown = false, yKnown = false, zKnown = false, eKnown = true;
         boolean relativeArcCenters = true;
@@ -66,11 +66,11 @@ final class GcodeAnalysis {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
             while ((line = in.readLine()) != null) {
-                if (Thread.currentThread().isInterrupted()) throw new IOException("Чтение отменено.");
-                if (line.length() > 8192) throw new IOException("Слишком длинная строка G-code.");
+                if (Thread.currentThread().isInterrupted()) throw new IOException(L.t("Чтение отменено."));
+                if (line.length() > 8192) throw new IOException(L.t("Слишком длинная строка G-code."));
                 String trimmed = line.trim();
                 if (trimmed.startsWith(";LAYER_CHANGE")) {
-                    if (out.layers.size() >= MAX_LAYERS) throw new IOException("Слишком много слоёв для просмотра.");
+                    if (out.layers.size() >= MAX_LAYERS) throw new IOException(L.t("Слишком много слоёв для просмотра."));
                     layer = new Layer(); out.layers.add(layer); continue;
                 }
                 if (trimmed.startsWith(";TYPE:")) { out.currentType = featureOf(trimmed.substring(6)); continue; }
@@ -92,7 +92,7 @@ final class GcodeAnalysis {
                 if (command == 'G') {
                     Matcher rest = WORD.matcher(trimmed); rest.region(m.end(), trimmed.length()); boolean multi = false;
                     while (rest.find()) { char c = Character.toUpperCase(rest.group(1).charAt(0)); if (c == 'G' || c == 'M' || c == 'T') { multi = true; break; } }
-                    if (multi) { out.unsupportedMoves++; out.ignored("несколько команд в строке"); xKnown = yKnown = zKnown = eKnown = false; continue; }
+                    if (multi) { out.unsupportedMoves++; out.ignored(L.t("несколько команд в строке")); xKnown = yKnown = zKnown = eKnown = false; continue; }
                 }
                 // A motion line may omit its G0/G1/G2/G3 when the last motion is modal.
                 if (command == 'X' || command == 'Y' || command == 'Z' || command == 'E' || command == 'F') {
@@ -138,7 +138,7 @@ final class GcodeAnalysis {
                 if (home) { out.unsupportedMoves++; out.ignored(code); xKnown = yKnown = zKnown = false; xOffset = yOffset = 0; continue; }
                 if (reset) {
                     if (dx == null && dy == null && dz == null && de == null) {
-                        out.unsupportedMoves++; out.ignored("G92 (без осей)");
+                        out.unsupportedMoves++; out.ignored(L.t("G92 (без осей)"));
                         xKnown = yKnown = zKnown = eKnown = false; xOffset = yOffset = 0; continue;
                     }
                     // G92 changes the coordinate frame without moving the head.
@@ -170,7 +170,7 @@ final class GcodeAnalysis {
                     if (layer == null) out.skippedBeforeLayers++;
                     else if (!xKnown || !yKnown || !nextXKnown || !nextYKnown || !Double.isFinite(nx) || !Double.isFinite(ny)) out.skippedUnknown++;
                     else {
-                        if (out.segments + out.arcSegments >= MAX_SEGMENTS) throw new IOException("Слишком много отрезков для просмотра.");
+                        if (out.segments + out.arcSegments >= MAX_SEGMENTS) throw new IOException(L.t("Слишком много отрезков для просмотра."));
                         if (Double.isNaN(layer.z) && nextZKnown) layer.z = nz;
                         double px = x + xOffset, py = y + yOffset, pnx = nx + xOffset, pny = ny + yOffset;
                         double length = Math.hypot(nx - x, ny - y); out.currentFlow = length > 1e-9 ? (absoluteE ? ne - e : de) / length : 0;
