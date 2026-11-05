@@ -55,6 +55,9 @@ public class MainActivity extends Activity {
     private final android.os.Handler bedHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private String bedKey = "";
     private BedGeometry loadedBed;
+    /** Bed shown before leaving the workspace: drawn at once on return (same printer) while it is re-read, so the
+     *  scene scale, and with it the zoom, does not jump from the placeholder grid to the real bed. */
+    private BedGeometry staleBed; private String staleBedKey;
     private int bedGeneration;
     private boolean bedPending;
     private volatile boolean visibleWorkspace = true;
@@ -105,7 +108,7 @@ public class MainActivity extends Activity {
         if (navBar != null) navBar.setSelectedItem(0, false);
         String storedFile=getSharedPreferences("current_model",0).getString("file","");
         if(!loadingMesh&&!storedFile.isEmpty()&&!storedFile.equals(meshFileName)){restoreModel();}
-        if (refreshAfterResume) { loadedBed = null; bedPending = false; ++bedGeneration; }
+        if (refreshAfterResume) { if (loadedBed != null) { staleBed = loadedBed; staleBedKey = bedKey; } loadedBed = null; bedPending = false; ++bedGeneration; }
         if (refreshAfterResume && (activeTransformEditor == null || !activeTransformEditor.isShowing())) render();
         else {
             MdUi.prepare(this);
@@ -1156,6 +1159,7 @@ public class MainActivity extends Activity {
             });
             return;
         }
+        if (staleBed != null && key.equals(staleBedKey)) view.setBuildVolume(staleBed, error -> { });
         if (bedPending || SliceActivity.isSlicing()) return;
         bedPending = true; final int generation = bedGeneration;
         final android.content.Context app = getApplicationContext();
