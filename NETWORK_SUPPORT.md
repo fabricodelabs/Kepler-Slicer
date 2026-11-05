@@ -25,7 +25,9 @@
 
 **Upstream Cloud:** реализован экспериментальный вход внешним браузером с PKCE и локальным callback, шифрованное хранение сессии, обновление токена, pull профилей и удалений, локальное зеркало с атомарным курсором, явное редактирование и отправка выбранного JSON, выявление конфликтов и экспорт через SAF. Проверки выполнялись с loopback и JVM-подменами, а не с реальными аккаунтами. Серверная политика авторизации и все провайдеры не подтверждены. Импортированные профили пока не применяются нативным движком к нарезке; это не синхронизация всех возможностей desktop.
 
-**Bambu (LAN, 2026-11-05):** read-only status and AMS over the printer MQTT (port 8883, user `bblp`, access code; serial in the User field), private LAN addresses only; only the `pushall` status request is sent. Tested against a loopback simulator (`tools/test_bambu_lan.ps1`), not a real printer. File transfer (FTPS) and Bambu cloud are not implemented.
+**Bambu (LAN, 2026-11-05):** status and AMS over the printer MQTT (port 8883, user `bblp`, access code; serial in the User field), private LAN addresses only. Upload over implicit FTPS (port 990, TLS session reuse on the data channel); starting the uploaded file (`gcode_file`), pause/resume/stop, speed, chamber light, aux fan and axis moves are separate actions confirmed by the user. Tested against loopback simulators (`tools/test_bambu_lan.ps1`), not a real printer. Bambu cloud is not implemented.
+
+**Job control (2026-11-05):** OctoPrint (`api/job`, `api/printer/printhead`, `api/printer/command`), Moonraker (`printer/print/*`, `printer/gcode/script`) and PrusaLink (`api/v1/job/{id}`) pause/resume/cancel and speed (M220) from the Device screen; each command is confirmed and sent once, never retried. Axis moves only while idle.
 
 **Bambu (cloud):** официальный README Bambu Studio указывает на сетевой плагин с non-free библиотеками. Официальный Android SDK для этого плагина в доступной документации не обнаружен; это не доказывает его отсутствия. Bambu LAN/cloud, аккаунт, камера и отправка в текущем Android-порту не заявлены работающими.
 

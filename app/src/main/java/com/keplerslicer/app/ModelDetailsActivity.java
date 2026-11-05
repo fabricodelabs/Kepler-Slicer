@@ -50,6 +50,7 @@ public final class ModelDetailsActivity extends Activity {
         section(getString(R.string.l10n_md_file));row(current.name,label+" · "+current.mesh.triangleCount+getString(R.string.l10n_md_triangles),null);
         if(format.equals("stl")||format.equals("obj"))row(getString(R.string.native_preferences_clone),getString(R.string.native_preferences_clone_detail),this::chooseCloneCount);
         if(format.equals("3mf")&&(current.projectMode==1||current.projectMode==2))row(getString(R.string.native_materials_title),getString(R.string.native_materials_detail),()->ProjectMaterialEditor.open(this,current,()->{setResult(RESULT_OK);ControlPreferences.scheduleAutoSlice(this);busy=true;error="";render();load();}));
+        if(format.equals("stl")||format.equals("obj")||format.equals("3mf"))row(getString(R.string.kv3_materials_title),getString(R.string.kv3_materials_detail),()->MaterialAssignment.open(this,()->{setResult(RESULT_OK);busy=true;error="";render();load();}));
         if(format.equals("obj"))row(getString(R.string.l10n_ws_obj_materials),getString(R.string.l10n_md_mtl_note),null);
         if(format.equals("3mf"))renderProject(metadata);else if(metadata!=null)renderObjects(metadata.optJSONArray("objects"));
     }

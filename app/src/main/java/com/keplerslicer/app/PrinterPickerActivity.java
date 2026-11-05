@@ -178,7 +178,7 @@ public class PrinterPickerActivity extends Activity {
             LinearLayout actions = ui.row(); actions.setPadding(ui.dp(14), ui.dp(13), ui.dp(14), ui.dp(14));
             actions.addView(ui.secondaryButton(R.drawable.kv3_sliders, getString(R.string.kv3_edit_printer), 44, 22, () -> startActivity(new Intent(this, SettingsActivity.class).putExtra("kepler_kind", "printer"))), ui.weight());
             LinearLayout.LayoutParams cp = ui.weight(); cp.leftMargin = ui.dp(8);
-            actions.addView(ui.secondaryButton(R.drawable.kv3_wifi, getString(R.string.kv3_connection), 44, 22, () -> startActivity(new Intent(this, NetworkActivity.class))), cp);
+            actions.addView(ui.secondaryButton(R.drawable.kv3_wifi, getString(R.string.kv3_connection), 44, 22, () -> startActivity(new Intent(this, DeviceActivity.class))), cp);
             card.addView(actions);
             content.addView(card, new LinearLayout.LayoutParams(-1, -2));
         }

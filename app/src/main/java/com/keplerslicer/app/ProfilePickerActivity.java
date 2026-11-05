@@ -41,6 +41,9 @@ public class ProfilePickerActivity extends Activity {
     private List<PrintProfileCatalog.Profile> all;
     private PrinterProfileCatalog.Profile printer;
     private PrintProfileCatalog.Profile selectedProcess, current;
+    /** 2..4: choose a filament preset for that multi-material slot instead of the main selection. */
+    public static final String EXTRA_SLOT = "material_slot";
+    private int materialSlot;
     private String kind, query = "", type;
     private boolean showAll, favouritesOnly;
     private boolean calculating = true;
@@ -75,12 +78,13 @@ public class ProfilePickerActivity extends Activity {
         boolean filament = PrintProfileCatalog.FILAMENT.equals(kind);
         KeplerUi kui = new KeplerUi(this);
         View plus = kui.glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.kv3_new_preset), () -> screen.unavailable(getString(R.string.kv3_new_preset)));
-        screen = new KeplerScreen(this, getString(filament ? R.string.kv3_filament : R.string.kv3_process), this::finish, plus, 1); ui = screen.ui;
+        materialSlot = filament ? getIntent().getIntExtra(EXTRA_SLOT, 0) : 0; if (materialSlot < 2 || materialSlot > MaterialSlots.COUNT) materialSlot = 0;
+        screen = new KeplerScreen(this, materialSlot > 0 ? getString(R.string.kv3_slot, materialSlot) : getString(filament ? R.string.kv3_filament : R.string.kv3_process), this::finish, plus, 1); ui = screen.ui;
         if (printer == null || printer.imported || printer.path.isEmpty()) { screen.content.addView(ui.text(getString(R.string.l10n_fp_choose_printer_first), 14, 500, KeplerUi.SECONDARY)); return; }
 
         screen.body.removeView(screen.scroll);
         LinearLayout top = ui.column(); top.setPadding(0, ui.dp(8), 0, 0);
-        if (filament) {
+        if (filament && materialSlot == 0) {
             LinearLayout head = ui.row(); head.setPadding(ui.dp(4), ui.dp(12), ui.dp(4), ui.dp(8));
             head.addView(ui.caption(getString(R.string.kv3_loaded)), ui.weight());
             TextView sync = ui.line(getString(R.string.kv3_sync_printer), 12, 600, KeplerUi.WHITE); sync.setMinHeight(ui.dp(32)); sync.setGravity(Gravity.CENTER_VERTICAL); ui.pressable(sync, null, 8);
@@ -88,10 +92,10 @@ public class ProfilePickerActivity extends Activity {
             final AmsTrays.Tray[] trays = AmsTrays.load(this);
             top.addView(head, new LinearLayout.LayoutParams(-1, -2));
             LinearLayout slots = ui.row();
+            final MaterialSlots.Slot[] material = MaterialSlots.load(this);
             for (int i = 0; i < 4; i++) {
-                boolean loaded = i == 0 && current != null;
-                if (trays != null) loaded = trays[i].loaded;
-                View slot = trays != null ? slotCard(i + 1, trays[i].loaded ? trays[i].type : getString(R.string.kv3_slot_empty), trays[i].loaded, trays[i].color) : slotCard(i + 1, loaded ? shortName(current.name) : getString(R.string.kv3_slot_empty), loaded, 0xFFE9EEF5);
+                boolean loaded = material[i].filled();
+                View slot = slotCard(i + 1, loaded ? shortName(EngineText.clean(material[i].name)) : getString(R.string.kv3_slot_empty), loaded, MaterialSlots.argb(material[i].colour), trays == null ? null : trays[i]);
                 LinearLayout.LayoutParams p = ui.weight(); if (i > 0) p.leftMargin = ui.dp(8); slots.addView(slot, p);
             }
             top.addView(slots, new LinearLayout.LayoutParams(-1, -2));
@@ -200,11 +204,35 @@ public class ProfilePickerActivity extends Activity {
             try {
                 NetworkStore.Connection c = NetworkStore.load(this).selected();
                 if (c == null || c.endpoint.type != PrinterEndpoint.Type.BAMBU) error = getString(R.string.kv3_ams_needs_bambu);
-                else { NetworkPolicy.requireEndpoint(this, c.endpoint); AmsTrays.Tray[] t = AmsTrays.parse(BambuLan.report(c.endpoint, new NetworkHttp.Cancellation())); if (t == null) error = getString(R.string.kv3_ams_none); else AmsTrays.save(this, t); }
+                else { NetworkPolicy.requireEndpoint(this, c.endpoint); AmsTrays.Tray[] t = AmsTrays.parse(BambuLan.report(c.endpoint, new NetworkHttp.Cancellation())); if (t == null) error = getString(R.string.kv3_ams_none); else { AmsTrays.save(this, t); for (int i = 0; i < t.length && i < MaterialSlots.COUNT; i++) if (t[i].loaded) MaterialSlots.setColour(this, i, MaterialSlots.hex(t[i].color)); } }
             } catch (Exception e) { error = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
             final String message = error;
             runOnUiThread(() -> { if (isDestroyed()) return; if (message != null) screen.info(getString(R.string.kv3_sync_printer), message); else recreate(); });
         }, "ams-sync").start();
+    }
+    /** Slot actions: choose a filament (slots 2..4), colour (palette or the AMS tray), clear. */
+    private void slotMenu(int number, AmsTrays.Tray tray) {
+        final int index = number - 1; final MaterialSlots.Slot s = MaterialSlots.load(this)[index];
+        java.util.List<String> labels = new java.util.ArrayList<>(); java.util.List<Runnable> actions = new java.util.ArrayList<>();
+        if (index > 0) { labels.add(getString(R.string.kv3_slot_choose)); actions.add(() -> startActivity(new android.content.Intent(this, ProfilePickerActivity.class).putExtra(EXTRA_KIND, PrintProfileCatalog.FILAMENT).putExtra(EXTRA_SLOT, number))); }
+        labels.add(getString(R.string.kv3_slot_colour)); actions.add(() -> colourMenu(index));
+        if (tray != null && tray.loaded) { labels.add(getString(R.string.kv3_slot_colour_ams)); actions.add(() -> { MaterialSlots.setColour(this, index, MaterialSlots.hex(tray.color)); recreate(); }); }
+        if (index > 0 && s.filled()) { labels.add(getString(R.string.kv3_slot_clear)); actions.add(() -> { MaterialSlots.clear(this, index); recreate(); }); }
+        String title = getString(R.string.kv3_slot, number) + (s.filled() ? " · " + shortName(EngineText.clean(s.name)) : "");
+        com.keplerslicer.app.glass.GlassBottomSheet.choose(this, getWindow().getDecorView(), false, title, labels.toArray(new String[0]), -1, which -> actions.get(which).run());
+    }
+    private void colourMenu(int index) {
+        int[] names = {R.string.kv3_colour_white, R.string.kv3_colour_black, R.string.kv3_colour_red, R.string.kv3_colour_orange, R.string.kv3_colour_yellow, R.string.kv3_colour_green, R.string.kv3_colour_blue, R.string.kv3_colour_purple, R.string.kv3_colour_grey, R.string.kv3_colour_brown};
+        String[] labels = new String[names.length]; for (int i = 0; i < names.length; i++) labels[i] = getString(names[i]) + "  " + MaterialSlots.PALETTE[i];
+        com.keplerslicer.app.glass.GlassBottomSheet.choose(this, getWindow().getDecorView(), false, getString(R.string.kv3_slot_colour), labels, -1, which -> { MaterialSlots.setColour(this, index, MaterialSlots.PALETTE[which]); recreate(); });
+    }
+    @Override protected void onRestart() { super.onRestart(); if (PrintProfileCatalog.FILAMENT.equals(kind) && materialSlot == 0) recreate(); }
+
+    private View slotCard(int number, String name, boolean loaded, int color, AmsTrays.Tray tray) {
+        View card = slotCard(number, name, loaded, color);
+        if (tray != null && tray.active) card.setBackground(ui.shape(KeplerUi.GLASS, KeplerUi.MINT, 18));
+        ui.pressable(card, card.getBackground(), 18); card.setOnClickListener(v -> slotMenu(number, tray));
+        return card;
     }
     private View slotCard(int number, String name, boolean loaded, int color) {
         LinearLayout c = ui.column(); c.setGravity(Gravity.CENTER); c.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), ui.dp(10)); c.setMinimumHeight(ui.dp(80));
@@ -215,7 +243,6 @@ public class ProfilePickerActivity extends Activity {
         TextView n = ui.line(String.valueOf(number), 11, 600, KeplerUi.WHITE); n.setGravity(Gravity.CENTER); c.addView(n, ui.below(6));
         TextView t = ui.line(name, 11, 600, KeplerUi.WHITE); t.setGravity(Gravity.CENTER); c.addView(t, new LinearLayout.LayoutParams(-1, -2));
         c.setContentDescription(getString(R.string.kv3_slot, number) + ", " + name);
-        if (!loaded) ui.pressable(c, c.getBackground(), 18); if (!loaded) c.setOnClickListener(v -> screen.unavailable(getString(R.string.kv3_slot, number)));
         return c;
     }
     private static String shortName(String name) { int at = name.indexOf(" @"); return at > 0 ? name.substring(0, at) : name; }
@@ -256,6 +283,7 @@ public class ProfilePickerActivity extends Activity {
     }
 
     private void choose(PrintProfileCatalog.Profile next) {
+        if (materialSlot > 0) { MaterialSlots.set(this, materialSlot - 1, next.vendor, next.name); setResult(RESULT_OK); finish(); return; }
         try {
             PrintProfileCatalog.Profile previous = PrintProfileCatalog.loadSelection(this, kind);
             boolean changed = previous == null || !previous.path.equals(next.path) || !previous.vendor.equals(next.vendor) || !previous.name.equals(next.name);

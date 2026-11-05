@@ -12,8 +12,8 @@ import android.widget.TextView;
 import com.keplerslicer.app.glass.KeplerUi;
 
 /**
- * Device · printing (Figma node 4:336). Live printer telemetry, camera and job control are not
- * implemented in this build, so every live value shows an honest empty state and controls explain that.
+ * Device · printing (Figma node 4:336). Live telemetry, camera and job control for the selected printer;
+ * every command is an explicit, confirmed action sent once.
  */
 public final class DeviceActivity extends Activity {
     private final GradientDrawable[] amsDot = new GradientDrawable[4]; private final TextView[] amsText = new TextView[4]; private final LinearLayout[] amsBox = new LinearLayout[4];
@@ -63,9 +63,9 @@ public final class DeviceActivity extends Activity {
         job.addView(jobHead);
         jobTrack = ui.row(); jobTrack.setBackground(ui.shape(0x3DFFFFFF, 0, 4)); jobFill = new View(this); jobFill.setBackground(ui.shape(KeplerUi.MINT, 0, 4)); jobTrack.addView(jobFill, new LinearLayout.LayoutParams(0, -1, 0)); jobTrack.addView(new View(this), new LinearLayout.LayoutParams(0, -1, 1)); job.addView(jobTrack, ui.below(14)); ((LinearLayout.LayoutParams) jobTrack.getLayoutParams()).height = ui.dp(8);
         LinearLayout actions = ui.row();
-        LinearLayout pause = ui.primaryButton(R.drawable.kv3_pause, getString(R.string.kv3_pause), null); pause.setMinimumHeight(ui.dp(48)); ui.setEnabled(pause, false);
+        LinearLayout pause = ui.primaryButton(R.drawable.kv3_pause, getString(R.string.kv3_pause), this::pauseOrResume); pause.setMinimumHeight(ui.dp(48)); ui.setEnabled(pause, false); pauseButton = pause;
         ((TextView) pause.getChildAt(1)).setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15); actions.addView(pause, ui.weight());
-        LinearLayout stop = ui.secondaryButton(R.drawable.kv3_stop, getString(R.string.kv3_stop), 48, 24, null); ui.setEnabled(stop, false);
+        LinearLayout stop = ui.secondaryButton(R.drawable.kv3_stop, getString(R.string.kv3_stop), 48, 24, this::confirmStop); ui.setEnabled(stop, false); stopButton = stop;
         LinearLayout.LayoutParams stp = ui.weight(); stp.leftMargin = ui.dp(8); actions.addView(stop, stp);
         job.addView(actions, ui.below(14));
         content.addView(job, ui.below(10));
@@ -82,15 +82,15 @@ public final class DeviceActivity extends Activity {
 
         screen.section(getString(R.string.kv3_filament_ams), null, null);
         LinearLayout ams = ui.row(); ams.setGravity(Gravity.TOP);
-        PrintProfileCatalog.Profile filament = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.FILAMENT);
+        final MaterialSlots.Slot[] material = MaterialSlots.load(this);
         for (int i = 0; i < 4; i++) {
-            boolean loaded = i == 0 && filament != null;
+            boolean loaded = material[i].filled();
             LinearLayout slot = ui.column(); slot.setGravity(Gravity.CENTER); slot.setPadding(ui.dp(6), ui.dp(10), ui.dp(6), ui.dp(10));
-            slot.setBackground(ui.shape(KeplerUi.GLASS, loaded ? KeplerUi.MINT : KeplerUi.GLASS_STROKE, 18));
+            slot.setBackground(ui.shape(KeplerUi.GLASS, i == 0 && loaded ? KeplerUi.MINT : KeplerUi.GLASS_STROKE, 18));
             View c = new View(this); GradientDrawable g = new GradientDrawable(); g.setShape(GradientDrawable.OVAL);
-            if (loaded) { g.setColor(0xFFE9EEF5); g.setStroke(Math.max(1, ui.dp(1)), 0x66FFFFFF); } else { g.setColor(0); g.setStroke(Math.max(1, ui.dp(1.5f)), 0xB3FFFFFF, ui.dp(3), ui.dp(3)); }
+            if (loaded) { g.setColor(MaterialSlots.argb(material[i].colour)); g.setStroke(Math.max(1, ui.dp(1)), 0x66FFFFFF); } else { g.setColor(0); g.setStroke(Math.max(1, ui.dp(1.5f)), 0xB3FFFFFF, ui.dp(3), ui.dp(3)); }
             c.setBackground(g); slot.addView(c, ui.lp(28, 28)); amsDot[i] = g; amsBox[i] = slot;
-            String label = (i + 1) + " · " + (loaded ? shortType(filament.name) : getString(R.string.kv3_slot_empty));
+            String label = (i + 1) + " · " + (loaded ? shortType(EngineText.clean(material[i].name)) : getString(R.string.kv3_slot_empty));
             TextView t = ui.line(label, 12, 600, white); t.setGravity(Gravity.CENTER); slot.addView(t, ui.below(6)); amsText[i] = t;
             slot.setContentDescription(getString(R.string.kv3_slot, i + 1) + ", " + label);
             LinearLayout.LayoutParams p = ui.weight(); if (i > 0) p.leftMargin = ui.dp(8); ams.addView(slot, p);
@@ -99,11 +99,14 @@ public final class DeviceActivity extends Activity {
 
         screen.section(getString(R.string.kv3_controls), null, null);
         LinearLayout list = ui.card(20);
-        View speed = ui.listRow(0, getString(R.string.kv3_print_speed), null, selectField(getString(R.string.kv3_speed_standard)), () -> screen.unavailable(getString(R.string.kv3_print_speed)));
+        speedField = selectField(getString(R.string.kv3_speed_standard));
+        View speed = ui.listRow(0, getString(R.string.kv3_print_speed), null, speedField, this::chooseSpeed);
         list.addView(speed); list.addView(ui.hairline());
-        list.addView(ui.listRow(0, getString(R.string.kv3_chamber_light), null, ui.switchArt(false), () -> screen.unavailable(getString(R.string.kv3_chamber_light)))); list.addView(ui.hairline());
-        list.addView(ui.listRow(0, getString(R.string.kv3_aux_fan), null, ui.switchArt(false), () -> screen.unavailable(getString(R.string.kv3_aux_fan)))); list.addView(ui.hairline());
-        list.addView(ui.listRow(0, getString(R.string.kv3_move_axes), null, ui.image(R.drawable.kv3_chevron_right, 20, white), () -> screen.unavailable(getString(R.string.kv3_move_axes))));
+        lightSwitch = new FrameLayout(this); lightSwitch.addView(ui.switchArt(false));
+        list.addView(ui.listRow(0, getString(R.string.kv3_chamber_light), null, lightSwitch, () -> toggle(true))); list.addView(ui.hairline());
+        fanSwitch = new FrameLayout(this); fanSwitch.addView(ui.switchArt(false));
+        list.addView(ui.listRow(0, getString(R.string.kv3_aux_fan), null, fanSwitch, () -> toggle(false))); list.addView(ui.hairline());
+        list.addView(ui.listRow(0, getString(R.string.kv3_move_axes), null, ui.image(R.drawable.kv3_chevron_right, 20, white), this::moveAxes));
         content.addView(list, new LinearLayout.LayoutParams(-1, -2));
 
         refreshStatus();
@@ -112,7 +115,9 @@ public final class DeviceActivity extends Activity {
     private NetworkHttp.Cancellation cancellation;
     private android.widget.ImageView cameraImage; private View cameraCenter; private volatile Thread cameraThread; private volatile java.net.HttpURLConnection cameraConnection;
     @Override protected void onDestroy() { if (cancellation != null) cancellation.cancel(); stopCamera(); super.onDestroy(); }
-    @Override protected void onPause() { stopCamera(); super.onPause(); }
+    @Override protected void onPause() { stopCamera(); polling = false; refresher.removeCallbacksAndMessages(null); super.onPause(); }
+    @Override protected void onResume() { super.onResume(); polling = true; refresher.postDelayed(this::poll, 8000); }
+    private void poll() { if (!polling || isDestroyed()) return; if (!commandRunning) refreshStatus(); refresher.postDelayed(this::poll, 8000); }
 
     /** Live view: MJPEG stream of the selected OctoPrint/Moonraker host (webcam/?action=stream), read-only. */
     private void toggleCamera() {
@@ -163,7 +168,7 @@ public final class DeviceActivity extends Activity {
                 }
             } catch (Exception e) { text = getString(R.string.kv3_device_unreachable, c == null ? "" : label(c.endpoint.type), e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
             final String value = text; final boolean ok = online; final org.json.JSONObject json = raw; final PrinterEndpoint.Type type = c == null ? null : c.endpoint.type; final String st = state;
-            runOnUiThread(() -> { if (isDestroyed()) return; status.setText(value); statusDot.setBackground(ui.shape(ok ? KeplerUi.MINT : 0x99FFFFFF, 0, 4)); if (json != null && type != null) applyTelemetry(type, json, st); });
+            runOnUiThread(() -> { if (isDestroyed()) return; status.setText(value); statusDot.setBackground(ui.shape(ok ? KeplerUi.MINT : 0x99FFFFFF, 0, 4)); activeType = ok ? type : null; jobState = ok ? phase(st) : Phase.UNKNOWN; if (json != null && type != null) applyTelemetry(type, json, st); updateControls(); });
         }, "device-status").start();
     }
     private static String label(PrinterEndpoint.Type type) { String n = type.name().replace('_', ' '); return n.charAt(0) + n.substring(1).toLowerCase(java.util.Locale.ROOT); }
@@ -218,6 +223,99 @@ public final class DeviceActivity extends Activity {
         ((LinearLayout.LayoutParams) jobFill.getLayoutParams()).weight = (float) fraction; ((LinearLayout.LayoutParams) jobTrack.getChildAt(1).getLayoutParams()).weight = (float) (1 - fraction); jobTrack.requestLayout();
         String left = secondsLeft > 0 ? " · " + getString(R.string.kv3_time_left, secondsLeft / 3600, (secondsLeft % 3600) / 60) : "";
         jobDetail.setText((state == null ? "" : state) + left);
+    }
+
+    // ---- Job control and printer commands: each one is an explicit, confirmed action, sent once and never retried ----
+    private enum Phase { PRINTING, PAUSED, IDLE, UNKNOWN }
+    private final android.os.Handler refresher = new android.os.Handler(android.os.Looper.getMainLooper());
+    private volatile boolean polling, commandRunning;
+    private PrinterEndpoint.Type activeType; private Phase jobState = Phase.UNKNOWN;
+    private LinearLayout pauseButton, stopButton; private View speedField; private FrameLayout lightSwitch, fanSwitch; private boolean lightOn, fanOn;
+
+    private static Phase phase(String state) {
+        String s = state == null ? "" : state.toLowerCase(java.util.Locale.ROOT);
+        if (s.contains("paus")) return Phase.PAUSED;
+        if (s.contains("print") || s.equals("running") || s.equals("prepare") || s.equals("busy")) return Phase.PRINTING;
+        if (s.equals("idle") || s.equals("operational") || s.equals("ready") || s.equals("standby") || s.equals("finish") || s.equals("finished") || s.equals("complete") || s.equals("failed") || s.equals("cancelled") || s.equals("stopped")) return Phase.IDLE;
+        return Phase.UNKNOWN;
+    }
+    private void updateControls() {
+        boolean jobs = activeType != null && PrinterHostClient.supportsJobs(activeType), active = jobState == Phase.PRINTING || jobState == Phase.PAUSED;
+        ui.setEnabled(pauseButton, jobs && active && !commandRunning); ui.setEnabled(stopButton, jobs && active && !commandRunning);
+        ((TextView) pauseButton.getChildAt(1)).setText(jobState == Phase.PAUSED ? R.string.kv3_resume : R.string.kv3_pause);
+        if (pauseButton.getChildAt(0) instanceof android.widget.ImageView) ((android.widget.ImageView) pauseButton.getChildAt(0)).setImageDrawable(ui.icon(jobState == Phase.PAUSED ? R.drawable.kv3_play : R.drawable.kv3_pause, KeplerUi.ON_ACTIVE));
+    }
+    private NetworkStore.Connection selectedOrExplain() {
+        NetworkStore.Connection c; try { c = NetworkStore.load(this).selected(); } catch (java.io.IOException e) { c = null; }
+        if (c == null || activeType == null || c.endpoint.type != activeType) { screen.info(getString(R.string.kv3_controls), getString(R.string.kv3_cmd_offline)); return null; }
+        return c;
+    }
+    /** Runs one printer command on a worker; refreshes the status afterwards. */
+    private void command(String title, CommandAction action) {
+        final NetworkStore.Connection c = selectedOrExplain(); if (c == null || commandRunning) return;
+        commandRunning = true; updateControls();
+        final NetworkHttp.Cancellation cancel = new NetworkHttp.Cancellation();
+        new Thread(() -> {
+            String error = null;
+            try { NetworkPolicy.requireEndpoint(this, c.endpoint); action.run(new PrinterHostClient(c.endpoint), cancel); }
+            catch (Exception e) { error = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
+            final String m = error;
+            runOnUiThread(() -> { if (isDestroyed()) return; commandRunning = false; updateControls(); if (m != null) screen.info(title, getString(R.string.kv3_cmd_failed, m)); refreshStatus(); });
+        }, "device-command").start();
+    }
+    private interface CommandAction { void run(PrinterHostClient client, NetworkHttp.Cancellation cancel) throws Exception; }
+    private void confirm(String title, String message, String action, Runnable yes) {
+        MdUi.alert(this).setTitle(title).setMessage(message).setNegativeButton(R.string.general_project_cancel, null).setPositiveButton(action, (d, w) -> yes.run()).show();
+    }
+    private void pauseOrResume() {
+        final boolean resume = jobState == Phase.PAUSED; final String title = getString(resume ? R.string.kv3_resume : R.string.kv3_pause);
+        confirm(title, getString(resume ? R.string.kv3_cmd_resume_q : R.string.kv3_cmd_pause_q), title,
+            () -> command(title, (client, cancel) -> client.job(resume ? PrinterHostClient.Job.RESUME : PrinterHostClient.Job.PAUSE, cancel)));
+    }
+    private void confirmStop() {
+        final String title = getString(R.string.kv3_stop);
+        confirm(title, getString(R.string.kv3_cmd_stop_q), getString(R.string.kv3_cmd_stop_yes), () -> command(title, (client, cancel) -> client.job(PrinterHostClient.Job.CANCEL, cancel)));
+    }
+    private void chooseSpeed() {
+        if (selectedOrExplain() == null) return;
+        if (!PrinterHostClient.supportsMotion(activeType)) { screen.info(getString(R.string.kv3_print_speed), getString(R.string.kv3_cmd_unsupported, label(activeType))); return; }
+        final String[] modes = {getString(R.string.kv3_speed_silent), getString(R.string.kv3_speed_standard), getString(R.string.kv3_speed_sport), getString(R.string.kv3_speed_ludicrous)};
+        com.keplerslicer.app.glass.GlassBottomSheet.choose(this, getWindow().getDecorView(), false, getString(R.string.kv3_print_speed), modes, -1, which -> command(getString(R.string.kv3_print_speed), (client, cancel) -> {
+            client.speed(which + 1, cancel);
+            runOnUiThread(() -> { if (speedField instanceof LinearLayout && ((LinearLayout) speedField).getChildAt(0) instanceof TextView) ((TextView) ((LinearLayout) speedField).getChildAt(0)).setText(modes[which]); });
+        }));
+    }
+    private void toggle(boolean light) {
+        if (selectedOrExplain() == null) return;
+        final String title = getString(light ? R.string.kv3_chamber_light : R.string.kv3_aux_fan);
+        if (!PrinterHostClient.supportsChamber(activeType)) { screen.info(title, getString(R.string.kv3_cmd_unsupported, label(activeType))); return; }
+        final boolean next = !(light ? lightOn : fanOn);
+        command(title, (client, cancel) -> {
+            if (light) client.chamberLight(next, cancel); else client.auxFan(next, cancel);
+            runOnUiThread(() -> { if (light) lightOn = next; else fanOn = next; FrameLayout box = light ? lightSwitch : fanSwitch; box.removeAllViews(); box.addView(ui.switchArt(next)); });
+        });
+    }
+    /** Jog panel: ±1 / ±10 mm per axis and homing; refused while a job is running or paused. */
+    private void moveAxes() {
+        if (selectedOrExplain() == null) return;
+        final String title = getString(R.string.kv3_move_axes);
+        if (!PrinterHostClient.supportsMotion(activeType)) { screen.info(title, getString(R.string.kv3_cmd_unsupported, label(activeType))); return; }
+        if (jobState != Phase.IDLE) { screen.info(title, getString(R.string.kv3_cmd_move_busy)); return; }
+        LinearLayout panel = ui.column(); panel.setPadding(ui.dp(20), ui.dp(4), ui.dp(20), 0);
+        TextView hint = ui.line(getString(R.string.kv3_cmd_move_hint), 13, 400, KeplerUi.SECONDARY); hint.setSingleLine(false); hint.setMaxLines(4); hint.setEllipsize(null); panel.addView(hint);
+        for (char axis : new char[]{'X', 'Y', 'Z'}) {
+            LinearLayout row = ui.row(); row.setPadding(0, ui.dp(10), 0, 0);
+            TextView name = ui.line(String.valueOf(axis), 16, 700, axis == 'X' ? KeplerUi.AXIS_X : axis == 'Y' ? KeplerUi.AXIS_Y : KeplerUi.AXIS_Z); row.addView(name, ui.lp(28, -2));
+            for (double step : new double[]{-10, -1, 1, 10}) {
+                TextView b = ui.line((step > 0 ? "+" : "") + (int) step, 14, 600, KeplerUi.WHITE); b.setGravity(Gravity.CENTER); b.setMinHeight(ui.dp(40)); b.setBackground(ui.field(12)); ui.pressable(b, b.getBackground(), 12);
+                b.setContentDescription(axis + " " + (int) step + " " + getString(R.string.kv3_unit_mm));
+                b.setOnClickListener(v -> command(title, (client, cancel) -> client.move(axis, step, cancel)));
+                LinearLayout.LayoutParams p = ui.weight(); p.leftMargin = ui.dp(6); row.addView(b, p);
+            }
+            panel.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        }
+        MdUi.alert(this).setTitle(title).setView(panel).setNegativeButton(R.string.l10n_close, null)
+            .setPositiveButton(R.string.kv3_cmd_home, (d, w) -> confirm(getString(R.string.kv3_cmd_home), getString(R.string.kv3_cmd_home_q), getString(R.string.kv3_cmd_home), () -> command(title, (client, cancel) -> client.move('H', 0, cancel)))).show();
     }
 
     private View selectField(String value) {

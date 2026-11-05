@@ -39,6 +39,12 @@ Slic3r::DynamicPrintConfig resolve_system_profile_config(const SystemProfileSele
 Slic3r::DynamicPrintConfig resolve_system_profile_config_with_overrides(const SystemProfileSelection &selection,
                                                                        const std::string &overrides_json);
 
+// Additional material slots (2..16) for multi-material printing: exact system filament presets,
+// each checked against the printer/process like the first slot. colour is "#RRGGBB" or empty.
+struct MaterialSlot { std::string vendor, name, colour; };
+Slic3r::DynamicPrintConfig resolve_multi_material_config(const SystemProfileSelection &selection,
+    const std::string &overrides_json, const std::vector<MaterialSlot> &extra_slots);
+
 // Writes a new, resolved INI for ExperimentalSlicer.sliceStl. Throws on any
 // error; does not overwrite an existing destination. One FFF extruder only.
 void write_system_profile_ini(const SystemProfileSelection &selection,
