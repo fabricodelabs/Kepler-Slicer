@@ -30,7 +30,8 @@ public final class CloudSyncActivity extends Activity {
     private void render(){if(isFinishing()||isDestroyed())return;ui=new MdUi(this);page=ui.page(this,KeplerApplication.str(R.string.l10n_cloud_profiles),this::finish);ui.navigation(this,3);
         if(!notice.isEmpty()){TextView t=ui.text(notice,13,false);t.setTextColor(ui.muted);page.addView(t);ui.gap(page,16);}
         row(KeplerApplication.str(R.string.l10n_cs_about),KeplerApplication.str(R.string.l10n_cs_repo_note),null);
-        try {JSONObject current=session();if(current==null){row(KeplerApplication.str(R.string.l10n_sign_in),KeplerApplication.str(R.string.l10n_cs_browser_note),busy?null:this::chooseLogin);}
+        try {JSONObject current=session();if(current==null){row(KeplerApplication.str(R.string.l10n_sign_in),KeplerApplication.str(R.string.l10n_cs_browser_note),busy?null:this::chooseLogin);
+                if(login!=null)row(L.t("Браузер показал ошибку?"),L.t("Скопируйте адрес страницы (начинается с http://localhost) и вставьте его здесь."),this::pasteCallback);}
             else {String id=current.optJSONObject("user")==null?"":current.optJSONObject("user").optString("id");CloudProfileStore store=new CloudProfileStore(this,id);JSONArray profiles=store.profiles();int conflicts=store.conflictCount();
                 row(KeplerApplication.str(R.string.l10n_cs_account),KeplerApplication.str(R.string.l10n_cs_profile_count)+profiles.length()+KeplerApplication.str(R.string.l10n_cs_conflicts_suffix)+conflicts,null);
                 row(KeplerApplication.str(R.string.l10n_cs_sync_profiles),KeplerApplication.str(R.string.l10n_cs_sync_detail),busy?null:this::confirmSync);
@@ -45,11 +46,32 @@ public final class CloudSyncActivity extends Activity {
     private static String message(Throwable e){return EngineText.clean(e.getMessage()==null?e.getClass().getSimpleName():e.getMessage());}
     private void finishTask(String result){runOnUiThread(()->{if(!isDestroyed()&&!isFinishing()){busy=false;notice=result;render();}});}
     private void chooseLogin(){MdUi.alert(this).setTitle(KeplerApplication.str(R.string.l10n_cs_sign_in_title)).setItems(new String[]{"Google","GitHub","Apple"},(d,n)->startLogin(new String[]{"google","github","apple"}[n])).setNegativeButton(KeplerApplication.str(R.string.l10n_cancel),null).show();}
-    private void startLogin(String provider){if(busy)return;if(!networkAllowed())return;busy=true;notice=KeplerApplication.str(R.string.l10n_cs_waiting_browser);render();new Thread(()->{
-        try(CloudProfileOAuth auth=new CloudProfileOAuth()) {login=auth;runOnUiThread(()->{if(!isDestroyed())try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(auth.authorizationUrl(provider))));}catch(Exception e){try{auth.close();}catch(IOException ignored){}}});
+    private void startLogin(String provider){if(busy)return;if(!networkAllowed())return;busy=true;notice=KeplerApplication.str(R.string.l10n_cs_waiting_browser);new Thread(()->{
+        CloudProfileOAuth auth=null;
+        try{auth=new CloudProfileOAuth();login=auth;final CloudProfileOAuth a=auth;
+            // Keep the process running while the browser is in front: some phones freeze background apps, and the
+            // browser's return to http://localhost:41172 then fails.
+            LoginKeepAlive.start(this);
+            runOnUiThread(()->{if(isDestroyed())return;render();try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(a.authorizationUrl(provider))));}catch(Exception e){try{a.close();}catch(IOException ignored){}}});
             JSONObject data=auth.awaitAndExchange((path,json)->tokenRequest(path,json));OnlinePreferences.saveSession(this,data);finishTask(KeplerApplication.str(R.string.l10n_cs_signed_in));
-        }catch(Exception e){finishTask(KeplerApplication.str(R.string.l10n_cs_sign_in_failed)+message(e));}finally{login=null;}
+        }catch(Exception e){if(!pasting)finishTask(KeplerApplication.str(R.string.l10n_cs_sign_in_failed)+message(e));} // the pasted address finishes the login itself
+        finally{if(auth!=null)try{auth.close();}catch(IOException ignored){}LoginKeepAlive.stop(this);if(login==auth&&!pasting)login=null;}
     },"kepler-cloud-login").start();}
+    private volatile boolean pasting;
+    /** Manual finish: the address of the browser's error page carries the same one-time code. */
+    private void pasteCallback(){
+        final CloudProfileOAuth auth=login;if(auth==null||auth.isConsumed())return;
+        android.widget.EditText field=new android.widget.EditText(this);field.setSingleLine(true);field.setHint("http://localhost:41172/callback?...");
+        android.content.ClipboardManager cm=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+        if(cm!=null&&cm.hasPrimaryClip()&&cm.getPrimaryClip().getItemCount()>0){CharSequence t=cm.getPrimaryClip().getItemAt(0).coerceToText(this);if(t!=null&&t.toString().contains("localhost"))field.setText(t);}
+        android.widget.LinearLayout box=new android.widget.LinearLayout(this);box.setOrientation(android.widget.LinearLayout.VERTICAL);box.setPadding(ui.dp(20),ui.dp(4),ui.dp(20),0);box.addView(field);
+        MdUi.alert(this).setTitle(L.t("Адрес из браузера")).setMessage(L.t("Вставьте адрес страницы с ошибкой целиком.")).setView(box).setNegativeButton(KeplerApplication.str(R.string.l10n_cancel),null)
+            .setPositiveButton(KeplerApplication.str(R.string.l10n_sign_in),(d,w)->{String address=field.getText().toString();busy=true;pasting=true;notice=KeplerApplication.str(R.string.l10n_cs_waiting_browser);render();new Thread(()->{
+                try{JSONObject data=auth.exchangeFromUrl(address,(path,json)->tokenRequest(path,json));OnlinePreferences.saveSession(this,data);login=null;finishTask(KeplerApplication.str(R.string.l10n_cs_signed_in));}
+                catch(Exception e){finishTask(KeplerApplication.str(R.string.l10n_cs_sign_in_failed)+message(e));}
+                finally{pasting=false;if(auth.isConsumed())login=null;}
+            },"kepler-cloud-login-paste").start();}).show();
+    }
     private CloudProfileSync.Response tokenRequest(String path,String body)throws IOException {return OnlinePreferences.tokenRequest(this,path,body);}
     private JSONObject freshSession()throws IOException{return OnlinePreferences.freshSession(this);}
     private CloudProfileSync cloud(JSONObject session){return OnlinePreferences.client(this,session);}
