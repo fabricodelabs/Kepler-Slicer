@@ -102,22 +102,9 @@ public class MainActivity extends Activity {
 
     private float[] savedCamera; private String cameraModel;
     /** Camera and bed survive app restarts, so the workspace opens exactly as the user left it. */
-    private static String joinNumbers(double[] v) { StringBuilder b = new StringBuilder(); for (int i = 0; i < v.length; i++) { if (i > 0) b.append(','); b.append(v[i]); } return b.toString(); }
-    private static double[] splitNumbers(String s) { if (s == null || s.isEmpty()) return null; try { String[] p = s.split(","); double[] v = new double[p.length]; for (int i = 0; i < p.length; i++) v[i] = Double.parseDouble(p[i]); return v; } catch (NumberFormatException e) { return null; } }
-    private float[] persistedCamera() {
-        // While the model is still being read, the stored model name tells which camera to keep.
-        String model = meshFileName != null ? meshFileName : getSharedPreferences("current_model", 0).getString("file", null);
-        if (model == null) return null;
-        android.content.SharedPreferences ui = getSharedPreferences("kepler_v3_ui", MODE_PRIVATE);
-        if (!model.equals(ui.getString("camera_model", null))) return null;
-        double[] v = splitNumbers(ui.getString("camera", null)); if (v == null || v.length != 5) return null;
-        float[] c = new float[5]; for (int i = 0; i < 5; i++) { if (!Double.isFinite(v[i])) return null; c[i] = (float) v[i]; } return c;
-    }
-    private void persistCamera() {
-        if (stlView == null || meshFileName == null) return;
-        float[] c = stlView.camera(); double[] d = new double[c.length]; for (int i = 0; i < c.length; i++) d[i] = c[i];
-        getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).edit().putString("camera_model", meshFileName).putString("camera", joinNumbers(d)).apply();
-    }
+    private WorkspaceMemory memory() { return new WorkspaceMemory(this); }
+    private float[] persistedCamera() { return memory().camera(meshFileName); }
+    private void persistCamera() { if (stlView != null) memory().saveCamera(meshFileName, stlView.camera()); }
     @Override protected void onPause() { persistCamera(); cancelLayerWork(); visibleWorkspace = false; refreshAfterResume = true; if (stlView != null) stlView.onPause(); super.onPause(); }
     @Override protected void onResume() {
         super.onResume();
@@ -1240,9 +1227,7 @@ public class MainActivity extends Activity {
             return;
         }
         if (staleBed == null && loadedBed == null) {
-            android.content.SharedPreferences ui = getSharedPreferences("kepler_v3_ui", MODE_PRIVATE);
-            double[] raw = key.equals(ui.getString("bed_key", null)) ? splitNumbers(ui.getString("bed_raw", null)) : null;
-            if (raw != null) try { staleBed = new BedGeometry(raw); staleBedKey = key; } catch (IllegalArgumentException ignored) { }
+            BedGeometry remembered = memory().bed(key); if (remembered != null) { staleBed = remembered; staleBedKey = key; }
         }
         if (staleBed != null && key.equals(staleBedKey)) view.setBuildVolume(staleBed, error -> { });
         if (bedPending || SliceActivity.isSlicing()) return;
@@ -1284,7 +1269,7 @@ public class MainActivity extends Activity {
                 }
                 runOnUiThread(() -> {
                     if (isDestroyed() || generation != bedGeneration) return;
-                    loadedBed = result; bedPending = false; getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).edit().putFloat("bed_center_x", (float) result.centerX).putFloat("bed_center_y", (float) result.centerY).putString("bed_key", key).putString("bed_raw", joinNumbers(result.source)).apply();
+                    loadedBed = result; bedPending = false; memory().saveBed(key, result);
                     if (stlView != null && bedHint != null) loadSelectedBed(printer, stlView, bedHint);
                 });
             } catch (Exception | LinkageError error) {
