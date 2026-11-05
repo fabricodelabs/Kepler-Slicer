@@ -131,7 +131,7 @@ public final class ProcessSettingsActivity extends Activity {
     private String titleFor(ProcessOption o) { return tr(o.label.isEmpty()?o.key:o.label); }
     private View createControl(ProcessOption o,String value) {
         if(o.type.equals("boolean")) { Switch s=new Switch(this); s.setText(L.t("Включено")); s.setTextColor(INK); s.setChecked(Boolean.parseBoolean(value)); s.setContentDescription(titleFor(o)); return s; }
-        if(o.type.equals("enum")) { Spinner s=new Spinner(this); ArrayList<String> labels=new ArrayList<>(); int index=-1; for(int i=0;i<o.choices.size();i++) { ProcessOption.Choice c=o.choices.get(i); labels.add(tr(c.label)); if(c.value.equals(value)) index=i; } if(index<0) {index=labels.size();labels.add(L.t("Недопустимое значение"));}
+        if(o.type.equals("enum")) { Spinner s=new Spinner(this);com.keplerslicer.app.glass.KeplerUi.sheetSpinner(s,tr(o.label)); ArrayList<String> labels=new ArrayList<>(); int index=-1; for(int i=0;i<o.choices.size();i++) { ProcessOption.Choice c=o.choices.get(i); labels.add(tr(c.label)); if(c.value.equals(value)) index=i; } if(index<0) {index=labels.size();labels.add(L.t("Недопустимое значение"));}
             ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,labels) {
                 @Override public View getView(int position,View convert,android.view.ViewGroup parent) { TextView v=(TextView)super.getView(position,convert,parent); v.setTextColor(INK); return v; }
                 @Override public View getDropDownView(int position,View convert,android.view.ViewGroup parent) { TextView v=(TextView)super.getDropDownView(position,convert,parent); v.setTextColor(INK); v.setBackgroundColor(SURFACE); return v; }
