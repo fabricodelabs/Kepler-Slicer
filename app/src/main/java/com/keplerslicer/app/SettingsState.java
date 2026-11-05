@@ -15,6 +15,8 @@ final class SettingsState {
     static final String PREFS="kepler_settings_v2";
     static final String[] KINDS={"printer","process","filament"};
     private static PresetRepository repository;
+    /** Repository if it was already opened in this process, else null (never blocks on disk). */
+    static synchronized PresetRepository peekRepository(){return repository;}
     static synchronized PresetRepository repository(Context context)throws IOException {
         if(repository==null)repository=new PresetRepository(context.getApplicationContext());return repository;
     }

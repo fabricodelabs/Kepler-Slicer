@@ -59,6 +59,8 @@ public final class SettingsSchema {
     public static String display(Context context, String s) { return tr(translations(context), s); }
 
     /** Call on a worker thread; the cached result and its option collections are immutable. */
+    /** Already-loaded schema for the current language, or null (never blocks). */
+    public static SettingsSchema peek() { String language = java.util.Locale.getDefault().getLanguage(); return language.equals(cachedLanguage) ? cached : null; }
     public static SettingsSchema load(Context context) throws IOException {
         String language = java.util.Locale.getDefault().getLanguage();
         SettingsSchema result = language.equals(cachedLanguage) ? cached : null;

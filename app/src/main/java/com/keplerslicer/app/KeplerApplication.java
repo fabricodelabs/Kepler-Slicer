@@ -9,6 +9,8 @@ public final class KeplerApplication extends android.app.Application {
     private static void installMessages(android.content.Context c){try(java.io.InputStream in=c.getAssets().open("kepler_messages.json")){org.json.JSONObject j=new org.json.JSONObject(new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));L.install(map(j.optJSONObject("en")),map(j.optJSONObject("ru")));}catch(Exception ignored){}}
     private static java.util.Map<String,String> map(org.json.JSONObject o){java.util.HashMap<String,String> m=new java.util.HashMap<>();if(o!=null)for(java.util.Iterator<String> it=o.keys();it.hasNext();){String k=it.next();m.put(k,o.optString(k,k));}return m;}
     @Override public void onCreate(){super.onCreate();instance=this;installMessages(this);GeneralPreferences.install(this);OnlinePreferences.attach(this);
+        // Warm the settings schema and profile index so the Settings tab opens without a loading page.
+        new Thread(()->{try{com.keplerslicer.app.settings.SettingsSchema.load(this);SettingsState.repository(this);}catch(Exception ignored){}},"settings-warmup").start();
         new Thread(()->{try{String requested=getSharedPreferences("app_preferences",0).getString("log_severity_level","info");String actual=NativePreferenceActions.setLogLevel(requested);getSharedPreferences("app_preferences",0).edit().putString("native_log_severity_actual",actual).apply();}catch(java.io.IOException ignored){getSharedPreferences("app_preferences",0).edit().remove("native_log_severity_actual").apply();}},"native-log-init").start();
     }
 }
