@@ -26,7 +26,7 @@ public final class LegacyControlTest {
     private static final List<String> requests = new CopyOnWriteArrayList<>();
 
     public static void main(String[] a) throws Exception {
-        duet(); repetier(); creality(); elegoo();
+        duet(); repetier(); creality(); elegoo(); bambuCloud();
         System.out.println("Printer control: " + checks + " checks passed (loopback simulators: Duet, Repetier, Creality, Elegoo)");
     }
 
@@ -40,6 +40,40 @@ public final class LegacyControlTest {
             byte[] b = reply.getBytes(StandardCharsets.UTF_8); x.sendResponseHeaders(200, b.length); x.getResponseBody().write(b); x.close();
         });
         s.start(); return s;
+    }
+
+    /** Bambu cloud account API against a loopback server: code sign-in, profile uid, bound devices, no cloud upload. */
+    private static void bambuCloud() throws Exception {
+        List<String> bodies = new CopyOnWriteArrayList<>();
+        HttpServer s = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        s.createContext("/", x -> {
+            String path = x.getRequestURI().getPath(); String body = new String(x.getRequestBody().readAllBytes(), StandardCharsets.UTF_8); bodies.add(path + " " + body);
+            String auth = x.getRequestHeaders().getFirst("Authorization"); String reply;
+            if (path.endsWith("/user/login")) reply = body.contains("\"code\":\"123456\"") ? "{\"accessToken\":\"tok\",\"refreshToken\":\"ref\"}" : "{\"accessToken\":\"\",\"loginType\":\"verifyCode\"}";
+            else if (path.endsWith("/sendemail/code")) reply = "{}";
+            else if (path.endsWith("/my/profile")) reply = "Bearer tok".equals(auth) ? "{\"uid\":4242}" : null;
+            else if (path.endsWith("/user/bind")) reply = "Bearer tok".equals(auth) ? "{\"devices\":[{\"dev_id\":\"01P00A123456789\",\"name\":\"P1S\",\"online\":true,\"dev_product_name\":\"P1S\"},{\"dev_id\":\"bad id\"}]}" : null;
+            else reply = null;
+            byte[] b = (reply == null ? "{}" : reply).getBytes(StandardCharsets.UTF_8); x.sendResponseHeaders(reply == null ? 401 : 200, b.length); x.getResponseBody().write(b); x.close();
+        });
+        s.start(); BambuCloud.testBase = "http://127.0.0.1:" + s.getAddress().getPort();
+        NetworkHttp.Cancellation t = new NetworkHttp.Cancellation();
+        BambuCloud.Login first = BambuCloud.signIn("Europe", "me@example.com", "pw", "", t);
+        check(first.needsCode && first.token == null, "password sign-in that needs a code asks for it");
+        check(bodies.stream().anyMatch(b -> b.startsWith("/v1/user-service/user/sendemail/code") && b.contains("codeLogin")), "the sign-in code is requested by e-mail");
+        BambuCloud.Login done = BambuCloud.signIn("Europe", "me@example.com", "", "123456", t);
+        check("tok".equals(done.token) && "4242".equals(done.uid), "code sign-in returns the token and account id");
+        List<BambuCloud.Device> devices = BambuCloud.devices("Europe", done.token, t);
+        check(devices.size() == 1 && "01P00A123456789".equals(devices.get(0).serial) && devices.get(0).online, "bound printers are listed; invalid serials are dropped");
+        boolean rejected = false; try { BambuCloud.devices("Europe", "wrong", t); } catch (java.io.IOException e) { rejected = e.getMessage().contains("войдите снова"); }
+        check(rejected, "an expired token asks to sign in again");
+        check(bodies.stream().noneMatch(b -> b.contains("\"password\":\"\"")), "an empty password is never sent");
+        s.stop(0); BambuCloud.testBase = null;
+        java.util.Map<String, String> ex = new java.util.LinkedHashMap<>(); ex.put("uid", "4242"); ex.put("region", "Europe");
+        PrinterEndpoint cloud = new PrinterEndpoint(PrinterEndpoint.Type.BAMBU_CLOUD, "https://api.bambulab.com", PrinterEndpoint.Auth.BEARER, "01P00A123456789", "tok", "", ex);
+        boolean noUpload = false; try { new PrinterHostClient(cloud).upload(new java.io.File("build.gradle"), "a.gcode", t); } catch (java.io.IOException e) { noUpload = e.getMessage().contains("LAN"); }
+        check(noUpload || !new java.io.File("build.gradle").isFile(), "cloud upload is refused with a pointer to LAN");
+        check("us.mqtt.bambulab.com".equals(BambuCloud.mqttHost("Europe")) && "cn.mqtt.bambulab.com".equals(BambuCloud.mqttHost("China")), "broker follows the account region");
     }
 
     private static void duet() throws Exception {

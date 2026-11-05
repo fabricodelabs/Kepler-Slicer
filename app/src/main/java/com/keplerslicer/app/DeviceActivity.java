@@ -191,7 +191,7 @@ public final class DeviceActivity extends Activity {
             if (p != null) { t[0] = new double[]{p.optDouble("temp_nozzle", Double.NaN), p.optDouble("target_nozzle", Double.NaN)}; t[1] = new double[]{p.optDouble("temp_bed", Double.NaN), p.optDouble("target_bed", Double.NaN)}; }
             org.json.JSONObject job = json.optJSONObject("job");
             if (job != null && job.has("progress")) showProgress(job.optDouble("progress", Double.NaN) / 100.0, state, job.optLong("time_remaining", -1));
-        } else if (type == PrinterEndpoint.Type.BAMBU) {
+        } else if (type == PrinterEndpoint.Type.BAMBU || type == PrinterEndpoint.Type.BAMBU_CLOUD) {
             // Bambu LAN report: temperatures, progress, job name and the first AMS unit.
             t[0] = new double[]{json.optDouble("nozzle_temper", Double.NaN), json.optDouble("nozzle_target_temper", Double.NaN)};
             t[1] = new double[]{json.optDouble("bed_temper", Double.NaN), json.optDouble("bed_target_temper", Double.NaN)};
