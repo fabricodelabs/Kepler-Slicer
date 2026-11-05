@@ -20,12 +20,20 @@ final class NetworkStore {
     static PrinterEndpoint updateOAuth(Context c,String id,String expectedAccess,String rawSession)throws IOException {synchronized(LOCK){
         try {JSONObject json=new JSONObject(rawSession);String access=json.optString("access_token"),refresh=json.optString("refresh_token");if(access.isEmpty()||refresh.isEmpty())throw new IOException(L.t("Сервер не вернул полную сессию SimplyPrint."));
             State state=load(c);List<Connection> rows=new ArrayList<>(state.connections);int index=-1;for(int i=0;i<rows.size();i++)if(rows.get(i).id.equals(id)){index=i;break;}if(index<0)throw new IOException(L.t("Подключение удалено."));
-            Connection old=rows.get(index);PrinterEndpoint e=old.endpoint;if(e.type!=PrinterEndpoint.Type.SIMPLYPRINT||!e.secret().equals(expectedAccess))throw new IOException(L.t("Подключение изменилось; войдите снова."));
+            Connection old=rows.get(index);PrinterEndpoint e=old.endpoint;if((e.type!=PrinterEndpoint.Type.SIMPLYPRINT&&e.type!=PrinterEndpoint.Type.BAMBU_CLOUD)||!e.secret().equals(expectedAccess))throw new IOException(L.t("Подключение изменилось; войдите снова."));
             PrinterEndpoint next=new PrinterEndpoint(e.type,e.baseUri.toASCIIString(),e.auth,e.username,access,e.storage,e.extras);rows.set(index,new Connection(old.id,old.name,old.printerIdentity,next,rawSession));write(c,rows,state.active);return next;
         }catch(JSONException|IllegalArgumentException x){throw new IOException(L.t("Некорректная сессия SimplyPrint."),x);}
     }}
     static void select(Context c,String id)throws IOException{synchronized(LOCK){State state=load(c);if(state.connections.stream().noneMatch(r->r.id.equals(id)))throw new IOException(L.t("Подключение не найдено."));write(c,state.connections,id);}}
     static void remove(Context c,String id)throws IOException{synchronized(LOCK){State state=load(c);List<Connection> rows=new ArrayList<>(state.connections);rows.removeIf(r->r.id.equals(id));write(c,rows,state.active.equals(id)?"":state.active);}}
     private static void write(Context c,List<Connection> connections,String active)throws IOException{try{JSONArray a=new JSONArray();for(Connection row:connections){PrinterEndpoint e=row.endpoint;JSONObject r=new JSONObject().put("id",row.id).put("name",row.name).put("printer_identity",row.printerIdentity).put("type",e.type.name()).put("url",e.baseUri.toASCIIString()).put("auth",e.auth.name()).put("username",e.username).put("secret",e.secret()).put("oauth_session",row.oauthSession).put("storage",e.storage).put("extras",new JSONObject(e.extras));a.put(r);}NetworkSecrets.put(c,KEY,new JSONObject().put("version",1).put("active",active).put("connections",a).toString());}catch(JSONException e){throw new IOException(L.t("Не удалось сохранить подключение."),e);}}
+    /** Bambu cloud: refreshes the account token a day before it expires and stores it; other types are returned as is. */
+    static PrinterEndpoint fresh(Context c,Connection connection,NetworkHttp.Cancellation cancel)throws IOException{
+        PrinterEndpoint e=connection.endpoint;if(e.type!=PrinterEndpoint.Type.BAMBU_CLOUD||connection.oauthSession.isEmpty())return e;
+        try{JSONObject s=new JSONObject(connection.oauthSession);long expires=s.optLong("expires_at",0);if(expires>System.currentTimeMillis()+24L*3600*1000)return e;
+            NetworkPolicy.requireCloud(c);BambuCloud.Login next=BambuCloud.refresh(e.extras.get("region"),s.optString("refresh_token"),cancel);
+            return updateOAuth(c,connection.id,e.secret(),next.session());}
+        catch(JSONException x){throw new IOException(L.t("Bambu: войдите в облако заново."),x);}
+    }
     static String currentPrinterIdentity(Context c){PrinterProfileCatalog.Profile p=PrinterProfileCatalog.loadSelection(c);return p==null?"":p.vendor+"\u0000"+p.model;}
 }

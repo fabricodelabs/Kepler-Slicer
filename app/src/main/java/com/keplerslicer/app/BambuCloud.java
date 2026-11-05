@@ -26,8 +26,22 @@ final class BambuCloud {
     static String mqttHost(String region) { return china(region) ? "cn.mqtt.bambulab.com" : "us.mqtt.bambulab.com"; }
 
     static final class Login {
-        final String token, refresh, uid; final boolean needsCode, needsTfa;
-        Login(String token, String refresh, String uid, boolean needsCode, boolean needsTfa) { this.token = token; this.refresh = refresh; this.uid = uid; this.needsCode = needsCode; this.needsTfa = needsTfa; }
+        final String token, refresh, uid; final boolean needsCode, needsTfa; final long expiresAt;
+        Login(String token, String refresh, String uid, boolean needsCode, boolean needsTfa) { this(token, refresh, uid, needsCode, needsTfa, 0); }
+        Login(String token, String refresh, String uid, boolean needsCode, boolean needsTfa, long expiresAt) { this.token = token; this.refresh = refresh; this.uid = uid; this.needsCode = needsCode; this.needsTfa = needsTfa; this.expiresAt = expiresAt; }
+        /** Encrypted connection session: access and refresh token with the expiry time. */
+        String session() throws JSONException { return new JSONObject().put("access_token", token).put("refresh_token", refresh == null ? "" : refresh).put("expires_at", expiresAt).toString(); }
+    }
+    private static long expiry(JSONObject r) { long s = r.optLong("expiresIn", 0); return s > 0 ? System.currentTimeMillis() + s * 1000 : System.currentTimeMillis() + 30L * 24 * 3600 * 1000; }
+
+    /** New access token from the refresh token (sign-in again if this fails). */
+    static Login refresh(String region, String refreshToken, NetworkHttp.Cancellation c) throws IOException {
+        if (refreshToken == null || refreshToken.isEmpty()) throw new IOException(L.t("Bambu: войдите в облако заново."));
+        try {
+            JSONObject r = post(region, "v1/user-service/user/refreshtoken", new JSONObject().put("refreshToken", refreshToken), null, c);
+            String token = r.optString("accessToken", ""); if (token.isEmpty()) throw new IOException(L.t("Bambu: войдите в облако заново."));
+            String next = r.optString("refreshToken", ""); return new Login(token, next.isEmpty() ? refreshToken : next, null, false, false, expiry(r));
+        } catch (JSONException e) { throw new IOException(L.t("Bambu вернул некорректный ответ."), e); }
     }
     static final class Device {
         final String serial, name, model; final boolean online;
@@ -51,7 +65,7 @@ final class BambuCloud {
                 throw new IOException(L.t("Bambu не выдал токен входа."));
             }
             String uid = profileUid(region, token, c);
-            return new Login(token, r.optString("refreshToken", ""), uid, false, false);
+            return new Login(token, r.optString("refreshToken", ""), uid, false, false, expiry(r));
         } catch (JSONException e) { throw new IOException(L.t("Bambu вернул некорректный ответ."), e); }
     }
 

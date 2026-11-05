@@ -51,6 +51,7 @@ public final class LegacyControlTest {
             String auth = x.getRequestHeaders().getFirst("Authorization"); String reply;
             if (path.endsWith("/user/login")) reply = body.contains("\"code\":\"123456\"") ? "{\"accessToken\":\"tok\",\"refreshToken\":\"ref\"}" : "{\"accessToken\":\"\",\"loginType\":\"verifyCode\"}";
             else if (path.endsWith("/sendemail/code")) reply = "{}";
+            else if (path.endsWith("/user/refreshtoken")) reply = body.contains("\"refreshToken\":\"ref\"") ? "{\"accessToken\":\"tok2\",\"refreshToken\":\"ref2\",\"expiresIn\":7776000}" : null;
             else if (path.endsWith("/my/profile")) reply = "Bearer tok".equals(auth) ? "{\"uid\":4242}" : null;
             else if (path.endsWith("/user/bind")) reply = "Bearer tok".equals(auth) ? "{\"devices\":[{\"dev_id\":\"01P00A123456789\",\"name\":\"P1S\",\"online\":true,\"dev_product_name\":\"P1S\"},{\"dev_id\":\"bad id\"}]}" : null;
             else reply = null;
@@ -68,6 +69,9 @@ public final class LegacyControlTest {
         boolean rejected = false; try { BambuCloud.devices("Europe", "wrong", t); } catch (java.io.IOException e) { rejected = e.getMessage().contains("войдите снова"); }
         check(rejected, "an expired token asks to sign in again");
         check(bodies.stream().noneMatch(b -> b.contains("\"password\":\"\"")), "an empty password is never sent");
+        BambuCloud.Login renewed = BambuCloud.refresh("Europe", done.refresh, t);
+        check("tok2".equals(renewed.token) && "ref2".equals(renewed.refresh) && renewed.expiresAt > System.currentTimeMillis() + 80L * 24 * 3600 * 1000, "the refresh token renews the access token and its expiry");
+        check(new JSONObject(renewed.session()).getString("refresh_token").equals("ref2"), "the renewed session keeps the refresh token");
         s.stop(0); BambuCloud.testBase = null;
         java.util.Map<String, String> ex = new java.util.LinkedHashMap<>(); ex.put("uid", "4242"); ex.put("region", "Europe");
         PrinterEndpoint cloud = new PrinterEndpoint(PrinterEndpoint.Type.BAMBU_CLOUD, "https://api.bambulab.com", PrinterEndpoint.Auth.BEARER, "01P00A123456789", "tok", "", ex);

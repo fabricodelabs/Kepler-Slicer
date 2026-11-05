@@ -204,7 +204,7 @@ public class ProfilePickerActivity extends Activity {
             try {
                 NetworkStore.Connection c = NetworkStore.load(this).selected();
                 if (c == null || (c.endpoint.type != PrinterEndpoint.Type.BAMBU && c.endpoint.type != PrinterEndpoint.Type.BAMBU_CLOUD)) error = getString(R.string.kv3_ams_needs_bambu);
-                else { NetworkPolicy.requireEndpoint(this, c.endpoint); AmsTrays.Tray[] t = AmsTrays.parse(BambuLan.report(c.endpoint, new NetworkHttp.Cancellation())); if (t == null) error = getString(R.string.kv3_ams_none); else { AmsTrays.save(this, t); for (int i = 0; i < t.length && i < MaterialSlots.COUNT; i++) if (t[i].loaded) MaterialSlots.setColour(this, i, MaterialSlots.hex(t[i].color)); } }
+                else { NetworkPolicy.requireEndpoint(this, c.endpoint); AmsTrays.Tray[] t = AmsTrays.parse(BambuLan.report(NetworkStore.fresh(this, c, new NetworkHttp.Cancellation()), new NetworkHttp.Cancellation())); if (t == null) error = getString(R.string.kv3_ams_none); else { AmsTrays.save(this, t); for (int i = 0; i < t.length && i < MaterialSlots.COUNT; i++) if (t[i].loaded) MaterialSlots.setColour(this, i, MaterialSlots.hex(t[i].color)); } }
             } catch (Exception e) { error = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
             final String message = error;
             runOnUiThread(() -> { if (isDestroyed()) return; if (message != null) screen.info(getString(R.string.kv3_sync_printer), message); else recreate(); });

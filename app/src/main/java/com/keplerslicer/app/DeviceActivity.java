@@ -161,7 +161,7 @@ public final class DeviceActivity extends Activity {
                 else {
                     runOnUiThread(() -> { if (!isDestroyed()) status.setText(getString(R.string.kv3_device_checking)); });
                     NetworkPolicy.requireEndpoint(this, c.endpoint);
-                    PrinterHostClient.Status s = new PrinterHostClient(c.endpoint).status(cancel);
+                    PrinterHostClient.Status s = new PrinterHostClient(NetworkStore.fresh(this, c, cancel)).status(cancel);
                     state = s.state; online = !"disconnected".equalsIgnoreCase(s.state);
                     text = getString(R.string.kv3_device_online, label(c.endpoint.type), s.state);
                     try { if (s.rawJson != null && s.rawJson.trim().startsWith("{")) raw = new org.json.JSONObject(s.rawJson); } catch (org.json.JSONException ignored) { }
@@ -264,7 +264,7 @@ public final class DeviceActivity extends Activity {
         final NetworkHttp.Cancellation cancel = new NetworkHttp.Cancellation();
         new Thread(() -> {
             String error = null;
-            try { NetworkPolicy.requireEndpoint(this, c.endpoint); action.run(new PrinterHostClient(c.endpoint), cancel); }
+            try { NetworkPolicy.requireEndpoint(this, c.endpoint); action.run(new PrinterHostClient(NetworkStore.fresh(this, c, cancel)), cancel); }
             catch (Exception e) { error = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
             final String m = error;
             runOnUiThread(() -> { if (isDestroyed()) return; commandRunning = false; updateControls(); if (m != null) screen.info(title, getString(R.string.kv3_cmd_failed, m)); refreshStatus(); });
