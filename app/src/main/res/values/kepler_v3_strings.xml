@@ -697,4 +697,12 @@
     <string name="kv3_bambu_cloud_choose">Printer of the account</string>
     <string name="kv3_bambu_cloud_online">online</string>
     <string name="kv3_bambu_cloud_offline">offline</string>
+    <string name="pref_sync_colour_only">Colour only</string>
+    <string name="pref_sync_colour_material">Colour and material</string>
+    <string name="pref_bambu_builtin_version">Built in · LAN and cloud</string>
+    <string name="pref_bambu_builtin_detail">Kepler talks to Bambu Lab printers itself: MQTT over TLS for status and commands, FTPS for files, the account API for the cloud. No separate plug-in is downloaded.</string>
+    <string name="pref_bambu_reloaded">Bambu connections were restarted and the saved AMS state was cleared.</string>
+    <string name="kv3_bambu_storage_abnormal">The printer reports no usable SD card. Insert or check the card, or allow non-standard storage in Preferences.</string>
+    <string name="kv3_ams_slot_empty">AMS slot %1$d is empty, but the project uses it. Load the material or turn on \"Skip AMS check\".</string>
+    <string name="kv3_ams_slot_mismatch">AMS slot %1$d holds %2$s, the project expects %3$s. Change the material or turn on \"Skip AMS check\".</string>
 </resources>

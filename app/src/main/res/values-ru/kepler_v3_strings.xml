@@ -697,4 +697,12 @@
     <string name="kv3_bambu_cloud_choose">Принтер аккаунта</string>
     <string name="kv3_bambu_cloud_online">в сети</string>
     <string name="kv3_bambu_cloud_offline">не в сети</string>
+    <string name="pref_sync_colour_only">Только цвет</string>
+    <string name="pref_sync_colour_material">Цвет и материал</string>
+    <string name="pref_bambu_builtin_version">Встроенный · LAN и облако</string>
+    <string name="pref_bambu_builtin_detail">Kepler сам работает с принтерами Bambu Lab: MQTT поверх TLS для статуса и команд, FTPS для файлов, API аккаунта для облака. Отдельный плагин не загружается.</string>
+    <string name="pref_bambu_reloaded">Подключения Bambu перезапущены, сохранённое состояние AMS очищено.</string>
+    <string name="kv3_bambu_storage_abnormal">Принтер сообщает, что SD-карта недоступна. Вставьте или проверьте карту либо разрешите нестандартное хранилище в «Общие».</string>
+    <string name="kv3_ams_slot_empty">Слот AMS %1$d пуст, а проект его использует. Загрузите материал или включите «Пропуск проверки AMS».</string>
+    <string name="kv3_ams_slot_mismatch">В слоте AMS %1$d — %2$s, а проект ждёт %3$s. Замените материал или включите «Пропуск проверки AMS».</string>
 </resources>

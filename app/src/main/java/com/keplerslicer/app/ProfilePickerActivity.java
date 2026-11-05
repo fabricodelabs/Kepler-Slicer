@@ -204,7 +204,7 @@ public class ProfilePickerActivity extends Activity {
             try {
                 NetworkStore.Connection c = NetworkStore.load(this).selected();
                 if (c == null || (c.endpoint.type != PrinterEndpoint.Type.BAMBU && c.endpoint.type != PrinterEndpoint.Type.BAMBU_CLOUD)) error = getString(R.string.kv3_ams_needs_bambu);
-                else { NetworkPolicy.requireEndpoint(this, c.endpoint); AmsTrays.Tray[] t = AmsTrays.parse(BambuLan.report(NetworkStore.fresh(this, c, new NetworkHttp.Cancellation()), new NetworkHttp.Cancellation())); if (t == null) error = getString(R.string.kv3_ams_none); else { AmsTrays.save(this, t); for (int i = 0; i < t.length && i < MaterialSlots.COUNT; i++) if (t[i].loaded) MaterialSlots.setColour(this, i, MaterialSlots.hex(t[i].color)); } }
+                else { NetworkPolicy.requireEndpoint(this, c.endpoint); AmsTrays.Tray[] t = AmsTrays.parse(BambuLan.report(NetworkStore.fresh(this, c, new NetworkHttp.Cancellation()), new NetworkHttp.Cancellation())); if (t == null) error = getString(R.string.kv3_ams_none); else { AmsTrays.save(this, t); boolean material = GeneralPreferences.prefs(this).getInt("filament_sync_mode", 0) == 1; for (int i = 0; i < t.length && i < MaterialSlots.COUNT; i++) if (t[i].loaded) { MaterialSlots.setColour(this, i, MaterialSlots.hex(t[i].color)); if (material && i > 0) { PrintProfileCatalog.Profile p = matchingFilament(t[i].type); if (p != null) MaterialSlots.set(this, i, p.vendor, p.name); } } } }
             } catch (Exception e) { error = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
             final String message = error;
             runOnUiThread(() -> { if (isDestroyed()) return; if (message != null) screen.info(getString(R.string.kv3_sync_printer), message); else recreate(); });
@@ -233,6 +233,21 @@ public class ProfilePickerActivity extends Activity {
         if (tray != null && tray.active) card.setBackground(ui.shape(KeplerUi.GLASS, KeplerUi.MINT, 18));
         ui.pressable(card, card.getBackground(), 18); card.setOnClickListener(v -> slotMenu(number, tray));
         return card;
+    }
+    /** A compatible system filament for an AMS tray type: the printer vendor's own profile first, then a generic one. */
+    private PrintProfileCatalog.Profile matchingFilament(String trayType) {
+        String type = NetworkActivity.materialType(trayType); if (type.isEmpty() || printer == null) return null;
+        try {
+            PrintProfileCatalog.Profile vendorHit = null, generic = null;
+            for (PrintProfileCatalog.Profile p : PrintProfileCatalog.load(this, PrintProfileCatalog.FILAMENT)) {
+                if (!p.explicitPrinters.isEmpty() && !p.explicitPrinters.contains(printer.name)) continue;
+                if (!type.equals(NetworkActivity.materialType(p.name))) continue;
+                String n = p.name.toUpperCase(Locale.ROOT);
+                if (vendorHit == null && n.startsWith(printer.vendor.toUpperCase(Locale.ROOT) + " " + type)) vendorHit = p;
+                if (generic == null && n.startsWith("GENERIC " + type)) generic = p;
+            }
+            return vendorHit != null ? vendorHit : generic;
+        } catch (java.io.IOException e) { return null; }
     }
     private View slotCard(int number, String name, boolean loaded, int color) {
         LinearLayout c = ui.column(); c.setGravity(Gravity.CENTER); c.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), ui.dp(10)); c.setMinimumHeight(ui.dp(80));

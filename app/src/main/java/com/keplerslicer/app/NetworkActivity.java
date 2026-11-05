@@ -95,6 +95,7 @@ public final class NetworkActivity extends Activity {
                 NetworkStore.Connection current=currentConnection(c.id);if(!sameEndpoint(c,current))throw new IOException(KeplerApplication.str(R.string.l10n_net_address_changed_retry));
                 NetworkSecrets.remove(this,UPLOAD_RECEIPT);PrinterEndpoint e=fresh(current,cancel);
                 if(start){LegacyPrinterHosts.uploadAndStart(e,result.file,result.name,cancel);return KeplerApplication.str(R.string.l10n_net_sent_started);}
+                if(e.type==PrinterEndpoint.Type.BAMBU&&!getSharedPreferences("app_preferences",0).getBoolean("allow_abnormal_storage",false)){JSONObject report=BambuLan.report(e,cancel);if(report.has("sdcard")&&!report.optBoolean("sdcard",true))throw new IOException(KeplerApplication.str(R.string.kv3_bambu_storage_abnormal));}
                 PrinterHostClient.UploadResult sent;try{sent=new PrinterHostClient(e).upload(result.file,result.name,cancel);}catch(IOException error){if(e.type==PrinterEndpoint.Type.SIMPLYPRINT&&"Cloud host HTTP 401".equals(error.getMessage()))throw new IOException(KeplerApplication.str(R.string.l10n_net_sp_rejected),error);throw error;}
                 cancel.check();String suffix=sent.remotePath==null||sent.remotePath.isEmpty()?"":KeplerApplication.str(R.string.l10n_net_file_nl)+sent.remotePath;
                 if((e.type==PrinterEndpoint.Type.OCTOPRINT||e.type==PrinterEndpoint.Type.MOONRAKER||e.type==PrinterEndpoint.Type.BAMBU||e.type==PrinterEndpoint.Type.DUET)&&validRemotePath(sent.remotePath)){
@@ -119,10 +120,20 @@ public final class NetworkActivity extends Activity {
         MdUi.alert(this).setTitle(KeplerApplication.str(R.string.l10n_net_start_print_q)).setMessage(actual.name+"\n"+remote+KeplerApplication.str(R.string.l10n_net_start_note))
             .setPositiveButton(KeplerApplication.str(R.string.l10n_net_start_print),(d,w)->task(KeplerApplication.str(R.string.l10n_net_sending_start),cancel->{
                 Result latest=currentResult();NetworkStore.Connection again=currentConnection(connection.id);if(!sameEndpoint(actual,again))throw new IOException(KeplerApplication.str(R.string.l10n_net_address_changed));String receipt=NetworkSecrets.get(this,UPLOAD_RECEIPT);if(!latest.file.equals(result.file)||!latest.fingerprint.equals(result.fingerprint)||!raw.equals(receipt)||receipt.isEmpty()||!remote.equals(validatedReceipt(again,latest,new JSONObject(receipt))))throw new IOException(KeplerApplication.str(R.string.l10n_net_receipt_changed));
+                if(again.endpoint.type==PrinterEndpoint.Type.BAMBU&&!getSharedPreferences("app_preferences",0).getBoolean("skip_ams_check",false)){String problem=amsMismatch();if(problem!=null)throw new IOException(problem);}
                 try{new PrinterHostClient(fresh(again,cancel)).startUploaded(remote,cancel);}catch(IOException error){throw new IOException(KeplerApplication.str(R.string.l10n_net_start_unconfirmed),error);}return KeplerApplication.str(R.string.l10n_net_start_ok);
             })).setNegativeButton(KeplerApplication.str(R.string.l10n_cancel),null).show();
     }catch(Exception error){notice=error(error);render();}}
     // ---- Bambu Lab cloud: the user's own account; the token and account id fill the connection form ----
+    /** AMS check before a Bambu start: every filled material slot needs a loaded tray of the same material type. */
+    private String amsMismatch(){
+        AmsTrays.Tray[] trays=AmsTrays.load(this);if(trays==null)return null;MaterialSlots.Slot[] slots=MaterialSlots.load(this);
+        for(int i=0;i<slots.length&&i<trays.length;i++){if(!slots[i].filled())continue;String want=materialType(slots[i].name);
+            if(!trays[i].loaded)return KeplerApplication.str(R.string.kv3_ams_slot_empty,i+1);
+            if(!want.isEmpty()&&!trays[i].type.toUpperCase(Locale.ROOT).startsWith(want))return KeplerApplication.str(R.string.kv3_ams_slot_mismatch,i+1,trays[i].type,want);}
+        return null;
+    }
+    static String materialType(String profile){String u=profile==null?"":profile.toUpperCase(Locale.ROOT);for(String t:new String[]{"PETG","PCTG","PLA","ABS","ASA","TPU","PA","PC","PVA","HIPS","PET"})if(u.matches(".*(^|[^A-Z])"+t+"([^A-Z]|$).*"))return t;return "";}
     private void bambuCloudLogin(){
         try{NetworkPolicy.requireCloud(this);}catch(IOException e){MdUi.alert(this).setMessage(error(e)).setPositiveButton(R.string.kv3_ok,null).show();return;}
         final String region=OnlinePreferences.region(this);

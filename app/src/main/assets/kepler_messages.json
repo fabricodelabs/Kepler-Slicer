@@ -440,6 +440,7 @@
 "Сессия изменилась во время обновления.": "The session changed during the refresh.",
 "Сессия изменилась во время синхронизации.": "The session changed during sync.",
 "Сессия облака профилей повреждена.": "The profile cloud session is damaged.",
+"Сеть Bambu Lab выключена в настройках «Общие».": "Bambu Lab networking is off in Preferences.",
 "Синхронизация: применено ": "Sync: applied",
 "Скорость": "Speed",
 "Скрытый режим блокирует облачный адрес. Используйте локальный адрес принтера.": "Stealth mode blocks the cloud address. Use the printer's local address.",
