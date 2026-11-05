@@ -64,7 +64,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   `outputs/Kepler-Claude/engine/src/slice_jni.cpp`). Incremental build + publish (~1 min):
   `pwsh -File engine/build-native.ps1 -Build ../../work/orca-headless-fresh -Cmake ../../work/android-tools/cmake/data/bin/cmake.exe -Ndk ../../work/android-ndk/android-ndk-r30 -Parallel 12 -PublishToApp`
   (keeps the previous .so under `outputs/Kepler-Native-Phase2-baseline/<sha>/`). Keep both ExperimentalSlicer.java copies equal.
-- Current .so SHA-256 `dd9ff7bf67ee55b864725193798b5aea397bfcb547622fede765f7e6da31626c` (16 KB aligned).
+- Current .so SHA-256 `a3611f0ee5130387e615a669396ac31b60f3a17d34e5880d601a51b40cfaebe3` (16 KB aligned).
 - New JNI: `editModel` (op 1 Cut at Z via upstream `Cut::perform_with_plane` — plane is relative to the instance
   offset; op 2 Text via `Emboss`, system Roboto font; op 3 Assembly = all objects into one multi-part object) and
   `exportProject3mf` (upstream `store_bbs_3mf` with resolved settings). Code in `native_preferences.cpp`
@@ -118,6 +118,15 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 - Bambu cloud token: session (access/refresh/expiry) stored with the connection, refreshed a day before expiry.
 - Preferences: filament sync mode, Bambu network switch, built-in version, reload, skip AMS check, abnormal storage
   gate are real now. Built-in profile updates stay unavailable on purpose (profiles follow the pinned engine).
+- Brush v2: dabs carry the world hit point and camera; the engine uses upstream select_patch with a SPHERE cursor
+  (triangle splitting, like the desktop painter). "Fill area" floods connected faces up to 30 degrees in Java and
+  paints whole triangles. Fuzzy-skin brush (fuzzy_skin_facets). Preview shows the state covering most of a source
+  triangle's area; painted colour also shows outside the brush (triangleSlotColours). Verified: slot-2 strokes and
+  a fill -> G-code with T0/T1.
+- Editing tools and Multi-material on a multi-plate project work on the selected plate (load_project_plate; the
+  preview source map renumbers objects/instances of that plate). JNI editModel/materialLayout/assignMaterials take
+  the plate index.
+- Model names: NativePreferenceActions.baseName drops every edit mark (both languages) anywhere in the name.
 - Dialogs: `glass/GlassDialog` restyles every `MdUi.alert` AlertDialog (glass card, Manrope, pill buttons).
   `glass/Backdrop` blurs content under the floating nav (Android 12+); sheets/alerts blur behind.
 - Google Play: `docs/GOOGLE-PLAY.md`, `docs/PRIVACY.md`; upload key in `C:\Users\tails\.kepler-signing` (not in git).

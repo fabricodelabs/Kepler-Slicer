@@ -172,9 +172,34 @@ final class StlView extends GLSurfaceView {
         float[] result=new float[vertices.length];for(int i=0;i<vertices.length;i+=3){double x=(vertices[i]*unit+cx-bedCenterX)*scale,y=(vertices[i+1]*unit+cy-bedCenterY)*scale,z=(vertices[i+2]*unit+cz)*scale;if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||Math.abs(x)>Float.MAX_VALUE||Math.abs(y)>Float.MAX_VALUE||Math.abs(z)>Float.MAX_VALUE)throw new IllegalArgumentException(L.t("Координаты проекта вне диапазона предпросмотра."));result[i]=(float)x;result[i+1]=(float)y;result[i+2]=(float)z;}return result;
     }
     // ---- Paint brush: one finger paints the triangles under a sphere brush, two fingers keep moving the camera ----
-    interface PaintCallback { void painted(int[] previewTriangles); }
-    private volatile PaintCallback paintCallback; private volatile float paintRadiusMm = 3f;
+    /** triangles: preview triangles under the brush (or the filled region); hit: the hit triangle; point/camera in world mm (null for a fill). */
+    interface PaintCallback { void painted(int[] previewTriangles, int hit, double[] point, double[] camera); }
+    private volatile PaintCallback paintCallback; private volatile float paintRadiusMm = 3f; private volatile boolean paintFill;
     void setPaintMode(PaintCallback callback, float radiusMm) { paintCallback = callback; paintRadiusMm = Math.max(0.2f, radiusMm); }
+    void setPaintFill(boolean fill) { paintFill = fill; }
+    private java.util.List<int[]> adjacency; private float[] adjacencyFor;
+    /** Triangles sharing an edge, from equal vertex positions of the preview soup. */
+    private java.util.List<int[]> adjacency(float[] v) {
+        if (adjacencyFor == v && adjacency != null) return adjacency;
+        int n = v.length / 9; java.util.HashMap<String, Integer> edges = new java.util.HashMap<>(); int[][] next = new int[n][3]; for (int[] r : next) java.util.Arrays.fill(r, -1);
+        for (int t = 0; t < n; t++) for (int e = 0; e < 3; e++) {
+            int a = t * 9 + e * 3, b = t * 9 + ((e + 1) % 3) * 3;
+            String ka = v[a] + "," + v[a + 1] + "," + v[a + 2], kb = v[b] + "," + v[b + 1] + "," + v[b + 2], key = ka.compareTo(kb) < 0 ? ka + "|" + kb : kb + "|" + ka;
+            Integer other = edges.remove(key);
+            if (other == null) edges.put(key, t * 3 + e); else { next[t][e] = other / 3; next[other / 3][other % 3] = t; }
+        }
+        adjacency = java.util.Arrays.asList(next); adjacencyFor = v; return adjacency;
+    }
+    private static float[] normal(float[] v, int t) { int i = t * 9; float ax = v[i+3]-v[i], ay = v[i+4]-v[i+1], az = v[i+5]-v[i+2], bx = v[i+6]-v[i], by = v[i+7]-v[i+1], bz = v[i+8]-v[i+2];
+        float nx = ay*bz-az*by, ny = az*bx-ax*bz, nz = ax*by-ay*bx, l = (float) Math.sqrt(nx*nx+ny*ny+nz*nz); return l > 0 ? new float[]{nx/l, ny/l, nz/l} : new float[]{0, 0, 1}; }
+    private static int[] flood(float[] v, java.util.List<int[]> adj, int start, double maxAngleDeg) {
+        double limit = Math.cos(Math.toRadians(maxAngleDeg)); boolean[] seen = new boolean[v.length / 9]; java.util.ArrayDeque<Integer> queue = new java.util.ArrayDeque<>(); int[] out = new int[64]; int n = 0;
+        queue.add(start); seen[start] = true;
+        while (!queue.isEmpty()) { int t = queue.poll(); if (n == out.length) out = java.util.Arrays.copyOf(out, n * 2); out[n++] = t; float[] a = normal(v, t);
+            for (int o : adj.get(t)) if (o >= 0 && !seen[o]) { float[] b = normal(v, o); if (a[0]*b[0]+a[1]*b[1]+a[2]*b[2] >= limit) { seen[o] = true; queue.add(o); } } }
+        return java.util.Arrays.copyOf(out, n);
+    }
+    private double[] toWorld(float x, float y, float z) { double s = renderer.sceneScale; if (!(s > 0)) return null; return new double[]{x / s + renderer.bedCenterX, y / s + renderer.bedCenterY, z / s}; }
     boolean paintMode() { return paintCallback != null; }
     private void paintAt(float x, float y) {
         final int w = getWidth(), h = getHeight(); final PaintCallback cb = paintCallback; if (cb == null || w <= 0 || h <= 0) return;
@@ -197,12 +222,15 @@ final class StlView extends GLSurfaceView {
             }
             if (best < 0) return;
             float hx = ox+dx*bestT, hy = oy+dy*bestT, hz = oz+dz*bestT, r2 = radius*radius; int[] hit = new int[64]; int n = 0;
+            final int hitTriangle = best;
+            if (paintFill) { final int[] region = flood(v, adjacency(v), best, 30); post(() -> { PaintCallback current = paintCallback; if (current != null) current.painted(region, hitTriangle, null, null); }); return; }
+            final double[] worldPoint = toWorld(hx, hy, hz), worldCamera = toWorld(ox, oy, oz);
             for (int i = 0; i + 8 < v.length; i += 9) {
                 float cx = (v[i]+v[i+3]+v[i+6])/3-hx, cy = (v[i+1]+v[i+4]+v[i+7])/3-hy, cz = (v[i+2]+v[i+5]+v[i+8])/3-hz;
                 if (cx*cx+cy*cy+cz*cz <= r2 || i / 9 == best) { if (n == hit.length) hit = java.util.Arrays.copyOf(hit, n * 2); hit[n++] = i / 9; }
             }
             final int[] result = java.util.Arrays.copyOf(hit, n);
-            post(() -> { PaintCallback current = paintCallback; if (current != null) current.painted(result); });
+            post(() -> { PaintCallback current = paintCallback; if (current != null) current.painted(result, hitTriangle, worldPoint, worldCamera); });
         });
     }
     @Override public boolean onTouchEvent(MotionEvent e) {

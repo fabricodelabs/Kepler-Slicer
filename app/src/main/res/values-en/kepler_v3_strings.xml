@@ -727,4 +727,9 @@
     <string name="kv3_paint_reopen">Open the model again to paint it (it was loaded by an older version).</string>
     <string name="kv3_paint_support_note">Painted supports are built when supports are on in the process settings (the blocker works always).</string>
     <string name="kv3_plate_n">Plate %1$d</string>
+    <string name="kv3_paint_fuzzy">Brush · fuzzy skin</string>
+    <string name="kv3_paint_fuzzy_add">Add fuzzy skin</string>
+    <string name="kv3_paint_fuzzy_brush">Paint fuzzy skin with a brush</string>
+    <string name="kv3_paint_mode_brush">Brush</string>
+    <string name="kv3_paint_mode_fill">Fill area</string>
 </resources>

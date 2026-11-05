@@ -45,16 +45,16 @@ public final class ExperimentalSlicer {
             String model,String resources,String data,String job,double[] transform,String settings,int objectIndex,int instanceIndex,int copies,boolean arrange);
     /** Tools sheet edits: op 1 cut at height a (b: 1 keep upper, 2 keep lower), op 2 text (a height, b depth), op 3 assembly. Returns a new 3MF in job. */
     public static native String editModel(String pv,String qv,String fv,String pn,String qn,String fn,
-            String model,String resources,String data,String job,double[] transform,String settings,int op,double a,double b,String text,String fontPath);
+            String model,String resources,String data,String job,double[] transform,String settings,int op,double a,double b,String text,String fontPath,int plate);
     /** Project 3MF with the resolved settings and current placement; returns job/project.3mf. */
     public static native String exportProject3mf(String pv,String qv,String fv,String pn,String qn,String fn,
             String model,String resources,String data,String job,double[] transform,String settings);
     /** Objects and parts with their stored material slot: {"objects":[{"name","slot","parts":[{"name","slot"}]}]}. */
     public static native byte[] materialLayout(String pv,String qv,String fv,String pn,String qn,String fn,
-            String model,String resources,String data,double[] transform,String settings);
+            String model,String resources,String data,double[] transform,String settings,int plate);
     /** Multi-material project: extra slots, colours and object/part slots (JSON request); returns job/project.3mf. */
     public static native String assignMaterials(String pv,String qv,String fv,String pn,String qn,String fn,
-            String model,String resources,String data,String job,double[] transform,String settings,String request);
+            String model,String resources,String data,String job,double[] transform,String settings,String request,int plate);
     public static native String setNativeLogLevel(String level);
     public static native byte[] runNativePreferencesSelfTest(String resources,String data);
 }

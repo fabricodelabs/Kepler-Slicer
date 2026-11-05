@@ -727,4 +727,9 @@
     <string name="kv3_paint_reopen">Откройте модель заново, чтобы рисовать по ней: она загружена прежней версией.</string>
     <string name="kv3_paint_support_note">Нарисованные поддержки строятся, когда поддержки включены в параметрах процесса (запрет действует всегда).</string>
     <string name="kv3_plate_n">Пластина %1$d</string>
+    <string name="kv3_paint_fuzzy">Кисть · нечёткая кожа</string>
+    <string name="kv3_paint_fuzzy_add">Добавить нечёткую кожу</string>
+    <string name="kv3_paint_fuzzy_brush">Рисовать нечёткую кожу кистью</string>
+    <string name="kv3_paint_mode_brush">Кисть</string>
+    <string name="kv3_paint_mode_fill">Заливка области</string>
 </resources>
