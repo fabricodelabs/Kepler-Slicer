@@ -1,4 +1,27 @@
 <resources>
+    <!-- iOS-like motion: pushed screens slide in from the right over a parallax-shifted parent,
+         sheets rise from the bottom, alerts scale down into place. -->
+    <style name="KeplerActivityAnim" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/kv_push_in</item>
+        <item name="android:activityOpenExitAnimation">@anim/kv_push_out</item>
+        <item name="android:activityCloseEnterAnimation">@anim/kv_pop_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/kv_pop_out</item>
+        <item name="android:taskOpenEnterAnimation">@anim/kv_push_in</item>
+        <item name="android:taskOpenExitAnimation">@anim/kv_push_out</item>
+        <item name="android:taskCloseEnterAnimation">@anim/kv_pop_in</item>
+        <item name="android:taskCloseExitAnimation">@anim/kv_pop_out</item>
+    </style>
+    <style name="KeplerSheetAnim" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@anim/kv_sheet_in</item>
+        <item name="android:windowExitAnimation">@anim/kv_sheet_out</item>
+    </style>
+    <style name="KeplerAlertAnim" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@anim/kv_alert_in</item>
+        <item name="android:windowExitAnimation">@anim/kv_alert_out</item>
+    </style>
+    <style name="KeplerDialogTheme" parent="@android:style/ThemeOverlay.Material.Dialog">
+        <item name="android:windowAnimationStyle">@style/KeplerAlertAnim</item>
+    </style>
     <style name="AppThemeBase" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
@@ -7,6 +30,8 @@
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">#20201E</item>
         <item name="android:windowBackground">#F7F7F5</item>
+        <item name="android:windowAnimationStyle">@style/KeplerActivityAnim</item>
+        <item name="android:dialogTheme">@style/KeplerDialogTheme</item>
     </style>
     <style name="AppTheme" parent="AppThemeDarkBase" />
     <style name="AppThemeDarkBase" parent="android:style/Theme.Material.NoActionBar">
@@ -17,6 +42,8 @@
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">#D0D4CC</item>
         <item name="android:windowBackground">#383D46</item>
+        <item name="android:windowAnimationStyle">@style/KeplerActivityAnim</item>
+        <item name="android:dialogTheme">@style/KeplerDialogTheme</item>
     </style>
     <style name="AppThemeDark" parent="AppThemeDarkBase" />
     <style name="KeplerAlertDark" parent="android:style/Theme.Material.Dialog.Alert">
@@ -26,11 +53,13 @@
         <item name="android:colorAccent">#5EE0C8</item>
         <item name="android:colorBackgroundFloating">#2E323A</item>
         <item name="android:windowBackground">@drawable/dialog_dark</item>
+        <item name="android:windowAnimationStyle">@style/KeplerAlertAnim</item>
     </style>
     <style name="KeplerAlertLight" parent="android:style/Theme.Material.Light.Dialog.Alert">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">#1B1C1B</item>
         <item name="android:colorBackgroundFloating">#EFF0EC</item>
         <item name="android:windowBackground">@drawable/dialog_light</item>
+        <item name="android:windowAnimationStyle">@style/KeplerAlertAnim</item>
     </style>
 </resources>

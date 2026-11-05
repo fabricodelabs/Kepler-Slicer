@@ -22,6 +22,7 @@ final class KeplerScreen {
     /** Detaches the top bar so list screens can place it inside their own scrolling header. */
     LinearLayout takeTopBar() { if (topBar.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) topBar.getParent()).removeView(topBar); return topBar; }
 
+    private View navBar() { return nav; }
     KeplerScreen(Activity activity, String title, Runnable back, View trailing, int navIndex) {
         this.activity = activity; ui = new KeplerUi(activity);
         root = new FrameLayout(activity); root.setBackground(ui.backdrop());
@@ -31,7 +32,16 @@ final class KeplerScreen {
         column = ui.column(); root.addView(column, new FrameLayout.LayoutParams(-1, -1));
         if (android.os.Build.VERSION.SDK_INT >= 35) root.setOnApplyWindowInsetsListener((v, in) -> {
             android.graphics.Insets safe = in.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout() | android.view.WindowInsets.Type.ime());
-            column.setPadding(safe.left, safe.top, safe.right, safe.bottom); return in;
+            android.graphics.Insets ime = in.getInsets(android.view.WindowInsets.Type.ime());
+            column.setPadding(safe.left, safe.top, safe.right, navIndex >= 0 ? ime.bottom : safe.bottom);
+            View bar = navBar(); // same lift above the gesture bar as the other tabs
+            if (bar != null && bar.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+                android.graphics.Insets sys = in.getInsets(android.view.WindowInsets.Type.systemBars());
+                FrameLayout.LayoutParams p = (FrameLayout.LayoutParams) bar.getLayoutParams();
+                int want = ui.dp(24) + (ime.bottom > 0 ? 0 : sys.bottom);
+                if (p.bottomMargin != want) { p.bottomMargin = want; bar.setLayoutParams(p); }
+            }
+            return in;
         });
         // Without a back action the screen is a top-level tab (Export 6:588): 24/800 title on the left.
         LinearLayout bar = back == null ? (trailing == null ? ui.titleBar(title) : ui.titleBar(title, trailing)) : ui.subHeader(title, activity.getString(R.string.kv3_back), back, trailing);
@@ -46,7 +56,7 @@ final class KeplerScreen {
                 if (index == navIndex) return;
                 Intent intent = new Intent(activity, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 if (index != 0) intent.putExtra("kepler_nav", index);
-                activity.startActivity(intent); activity.finish();
+                com.keplerslicer.app.glass.KeplerUi.tab(activity, intent, true);
             });
             KeplerUi.floatNavigation(root, column, nav, ui.dp(16), ui.dp(24));
         } else nav = null;

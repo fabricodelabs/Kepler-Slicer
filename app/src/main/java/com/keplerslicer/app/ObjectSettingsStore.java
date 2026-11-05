@@ -94,5 +94,5 @@ final class ObjectSettingsStore {
         if(changes==null)throw new IOException("Missing typed object settings");JSONObject copy=PresetJson.copy(changes);java.util.Iterator<String> keys=copy.keys();while(keys.hasNext()){String key=keys.next();if(!key.matches("[a-z][a-z0-9_]*")||reserved(key))throw new IOException("Object changes must contain process option keys, not preset identity fields");}return copy;
     }
     private static boolean reserved(String key){switch(key){case "name":case "type":case "from":case "instantiation":case "inherits":case "setting_id":case "print_settings_id":case "filament_settings_id":case "printer_settings_id":case "version":return true;default:return false;}}
-    private static void requireSingle(int count)throws IOException {if(count!=1)throw new IOException("Object overrides currently require exactly one native object; multiple-object models are not supported by this path");}
+    private static void requireSingle(int count)throws IOException {if(count!=1)throw new IOException(L.t("Object overrides currently require exactly one native object; multiple-object models are not supported by this path"));}
 }

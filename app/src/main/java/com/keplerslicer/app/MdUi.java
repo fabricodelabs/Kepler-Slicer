@@ -93,8 +93,7 @@ final class MdUi {
         final GlassNavigation[] holder=new GlassNavigation[1];
         GlassNavigation nav=new GlassNavigation(a,Math.max(0,selected),false,index->{
             if(index==selected&&!(a instanceof ImportActivity)&&!(a instanceof GcodePreviewActivity))return;
-            a.startActivity(new android.content.Intent(a,MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP|android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("kepler_nav",index));
-            if(holder[0]!=null)holder[0].post(()->holder[0].setSelectedItem(Math.max(0,selected)));
+            com.keplerslicer.app.glass.KeplerUi.tab(a,new android.content.Intent(a,MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP|android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("kepler_nav",index),false);
         }); holder[0]=nav;
         int width=(int)(context.getResources().getDisplayMetrics().widthPixels/context.getResources().getDisplayMetrics().density);
         FrameLayout.LayoutParams n=new FrameLayout.LayoutParams(width>640?dp(600):-1,-2,Gravity.CENTER);n.setMargins(dp(16),dp(8),dp(16),dp(24));shell.addView(nav,n);parent.addView(shell,lp(-1,-2));

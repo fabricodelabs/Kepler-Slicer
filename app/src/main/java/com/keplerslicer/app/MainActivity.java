@@ -85,9 +85,9 @@ public class MainActivity extends Activity {
         if(intent.getBooleanExtra("kepler_show_layers",false)){intent.removeExtra("kepler_show_layers");pendingLayerPreview=true;maybeOpenRequestedLayers();}
         if (!intent.hasExtra("kepler_nav")) return;
         int target = intent.getIntExtra("kepler_nav", 0); intent.removeExtra("kepler_nav");
-        if (target == 1) openSettingsPanel();
+        if (target == 1) com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, SettingsActivity.class), false);
         else if (target == 2) openExport();
-        else if (target == 3) startActivity(new Intent(this, PreferencesActivity.class));
+        else if (target == 3) com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, PreferencesActivity.class), false);
         else render();
     }
 
@@ -101,6 +101,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         visibleWorkspace = true;
+        if (navBar != null) navBar.setSelectedItem(0, false);
         String storedFile=getSharedPreferences("current_model",0).getString("file","");
         if(!loadingMesh&&!storedFile.isEmpty()&&!storedFile.equals(meshFileName)){restoreModel();}
         if (refreshAfterResume) { loadedBed = null; bedPending = false; ++bedGeneration; }
@@ -232,7 +233,7 @@ public class MainActivity extends Activity {
         for(int i=0;i<captions.length;i++){final int index=i;glass.space(body,8);TextView action=glass.action(captions[i],i==0,()->{dialog.dismiss();actions[index].run();});action.setEnabled(enabled[i]);action.setAlpha(enabled[i]?1:.45f);body.addView(action);}
         glass.space(body,8);body.addView(glass.action(getString(R.string.general_project_cancel),false,()->{dialog.dismiss();cancel.run();}));dialog.setOnCancelListener(d->cancel.run());
         ScrollView scroll=new ScrollView(this);scroll.addView(body);dialog.setContentView(glass.surface(scroll,glass.tokens.cardRadius));dialog.show();
-        if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));body.measure(View.MeasureSpec.makeMeasureSpec(getResources().getDisplayMetrics().widthPixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setLayout(-1,Math.min(body.getMeasuredHeight(),(int)(getResources().getDisplayMetrics().heightPixels*.85f)));}
+        if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));body.measure(View.MeasureSpec.makeMeasureSpec(getResources().getDisplayMetrics().widthPixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setWindowAnimations(com.keplerslicer.app.R.style.KeplerSheetAnim);dialog.getWindow().setLayout(-1,Math.min(body.getMeasuredHeight(),(int)(getResources().getDisplayMetrics().heightPixels*.85f)));}
     }
     private void acceptProjectMode(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy,ProjectSettingsSnapshot snapshot,EngineProfileSession session,int mode,Runnable afterPublished){
         if(mode>0&&(snapshot==null||session==null||!snapshot.canLoad(mode==2))){cancelPreparedImport(prepared,sequence);return;}
@@ -339,8 +340,9 @@ public class MainActivity extends Activity {
         setContentView(shell);
         workspace();
         navBar = new com.keplerslicer.app.glass.GlassNavigation(this, 0, false, index -> {
-            if (index == 1) openSettingsPanel(); else if (index == 2) openExport(); else if (index == 3) startActivity(new Intent(this, PreferencesActivity.class));
-            if (navBar != null) navBar.post(() -> { if (navBar != null) navBar.setSelectedItem(0); });
+            if (index == 1) com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, SettingsActivity.class), false);
+            else if (index == 2) { if (!openExport() && navBar != null) navBar.setSelectedItem(0, true); }
+            else if (index == 3) com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, PreferencesActivity.class), false);
         });
         FrameLayout navShell = new FrameLayout(this) {
             @Override protected void onMeasure(int widthSpec, int heightSpec) {
@@ -1155,7 +1157,7 @@ public class MainActivity extends Activity {
         final android.content.Context app = getApplicationContext();
         bedWorker.execute(() -> {
             try {
-                if(embeddedBed&&projectConfig==null)throw new java.io.IOException("Embedded project bed settings are unavailable");
+                if(embeddedBed&&projectConfig==null)throw new java.io.IOException(L.t("Embedded project bed settings are unavailable"));
                 SettingsState.Snapshot snapshot = SettingsState.capture(app);
                 CompatibilityResources paths = CompatibilityResources.prepareTriple(app, printer.vendor, "", null, snapshot);
                 if (Thread.currentThread().isInterrupted() || !visibleWorkspace || SliceActivity.isSlicing()) {
@@ -1259,12 +1261,13 @@ public class MainActivity extends Activity {
         }catch(Exception | OutOfMemoryError error){String message=error instanceof OutOfMemoryError?getString(R.string.l10n_ws_toolpath_memory):error.getMessage()==null?getString(R.string.l10n_ws_gcode_read_failed):error.getMessage();runOnUiThread(()->{if(isDestroyed()||stlView!=view||request!=layerRequest||!layersMode)return;showPreparation();dialog(getString(R.string.l10n_ws_layer_preview),message);});}},"workspace-toolpaths");layerReader.start();
     }
     private void updateLayerCaption(GcodeAnalysis analysis,ToolpathGeometry geometry,int visible){int index=visible-1;double z=index<analysis.layers.size()?analysis.layers.get(index).z:Double.NaN;String value=getString(R.string.l10n_ws_approx_layer)+visible+" / "+geometry.layerCount+(Double.isFinite(z)?String.format(java.util.Locale.getDefault(),L.t("  ·  Z %.3f мм"),z):getString(R.string.l10n_ws_z_unknown));if(geometry.skippedLayersWithoutZ>0||analysis.unsupportedMoves>0||analysis.skippedUnknown>0)value+=getString(R.string.l10n_ws_partial);layerCaption.setText(getString(R.string.kv3_layer,visible));layerCaption.setContentDescription(value);if(layerRail!=null){layerRail.setProgress(visible-1);layerRail.setContentDescription(value);}}
-    private void openExport() {
-        java.io.File file=lastResult(); if(file==null) { dialog(getString(R.string.l10n_export),getString(R.string.l10n_ws_reslice_first)); return; }
+    private boolean openExport() {
+        java.io.File file=lastResult(); if(file==null) { dialog(getString(R.string.l10n_export),getString(R.string.l10n_ws_reslice_first)); return false; }
         String name=getSharedPreferences("last_slice_result",MODE_PRIVATE).getString("model","kepler-result");
         if(name==null || name.trim().isEmpty()) name="kepler-result";
         if(name.toLowerCase(java.util.Locale.ROOT).endsWith(".stl")) name=name.substring(0,name.length()-4);
-        startActivity(new Intent(this,GcodeExportActivity.class).putExtra(GcodeExportActivity.EXTRA_RESULT_PATH,file.getAbsolutePath()).putExtra(GcodeExportActivity.EXTRA_FILE_NAME,name+".gcode"));
+        com.keplerslicer.app.glass.KeplerUi.tab(this,new Intent(this,GcodeExportActivity.class).putExtra(GcodeExportActivity.EXTRA_RESULT_PATH,file.getAbsolutePath()).putExtra(GcodeExportActivity.EXTRA_FILE_NAME,name+".gcode"),false);
+        return true;
     }
 
     private void openPrinterProfiles() {

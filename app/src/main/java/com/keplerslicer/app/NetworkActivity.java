@@ -144,19 +144,40 @@ public final class NetworkActivity extends Activity {
         MdUi.alert(this).setTitle(R.string.kv3_bambu_cloud).setView(form).setNegativeButton(R.string.l10n_cancel,null)
             .setPositiveButton(R.string.kv3_bambu_cloud_sign_in,(d,w)->bambuCloudStep(region,mail.getText().toString().trim(),pass.getText().toString(),"")).show();
     }
-    private void bambuCloudStep(String region,String email,String password,String code){
+    /** The cloud button on a LAN form: pick the service, switch the connection type, then sign in. */
+    private void chooseCloudService(){
+        final PrinterEndpoint.Type[] services={PrinterEndpoint.Type.BAMBU_CLOUD,PrinterEndpoint.Type.SIMPLYPRINT,PrinterEndpoint.Type.THREE_D_PRINTER_OS};
+        String[] labels={L.t("Облако Bambu Lab"),"SimplyPrint","3DPrinterOS"};
+        com.keplerslicer.app.glass.GlassBottomSheet.choose(this,getWindow().getDecorView(),false,L.t("Вход в облако"),labels,-1,which->{
+            types.setSelection(services[which].ordinal());
+            if(services[which]==PrinterEndpoint.Type.BAMBU_CLOUD){bambuCloudLogin();return;}
+            try{NetworkPolicy.requireCloud(this);startActivityForResult(new Intent(this,CloudPrintLoginActivity.class).putExtra("type",services[which].name()).putExtra("base_url",url.getText().toString()),CLOUD_LOGIN);}catch(Exception e){MdUi.alert(this).setMessage(error(e)).setPositiveButton(R.string.kv3_ok,null).show();}
+        });
+    }
+    /** Code window: a one-time code from the e-mail (or the authenticator app for two-factor accounts). */
+    private void bambuCodeWindow(String region,String email,String tfaKey,String notice){
+        if(isDestroyed())return;
+        boolean tfa=tfaKey!=null;
+        android.widget.LinearLayout box=new android.widget.LinearLayout(this);box.setOrientation(android.widget.LinearLayout.VERTICAL);box.setPadding(ui.dp(20),ui.dp(4),ui.dp(20),0);
+        TextView info=ui.text((notice==null||notice.isEmpty()?"":notice+"\n")+(tfa?L.t("Откройте приложение-аутентификатор и введите 6-значный код для аккаунта Bambu Lab."):getString(R.string.kv3_bambu_cloud_code_sent,email)),13,false);info.setTextColor(ui.muted);box.addView(info);
+        final EditText field=new EditText(this);field.setInputType(InputType.TYPE_CLASS_NUMBER);field.setTextColor(ui.ink);field.setHint(tfa?L.t("Код из приложения"):getString(R.string.kv3_bambu_cloud_code));
+        field.setTextSize(28);field.setGravity(android.view.Gravity.CENTER);field.setLetterSpacing(0.3f);field.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(8)});
+        android.widget.LinearLayout.LayoutParams fp=new android.widget.LinearLayout.LayoutParams(-1,-2);fp.topMargin=ui.dp(12);box.addView(field,fp);
+        android.app.AlertDialog.Builder b=MdUi.alert(this).setTitle(tfa?L.t("Двухфакторный вход"):L.t("Код подтверждения")).setView(box).setNegativeButton(R.string.l10n_cancel,null)
+            .setPositiveButton(R.string.kv3_bambu_cloud_sign_in,(d,w)->{String code=field.getText().toString().trim();if(tfa)bambuTfaStep(region,email,tfaKey,code);else bambuCloudStep(region,email,"",code);});
+        if(!tfa)b.setNeutralButton(L.t("Новый код"),(d,w)->bambuCloudStep(region,email,"",""));
+        else b.setNeutralButton(L.t("Код на почту"),(d,w)->bambuCloudStep(region,email,"",""));
+        android.app.AlertDialog dialog=b.show();
+        field.requestFocus();if(dialog.getWindow()!=null)dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+    }
+    private void bambuTfaStep(String region,String email,String tfaKey,String code){
         android.widget.Toast.makeText(this,R.string.pref_working,android.widget.Toast.LENGTH_SHORT).show();
         new Thread(()->{
-            try{
-                NetworkHttp.Cancellation cancel=new NetworkHttp.Cancellation();
-                BambuCloud.Login login=BambuCloud.signIn(region,email,password,code,cancel);
-                if(login.needsCode){runOnUiThread(()->{if(isDestroyed())return;final EditText field=new EditText(this);field.setInputType(InputType.TYPE_CLASS_NUMBER);field.setTextColor(ui.ink);field.setHint(R.string.kv3_bambu_cloud_code);
-                    android.widget.LinearLayout box=new android.widget.LinearLayout(this);box.setOrientation(android.widget.LinearLayout.VERTICAL);box.setPadding(ui.dp(20),ui.dp(4),ui.dp(20),0);box.addView(field);
-                    MdUi.alert(this).setTitle(R.string.kv3_bambu_cloud).setMessage(getString(R.string.kv3_bambu_cloud_code_sent,email)).setView(box).setNegativeButton(R.string.l10n_cancel,null)
-                        .setPositiveButton(R.string.kv3_bambu_cloud_sign_in,(d,w)->bambuCloudStep(region,email,"",field.getText().toString().trim())).show();});return;}
-                if(login.needsTfa)throw new IOException(getString(R.string.kv3_bambu_cloud_tfa));
-                java.util.List<BambuCloud.Device> devices=BambuCloud.devices(region,login.token,cancel);
-                runOnUiThread(()->{if(isDestroyed())return;
+            try{BambuCloud.Login login=BambuCloud.signInTfa(region,tfaKey,code,new NetworkHttp.Cancellation());runOnUiThread(()->bambuSignedIn(region,login));}
+            catch(Exception e){runOnUiThread(()->{if(!isDestroyed())MdUi.alert(this).setTitle(R.string.kv3_bambu_cloud).setMessage(error(e)).setPositiveButton(R.string.kv3_ok,null).show();});}
+        },"bambu-tfa").start();
+    }
+    private void bambuDevices(String region,BambuCloud.Login login,java.util.List<BambuCloud.Device> devices){if(isDestroyed())return;
                     if(devices.isEmpty()){MdUi.alert(this).setTitle(R.string.kv3_bambu_cloud).setMessage(R.string.kv3_bambu_cloud_no_printers).setPositiveButton(R.string.kv3_ok,null).show();return;}
                     String[] labels=new String[devices.size()];for(int i=0;i<labels.length;i++){BambuCloud.Device dv=devices.get(i);labels[i]=dv.name+(dv.model.isEmpty()?"":" · "+dv.model)+" · "+getString(dv.online?R.string.kv3_bambu_cloud_online:R.string.kv3_bambu_cloud_offline);}
                     com.keplerslicer.app.glass.GlassBottomSheet.choose(this,getWindow().getDecorView(),false,getString(R.string.kv3_bambu_cloud_choose),labels,-1,which->{
@@ -164,7 +185,24 @@ public final class NetworkActivity extends Activity {
                         url.setText(BambuCloud.apiBase(region));user.setText(dv.serial);secret.setText(login.token);try{pendingOauth=login.session();}catch(org.json.JSONException ignored){}auths.setSelection(PrinterEndpoint.Auth.BEARER.ordinal());
                         try{extras.setText(new JSONObject().put("uid",login.uid).put("region",region).toString());}catch(org.json.JSONException ignored){}
                         if(name.getText().toString().trim().isEmpty()||name.getText().toString().equals(KeplerApplication.str(R.string.l10n_net_my_printer)))name.setText(dv.name);
-                    });});
+                    });    }
+    /** After the two-factor step: list the account's printers off the main thread. */
+    private void bambuSignedIn(String region,BambuCloud.Login login){
+        new Thread(()->{
+            try{java.util.List<BambuCloud.Device> devices=BambuCloud.devices(region,login.token,new NetworkHttp.Cancellation());runOnUiThread(()->bambuDevices(region,login,devices));}
+            catch(Exception e){final String m=error(e);runOnUiThread(()->{if(!isDestroyed())MdUi.alert(this).setTitle(R.string.kv3_bambu_cloud).setMessage(m).setPositiveButton(R.string.kv3_ok,null).show();});}
+        },"bambu-cloud-devices").start();
+    }
+    private void bambuCloudStep(String region,String email,String password,String code){
+        android.widget.Toast.makeText(this,R.string.pref_working,android.widget.Toast.LENGTH_SHORT).show();
+        new Thread(()->{
+            try{
+                NetworkHttp.Cancellation cancel=new NetworkHttp.Cancellation();
+                BambuCloud.Login login=BambuCloud.signIn(region,email,password,code,cancel);
+                if(login.needsCode){runOnUiThread(()->bambuCodeWindow(region,email,null,login.notice));return;}
+                if(login.needsTfa){runOnUiThread(()->bambuCodeWindow(region,email,login.tfaKey,""));return;}
+                java.util.List<BambuCloud.Device> devices=BambuCloud.devices(region,login.token,cancel);
+                runOnUiThread(()->bambuDevices(region,login,devices));
             }catch(Exception e){final String m=error(e);runOnUiThread(()->{if(!isDestroyed())MdUi.alert(this).setTitle(R.string.kv3_bambu_cloud).setMessage(m).setPositiveButton(R.string.kv3_ok,null).show();});}
         },"bambu-cloud-login").start();
     }
@@ -177,7 +215,7 @@ public final class NetworkActivity extends Activity {
         user=field(KeplerApplication.str(R.string.l10n_net_user),connection==null?"":connection.endpoint.username,false);secret=field(KeplerApplication.str(R.string.l10n_net_key),connection==null?"":connection.endpoint.secret(),true);storage=field(KeplerApplication.str(R.string.l10n_net_storage),connection==null?(suggested==PrinterEndpoint.Type.MOONRAKER?"gcodes":suggested==PrinterEndpoint.Type.PRUSALINK?"usb":"local"):connection.endpoint.storage,false);
         extras=field(KeplerApplication.str(R.string.l10n_net_extra_json),connection==null?"{}":new JSONObject(connection.endpoint.extras).toString(),false);extras.setSingleLine(false);extras.setMinLines(3);extras.getLayoutParams().height=-2;extras.setGravity(android.view.Gravity.TOP);extras.setPadding(ui.dp(12),ui.dp(10),ui.dp(12),ui.dp(10));
         TextView description=ui.text(KeplerApplication.str(R.string.l10n_net_extra_help),12,false);description.setTextColor(ui.muted);page.addView(description);ui.gap(page,16);
-        page.addView(ui.button(KeplerApplication.str(R.string.l10n_net_cloud_login),false,()->{PrinterEndpoint.Type type=PrinterEndpoint.Type.values()[types.getSelectedItemPosition()];if(type==PrinterEndpoint.Type.BAMBU_CLOUD){bambuCloudLogin();return;}if(type!=PrinterEndpoint.Type.SIMPLYPRINT&&type!=PrinterEndpoint.Type.THREE_D_PRINTER_OS){MdUi.alert(this).setMessage(KeplerApplication.str(R.string.l10n_net_choose_cloud)).setPositiveButton(R.string.kv3_ok,null).show();return;}try{NetworkPolicy.requireCloud(this);startActivityForResult(new Intent(this,CloudPrintLoginActivity.class).putExtra("type",type.name()).putExtra("base_url",url.getText().toString()),CLOUD_LOGIN);}catch(Exception e){MdUi.alert(this).setMessage(error(e)).setPositiveButton(R.string.kv3_ok,null).show();}}));ui.gap(page,16);
+        page.addView(ui.button(KeplerApplication.str(R.string.l10n_net_cloud_login),false,()->{PrinterEndpoint.Type type=PrinterEndpoint.Type.values()[types.getSelectedItemPosition()];if(type==PrinterEndpoint.Type.BAMBU_CLOUD){bambuCloudLogin();return;}if(type!=PrinterEndpoint.Type.SIMPLYPRINT&&type!=PrinterEndpoint.Type.THREE_D_PRINTER_OS){chooseCloudService();return;}try{NetworkPolicy.requireCloud(this);startActivityForResult(new Intent(this,CloudPrintLoginActivity.class).putExtra("type",type.name()).putExtra("base_url",url.getText().toString()),CLOUD_LOGIN);}catch(Exception e){MdUi.alert(this).setMessage(error(e)).setPositiveButton(R.string.kv3_ok,null).show();}}));ui.gap(page,16);
         page.addView(ui.button(KeplerApplication.str(R.string.l10n_net_obico_printer),false,()->chooseCloudItem(CloudSelectionHelper.Kind.OBICO_PRINTER)));ui.gap(page,8);
         page.addView(ui.button(KeplerApplication.str(R.string.l10n_net_3dpos_project),false,()->chooseCloudItem(CloudSelectionHelper.Kind.PRINTER_OS_PROJECT)));ui.gap(page,8);
         page.addView(ui.button(KeplerApplication.str(R.string.l10n_net_3dpos_type),false,()->chooseCloudItem(CloudSelectionHelper.Kind.PRINTER_OS_TYPE)));ui.gap(page,16);

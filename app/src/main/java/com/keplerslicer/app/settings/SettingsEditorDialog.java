@@ -49,9 +49,15 @@ public final class SettingsEditorDialog {
         scroll.addView(fields, new ScrollView.LayoutParams(-1, -2));
         body.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         boolean hasValue = current != null && current != JSONObject.NULL;
-        String currentText = !hasValue ? "" : current instanceof List
+        String currentText0 = !hasValue ? "" : current instanceof List
                 ? new JSONArray((List<?>) current).toString() : current.toString();
+        String currentText = currentText0;
         boolean vector = option.isVector() || current instanceof JSONArray || current instanceof List;
+        // Vectors are shown as plain text ("10" or "0.4, 0.4", G-code as is) instead of raw JSON whenever that is lossless.
+        final JSONArray vectorValues = !vector || !hasValue ? null : current instanceof JSONArray ? (JSONArray) current
+                : current instanceof List ? new JSONArray((List<?>) current) : parseArray(currentText);
+        final boolean plainVector = vectorValues != null && plainVector(vectorValues);
+        if (plainVector) currentText = joinVector(vectorValues);
         boolean numericScalar = !vector && ("coInt".equals(option.type) || "coFloat".equals(option.type)
                 || "coPercent".equals(option.type) || "coFloatOrPercent".equals(option.type));
         boolean enumList = !vector && !option.enumValues.isEmpty() && option.enumComplete;
@@ -94,7 +100,7 @@ public final class SettingsEditorDialog {
             int kind = numeric ? InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED
                     | InputType.TYPE_NUMBER_FLAG_DECIMAL : InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
             input[0] = ui.edit(initial, kind, multiline);
-            input[0].setHint(vector ? activity.getString(R.string.phase2_editor_json_hint) : activity.getString(R.string.phase2_editor_value));
+            input[0].setHint(vector && !plainVector ? activity.getString(R.string.phase2_editor_json_hint) : activity.getString(R.string.phase2_editor_value));
             input[0].setContentDescription(activity.getString(R.string.phase2_editor_value));
             input[0].setMinHeight(ui.dp(ui.tokens.minTouch));
             if (numeric) input[0].setGravity(Gravity.CENTER);
@@ -102,7 +108,7 @@ public final class SettingsEditorDialog {
             fields.addView(input[0], new LinearLayout.LayoutParams(-1, -2));
             if (vector) {
                 ui.space(fields, 8);
-                fields.addView(ui.text(activity.getString(R.string.phase2_editor_vector_validation), 12, 400, ui.tokens.textSecondary));
+                fields.addView(ui.text(plainVector ? (vectorValues.length() > 1 ? com.keplerslicer.app.L.t("Значение для каждого экструдера — через запятую.") : com.keplerslicer.app.L.t("Значение проверяется ядром при сохранении.")) : activity.getString(R.string.phase2_editor_vector_validation), 12, 400, ui.tokens.textSecondary));
             }
             if ("coFloatOrPercent".equals(option.type)) {
                 ui.space(fields, 8);
@@ -153,6 +159,7 @@ public final class SettingsEditorDialog {
                         if (id == mmId && current instanceof String && ((String) current).endsWith("%"))
                             validationCurrent = ((String) current).substring(0, ((String) current).length()-1);
                     }
+                    if (plainVector) text = splitVector(text, vectorValues).toString();
                     value = option.parseInput(text, validationCurrent);
                 }
                 changed.accept(value);
@@ -168,7 +175,7 @@ public final class SettingsEditorDialog {
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            window.setGravity(Gravity.BOTTOM);
+            window.setGravity(Gravity.BOTTOM);window.setWindowAnimations(com.keplerslicer.app.R.style.KeplerSheetAnim);
             window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             WindowManager.LayoutParams attributes = window.getAttributes(); attributes.dimAmount = .45f; window.setAttributes(attributes);
             window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
@@ -265,5 +272,31 @@ public final class SettingsEditorDialog {
         button.setTextSize(ui.tokens.bodySize); button.setMinHeight(ui.dp(ui.tokens.minTouch));
         GlassTypography.apply(button, 400);
         return button;
+    }
+
+    private static JSONArray parseArray(String text) {
+        try { return new JSONArray(text); } catch (org.json.JSONException e) { return null; }
+    }
+    /** One value, or several short values without commas/newlines. */
+    private static boolean plainVector(JSONArray values) {
+        if (values.length() == 0) return false;
+        for (int i = 0; i < values.length(); i++) {
+            Object v = values.opt(i);
+            if (!(v instanceof String) && !(v instanceof Number) && !(v instanceof Boolean)) return false;
+            if (values.length() > 1 && (String.valueOf(v).contains(",") || String.valueOf(v).contains("\n"))) return false;
+        }
+        return true;
+    }
+    private static String joinVector(JSONArray values) {
+        if (values.length() == 1) return String.valueOf(values.opt(0));
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < values.length(); i++) { if (i > 0) b.append(", "); b.append(values.opt(i)); }
+        return b.toString();
+    }
+    private static JSONArray splitVector(String text, JSONArray original) {
+        JSONArray out = new JSONArray();
+        if (original.length() == 1) { out.put(text); return out; }
+        for (String part : text.split(",", -1)) out.put(part.trim());
+        return out;
     }
 }

@@ -19,7 +19,7 @@ final class SettingsState {
         if(repository==null)repository=new PresetRepository(context.getApplicationContext());return repository;
     }
     static String baseId(Context c,String kind)throws IOException {
-        if(kind.equals("printer")){PrinterProfileCatalog.Profile p=PrinterProfileCatalog.loadSelection(c);if(p==null||p.imported)throw new IOException("Choose a bundled printer and nozzle first");return PresetRepository.systemId(kind,p.vendor,p.name);}
+        if(kind.equals("printer")){PrinterProfileCatalog.Profile p=PrinterProfileCatalog.loadSelection(c);if(p==null||p.imported)throw new IOException(L.t("Choose a bundled printer and nozzle first"));return PresetRepository.systemId(kind,p.vendor,p.name);}
         PrintProfileCatalog.Profile p=PrintProfileCatalog.loadSelection(c,kind);if(p==null)throw new IOException("Choose a "+kind+" preset first");return PresetRepository.systemId(kind,p.vendor,p.name);
     }
     static String activeId(Context c,String kind)throws IOException {
@@ -39,7 +39,7 @@ final class SettingsState {
             if(selected==null)selected=PrinterProfileCatalog.systemProfile(base);
             selectedPrinter=selected;selectedProcess=null;preparedPrinter=null;
         }else{
-            preparedPrinter=PrinterProfileCatalog.loadSelection(c);if(preparedPrinter==null||preparedPrinter.imported)throw new IOException("Choose a printer first");
+            preparedPrinter=PrinterProfileCatalog.loadSelection(c);if(preparedPrinter==null||preparedPrinter.imported)throw new IOException(L.t("Choose a printer first"));
             PrintProfileCatalog.Profile selected=null;for(PrintProfileCatalog.Profile row:PrintProfileCatalog.load(c,p.kind))if(row.path.equals(base.path)){selected=row;break;}
             if(selected==null)throw new IOException("This template is not an instantiated preset");
             selectedPrinter=null;selectedProcess=selected;

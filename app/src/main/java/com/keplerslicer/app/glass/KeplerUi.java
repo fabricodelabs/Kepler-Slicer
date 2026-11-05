@@ -44,7 +44,6 @@ public final class KeplerUi {
         android.widget.FrameLayout.LayoutParams p = new android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
         p.setMargins(sideMarginPx, 0, sideMarginPx, bottomMarginPx); host.addView(nav, p);
         if (nav instanceof GlassNavigation) ((GlassNavigation) nav).setBackdrop(content);
-        statusScrim(host);
         final int extra = Math.round(12 * host.getResources().getDisplayMetrics().density);
         host.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             if (nav.getHeight() <= 0) return;
@@ -52,26 +51,34 @@ public final class KeplerUi {
             padScrollables(content, navXY[1] - extra, nav.getHeight() + bottomMarginPx + extra);
         });
     }
-    /** Soft fade under the status bar so content scrolling up does not collide with the system icons. */
-    private static void statusScrim(android.widget.FrameLayout host) {
-        for (int i = 0; i < host.getChildCount(); i++) if ("kv3-status-scrim".equals(host.getChildAt(i).getTag())) return;
-        View scrim = new View(host.getContext()); scrim.setTag("kv3-status-scrim");
-        scrim.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        final float d = host.getResources().getDisplayMetrics().density;
-        final android.graphics.drawable.GradientDrawable fade = new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF4B5058, 0xFF4B5058, 0x004B5058});
-        scrim.setBackground(fade);
-        host.addView(scrim, new android.widget.FrameLayout.LayoutParams(-1, Math.round(40 * d), Gravity.TOP));
-        host.setClipToPadding(false);
-        scrim.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> {
-            // Cover the status bar itself (the host pads it away) plus a short fade below its edge.
-            int pad = host.getPaddingTop(), top = pad;
-            android.view.WindowInsets in = v.getRootWindowInsets();
-            if (top == 0 && in != null && android.os.Build.VERSION.SDK_INT >= 30) top = in.getInsets(android.view.WindowInsets.Type.statusBars()).top;
-            android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) v.getLayoutParams();
-            int want = top + Math.round(16 * d);
-            if (android.os.Build.VERSION.SDK_INT >= 29) fade.setColors(new int[]{0xFF4B5058, 0xFF4B5058, 0x004B5058}, new float[]{0f, (want - 8 * d) / want, 1f}); // solid to the list edge (8dp below the bar), then an 8dp fade
-            if (lp.height != want || lp.topMargin != -pad) { lp.height = want; lp.topMargin = -pad; v.post(v::requestLayout); }
+    /**
+     * Edge-to-edge host with a floating tab bar: content runs under the gesture bar (no hard cut above it) and the
+     * floating bar is lifted by the gesture-bar height instead.
+     */
+    public static void edgeToEdge(android.widget.FrameLayout host, int navBottomPx) {
+        if (android.os.Build.VERSION.SDK_INT < 35) return;
+        host.setOnApplyWindowInsetsListener((v, in) -> {
+            android.graphics.Insets bars = in.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+            android.graphics.Insets ime = in.getInsets(android.view.WindowInsets.Type.ime());
+            v.setPadding(bars.left, bars.top, bars.right, ime.bottom);
+            for (int i = 0; i < host.getChildCount(); i++) {
+                View child = host.getChildAt(i);
+                if (child instanceof GlassNavigation && child.getLayoutParams() instanceof android.view.ViewGroup.MarginLayoutParams) {
+                    android.view.ViewGroup.MarginLayoutParams p = (android.view.ViewGroup.MarginLayoutParams) child.getLayoutParams();
+                    int want = navBottomPx + (ime.bottom > 0 ? 0 : bars.bottom);
+                    if (p.bottomMargin != want) { p.bottomMargin = want; child.setLayoutParams(p); }
+                }
+            }
+            return in;
         });
+        host.requestApplyInsets();
+    }
+
+    /** Switches between the four top-level tabs in place, like a tab bar: no slide between the screens. */
+    public static void tab(android.app.Activity from, android.content.Intent intent, boolean finish) {
+        from.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        if (finish) from.finish();
+        from.overridePendingTransition(0, 0);
     }
     private static void padScrollables(View v, int navTop, int fallback) {
         if (v.getVisibility() == View.GONE) return;
