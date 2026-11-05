@@ -3874,7 +3874,7 @@
     }
   ],
   "android_sources": {
-    "engine/src/model_io.cpp": "8db67a0d1adf6f3c8385efdde75613f66f3b5b706a871987ee7f9b3f0c15c681"
+    "engine/src/model_io.cpp": "3a592c8c96c046fc9e17dada85458798849a534ed725660e6d1da7cfd273e747"
   },
   "absence_checks": [
     {

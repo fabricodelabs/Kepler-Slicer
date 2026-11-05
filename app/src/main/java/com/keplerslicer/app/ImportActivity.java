@@ -166,9 +166,19 @@ public final class ImportActivity extends Activity {
     private File download(String text) throws Exception {
         java.net.URI uri = new java.net.URI(text);
         if (uri.getScheme() == null || !(uri.getScheme().equalsIgnoreCase("https") || uri.getScheme().equalsIgnoreCase("http")) || uri.getHost() == null) throw new java.io.IOException(getString(R.string.kv3_url_invalid));
-        NetworkPolicy.checkUri(this, uri);
-        java.net.HttpURLConnection c = (java.net.HttpURLConnection) uri.toURL().openConnection(); c.setConnectTimeout(15000); c.setReadTimeout(30000); c.setInstanceFollowRedirects(true);
-        c.setRequestProperty("User-Agent", "KeplerSlicer"); // file CDNs (e.g. Printables) refuse the default Dalvik agent
+        java.net.HttpURLConnection c = null;
+        for (int hop = 0; ; hop++) {
+            // Redirects are followed by hand so each target passes the same network policy as the typed link.
+            NetworkPolicy.checkUri(this, uri);
+            c = (java.net.HttpURLConnection) uri.toURL().openConnection(); c.setConnectTimeout(15000); c.setReadTimeout(30000); c.setInstanceFollowRedirects(false);
+            c.setRequestProperty("User-Agent", "KeplerSlicer"); // file CDNs (e.g. Printables) refuse the default Dalvik agent
+            int code = c.getResponseCode();
+            if (code < 300 || code >= 400) break;
+            String location = c.getHeaderField("Location"); c.disconnect();
+            if (location == null || hop >= 5) throw new java.io.IOException(L.t("Слишком много перенаправлений."));
+            uri = uri.resolve(location);
+            if (uri.getScheme() == null || !(uri.getScheme().equalsIgnoreCase("https") || uri.getScheme().equalsIgnoreCase("http"))) throw new java.io.IOException(getString(R.string.kv3_url_invalid));
+        }
         try {
             int code = c.getResponseCode(); if (code < 200 || code >= 300) throw new java.io.IOException(L.t("Сервер не отдал файл (HTTP ") + code + ").");
             String type = c.getContentType() == null ? "" : c.getContentType().toLowerCase(Locale.ROOT);

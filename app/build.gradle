@@ -4,6 +4,16 @@ plugins {
 
 // Release signing (Google Play upload key). The key and its passwords never live in the repository:
 // keystore.properties is read from -Pkepler.signing=<path>, or from ~/.kepler-signing/keystore.properties.
+// Every build gets a higher versionCode: the number of commits on the current branch (fallback 1 outside git).
+def gitVersionCode = { ->
+    try {
+        def p = ['git', 'rev-list', '--count', 'HEAD'].execute(null, rootDir)
+        p.waitFor()
+        def n = p.text.trim()
+        return n.isInteger() ? n.toInteger() : 1
+    } catch (ignored) { return 1 }
+}
+
 def signingFile = file(project.findProperty('kepler.signing') ?: "${System.getProperty('user.home')}/.kepler-signing/keystore.properties")
 def signingProps = new Properties()
 if (signingFile.isFile()) signingFile.withInputStream { signingProps.load(it) }
@@ -17,8 +27,8 @@ android {
         applicationId 'com.keplerslicer.app'
         minSdk 33
         targetSdk 36
-        versionCode 1
-        versionName '1.0.0'
+        versionCode gitVersionCode()
+        versionName '1.0.1'
         // Match the built native engine. This also tells Android Studio which
         // ABI to deploy when a device supports native translation.
         ndk { abiFilters 'arm64-v8a' }
