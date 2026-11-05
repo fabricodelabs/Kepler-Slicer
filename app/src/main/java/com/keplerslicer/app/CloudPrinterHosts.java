@@ -110,7 +110,7 @@ public final class CloudPrinterHosts {
     private static void filename(String name) {
         if(name==null || name.isEmpty() || name.equals(".") || name.equals("..") || name.indexOf('/')>=0 || name.indexOf('\\')>=0 || name.indexOf('\r')>=0 || name.indexOf('\n')>=0 || name.indexOf('\0')>=0) throw new IllegalArgumentException("Invalid filename");
     }
-    private static void file(File file) throws IOException { if(file==null || !file.isFile() || !file.canRead())throw new IOException("Cannot read G-code"); }
+    private static void file(File file) throws IOException { if(file==null || !file.isFile() || !file.canRead())throw new IOException(L.t("Cannot read G-code")); }
     private static Response ok(Response response) throws IOException {
         if(response.status<200 || response.status>=300)throw new IOException("Cloud host HTTP "+response.status); return response;
     }

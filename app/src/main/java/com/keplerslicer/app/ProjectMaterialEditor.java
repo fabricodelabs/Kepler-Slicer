@@ -92,7 +92,7 @@ final class ProjectMaterialEditor {
             if(colour.equalsIgnoreCase(current.trim())){dialog.dismiss();return;}
             dialog.dismiss();save(expected,slot,colour);
         }));ui.space(body,6);body.addView(ui.action(activity.getString(R.string.pref_cancel),false,dialog::dismiss));
-        dialog.setContentView(ui.surface(body,ui.tokens.cardRadius));dialog.show();if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);dialog.getWindow().setLayout(-1,-2);}
+        dialog.setContentView(ui.surface(body,ui.tokens.cardRadius));dialog.show();if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setWindowAnimations(com.keplerslicer.app.R.style.KeplerSheetAnim);dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);dialog.getWindow().setLayout(-1,-2);}
     }
     private static void updateSwatches(GlassUi ui,FrameLayout[] swatches,String[] colours,String value){
         for(int i=0;i<swatches.length;i++){boolean selected=colours[i].equalsIgnoreCase(value.trim());swatches[i].setSelected(selected);GradientDrawable outline=new GradientDrawable();outline.setColor(selected?0x22ffffff:Color.TRANSPARENT);outline.setCornerRadius(ui.dp(12));outline.setStroke(ui.dp(selected?2:1),selected?0xffffffff:0x44ffffff);swatches[i].setBackground(outline);}

@@ -131,6 +131,26 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   `glass/Backdrop` blurs content under the floating nav (Android 12+); sheets/alerts blur behind.
 - Google Play: `docs/GOOGLE-PLAY.md`, `docs/PRIVACY.md`; upload key in `C:\Users\tails\.kepler-signing` (not in git).
 
+## Owner bug list (2026-11-05)
+
+- Glass component gallery removed (activity, manifest entry, developer-section link).
+- Status scrim (grey block under the status bar) removed from `KeplerUi.floatNavigation`.
+- Tabs switch in place: `KeplerUi.tab(...)` (no activity animation); no selection revert; `GlassNavigation`
+  draws one white pill that slides between items (spring curve) and items scale under the finger.
+- iOS-like motion in `res/anim` + `res/interpolator`: push/pop with parallax for activities (theme
+  `windowAnimationStyle`), bottom sheets rise (`KeplerSheetAnim`, set on every bottom-gravity dialog),
+  alerts scale-fade (`KeplerAlertAnim`, also the theme `dialogTheme`).
+- Edge to edge on tab screens: content runs under the gesture bar; the floating bar is lifted by the bar
+  height (`KeplerUi.edgeToEdge`, KeplerScreen listener).
+- Profiles grouped: printers/processes by printer maker, filaments by plastic maker (`ProfileGroups`,
+  from the profile name); "Производители" chip filters by maker.
+- Parameter editor shows vectors as plain text ("10", "0.4, 0.4"), converts back to the JSON array on save.
+- Wi-Fi glyph optically centred (`kv3_wifi`), settings card uses the vector instead of the PNG.
+- Bambu cloud: `apiError` in the login body, uid from the JWT or `design-user-service/my/preference`,
+  expired/wrong e-mail code handling, two-factor step (`signInTfa`), clear message for an HTML check page,
+  honest client name only. Code window with "Новый код". Cloud button on a LAN form asks for the service.
+  Not verified against the real server (the owner signs in themselves).
+
 ## Known defects to fix next
 
 - Hard-coded Russian text remains only in protocol/model helper classes (error messages; they are compiled by host tests without Android context). Screens are localised.

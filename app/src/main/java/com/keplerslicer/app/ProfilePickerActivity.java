@@ -46,6 +46,8 @@ public class ProfilePickerActivity extends Activity {
     private int materialSlot;
     private String kind, query = "", type;
     private boolean showAll, favouritesOnly;
+    private String maker;
+    private TextView makerChip;
     private boolean calculating = true;
     private String compatibilityError;
     private Map<String,String> compatibility = new HashMap<>();
@@ -122,7 +124,8 @@ public class ProfilePickerActivity extends Activity {
         compatibleChip = ui.chip(getString(R.string.kv3_filter_compatible, printerLabel), !showAll, () -> { showAll = !showAll; updateChips(); refilter(); });
         r2.addView(compatibleChip, new LinearLayout.LayoutParams(-2, ui.dp(36)));
         addChip(r2, ui.chip(getString(R.string.kv3_filter_my_presets), false, () -> screen.unavailable(getString(R.string.kv3_filter_my_presets))));
-        addChip(r2, ui.chip(getString(R.string.kv3_filter_vendors), false, () -> screen.unavailable(getString(R.string.kv3_filter_vendors))));
+        makerChip = ui.chip(maker == null ? getString(R.string.kv3_filter_vendors) : maker, maker != null, this::chooseMaker);
+        addChip(r2, makerChip);
         top.addView(s2, ui.below(8));
         status = ui.text(getString(R.string.l10n_fp_loading), 12, 500, KeplerUi.SECONDARY); status.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), 0); top.addView(status);
 
@@ -194,6 +197,7 @@ public class ProfilePickerActivity extends Activity {
         for (TextView c : typeChips) { Object t = c.getTag(); ui.setChipActive(c, t == null ? type == null && !favouritesOnly : t.equals(type)); }
         if (favouriteChip != null) ui.setChipActive(favouriteChip, favouritesOnly);
         if (compatibleChip != null) ui.setChipActive(compatibleChip, !showAll);
+        if (makerChip != null) ui.setChipActive(makerChip, maker != null);
     }
 
     /** AMS slot (node 5:406 "Loaded"): glass r18, 22dp colour circle, "n" + 11/600 name; the loaded slot has a mint stroke. */
@@ -333,14 +337,17 @@ public class ProfilePickerActivity extends Activity {
             if (!q.isEmpty() && !(p.name + " " + p.vendor).toLowerCase(Locale.ROOT).contains(q)) continue;
             if (type != null && !type.equals(typeOf(p.name))) continue;
             if (favouritesOnly && !favourites.contains(profileKey(p.vendor, p.name))) continue;
+            if (maker != null && !maker.equals(groupOf(p))) continue;
             visible.add(p);
         }
-        visible.sort(Comparator.<PrintProfileCatalog.Profile, String>comparing(p -> EngineText.clean(p.vendor).toLowerCase(Locale.ROOT))
+        final String generic = ProfileGroups.genericLabel();
+        visible.sort(Comparator.<PrintProfileCatalog.Profile>comparingInt(p -> generic.equals(groupOf(p)) ? 0 : 1)
+                .thenComparing(p -> groupOf(p).toLowerCase(Locale.ROOT))
                 .thenComparingInt(p -> "yes".equals(compatibility.get(profileKey(p.vendor, p.name))) ? 0 : 1)
                 .thenComparing(p -> p.name.toLowerCase(Locale.ROOT)));
         rows.clear();
         for (int i = 0; i < visible.size(); ) {
-            String vendor = visible.get(i).vendor; int j = i; while (j < visible.size() && visible.get(j).vendor.equals(vendor)) j++;
+            String vendor = groupOf(visible.get(i)); int j = i; while (j < visible.size() && groupOf(visible.get(j)).equals(vendor)) j++;
             rows.add(new Header(vendor, j - i));
             for (int k = i; k < j; k++) rows.add(new Row(visible.get(k), k == i, k == j - 1));
             i = j;
@@ -350,6 +357,24 @@ public class ProfilePickerActivity extends Activity {
         else status.setText(visible.isEmpty() ? getString(R.string.l10n_nothing_found) : "");
         status.setVisibility(status.getText().length() == 0 ? View.GONE : View.VISIBLE);
         adapter.notifyDataSetChanged(); updateIndex();
+    }
+    /** Plastic maker for filaments, printer maker for processes. */
+    private String groupOf(PrintProfileCatalog.Profile p) {
+        if (!PrintProfileCatalog.FILAMENT.equals(kind)) return ProfileGroups.printerMaker(p.vendor);
+        String brand = ProfileGroups.filamentBrand(p.name);
+        return brand.isEmpty() ? ProfileGroups.genericLabel() : brand;
+    }
+    private void chooseMaker() {
+        if (all == null) return;
+        java.util.TreeSet<String> makers = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for (PrintProfileCatalog.Profile p : all) makers.add(groupOf(p));
+        java.util.List<String> values = new ArrayList<>(); values.add(getString(R.string.kv3_filter_all)); values.addAll(makers);
+        int current = maker == null ? 0 : Math.max(0, values.indexOf(maker));
+        com.keplerslicer.app.glass.GlassBottomSheet.choose(this, makerChip, false, getString(R.string.kv3_filter_vendors), values.toArray(new String[0]), current, i -> {
+            maker = i <= 0 ? null : values.get(i);
+            makerChip.setText(maker == null ? getString(R.string.kv3_filter_vendors) : maker);
+            updateChips(); refilter();
+        });
     }
     @Override protected void onSaveInstanceState(Bundle out) { out.putString("query", query); out.putBoolean("showAll", showAll); out.putString("type", type); out.putBoolean("fav", favouritesOnly); super.onSaveInstanceState(out); }
     @Override protected void onDestroy() { generation++; worker.shutdownNow(); super.onDestroy(); }

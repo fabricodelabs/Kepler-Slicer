@@ -10,5 +10,6 @@
         <item name="android:windowBackground">@drawable/dialog_dark</item>
         <item name="android:windowBlurBehindEnabled">true</item>
         <item name="android:windowBlurBehindRadius">20dp</item>
+        <item name="android:windowAnimationStyle">@style/KeplerAlertAnim</item>
     </style>
 </resources>

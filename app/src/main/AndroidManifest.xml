@@ -28,7 +28,6 @@
         <activity android:name=".SettingsPresetPickerActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
         <activity android:name=".SettingsTransferActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
         <activity android:name=".PreferencesActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
-        <activity android:name=".glass.GlassGalleryActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
         <activity android:name=".MainActivity" android:exported="false" android:launchMode="singleTask" />
         <activity android:name=".LaunchActivity" android:exported="true">
             <intent-filter>

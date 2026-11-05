@@ -41,6 +41,9 @@ public final class GlassNavigation extends LinearLayout {
     private int selected;
     private boolean reduced;
     private View backdropSource;
+    private final android.graphics.Paint pillPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+    private final android.graphics.RectF pill = new android.graphics.RectF();
+    private android.animation.ValueAnimator pillAnimator;
 
     /** Blurs {@code source} (a sibling drawn under this floating bar) behind the bar on Android 12+. */
     public void setBackdrop(View source) { backdropSource = source; updateAppearance(); }
@@ -48,6 +51,7 @@ public final class GlassNavigation extends LinearLayout {
     public GlassNavigation(Context context, int selected, boolean reduced, Listener listener) {
         super(context);
         tokens = GlassTokens.get(context);
+        pillPaint.setColor(Color.WHITE);
         this.listener = listener;
         this.selected = Math.max(0, Math.min(items.length - 1, selected));
         this.reduced = reduced;
@@ -72,10 +76,48 @@ public final class GlassNavigation extends LinearLayout {
         updateAppearance();
     }
 
-    public void setSelectedItem(int item) {
+    public void setSelectedItem(int item) { setSelectedItem(item, true); }
+
+    public void setSelectedItem(int item, boolean animate) {
         if (item < 0 || item >= items.length) return;
+        int previous = selected;
         selected = item;
         updateAppearance();
+        if (animate && previous != item && isLaidOut() && items[item].getWidth() > 0) slidePill();
+        else { if (pillAnimator != null) pillAnimator.cancel(); placePill(); invalidate(); }
+    }
+
+    private void placePill() {
+        View target = items[selected];
+        pill.set(target.getLeft(), target.getTop(), target.getRight(), target.getBottom());
+    }
+
+    private void slidePill() {
+        if (pillAnimator != null) pillAnimator.cancel();
+        final float fromL = pill.left, fromR = pill.right;
+        final View target = items[selected];
+        pillAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        pillAnimator.setDuration(320);
+        pillAnimator.setInterpolator(new android.view.animation.PathInterpolator(0.3f, 1.25f, 0.4f, 1f));
+        pillAnimator.addUpdateListener(a -> {
+            float t = (float) a.getAnimatedValue();
+            pill.set(fromL + (target.getLeft() - fromL) * t, target.getTop(), fromR + (target.getRight() - fromR) * t, target.getBottom());
+            invalidate();
+        });
+        pillAnimator.start();
+    }
+
+    @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        if (pillAnimator == null || !pillAnimator.isRunning()) placePill();
+    }
+
+    @Override protected void dispatchDraw(android.graphics.Canvas canvas) {
+        if (pill.width() > 0) {
+            float radius = tokens.dp(tokens.navSelectedRadius);
+            canvas.drawRoundRect(pill, radius, radius, pillPaint);
+        }
+        super.dispatchDraw(canvas);
     }
 
     private void buildItems() {
@@ -117,6 +159,13 @@ public final class GlassNavigation extends LinearLayout {
                     info.setSelected(host.isSelected());
                 }
             });
+            item.setOnTouchListener((view, event) -> {
+                int action = event.getActionMasked();
+                if (action == android.view.MotionEvent.ACTION_DOWN) view.animate().scaleX(0.9f).scaleY(0.9f).setDuration(120).start();
+                else if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL)
+                    view.animate().scaleX(1f).scaleY(1f).setDuration(260).setInterpolator(new android.view.animation.OvershootInterpolator(2.2f)).start();
+                return false;
+            });
             item.setOnClickListener(view -> {
                 performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                 setSelectedItem(target);
@@ -146,13 +195,7 @@ public final class GlassNavigation extends LinearLayout {
         for (int index = 0; index < items.length; index++) {
             boolean active = index == selected;
             LinearLayout item = items[index];
-            GradientDrawable pill = null;
-            if (active) {
-                pill = new GradientDrawable();
-                pill.setColor(Color.WHITE);
-                pill.setCornerRadius(tokens.dp(tokens.navSelectedRadius));
-            }
-            item.setBackground(pill);
+            item.setBackground(null);
             icons[index].setImageResource(active ? SELECTED_ICONS[index] : ICONS[index]);
             captions[index].setTextColor(active ? tokens.navActiveText : tokens.navInactiveText);
             item.setSelected(active);

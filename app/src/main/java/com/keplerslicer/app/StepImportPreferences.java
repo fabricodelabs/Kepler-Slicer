@@ -176,7 +176,7 @@ final class StepImportPreferences {
         ScrollView scroll=new ScrollView(activity);scroll.setFillViewport(false);scroll.addView(body);
         dialog.setContentView(ui.surface(scroll,ui.tokens.cardRadius));
         dialog.setOnDismissListener(ignored->{if(completed.compareAndSet(false,true))canceled.run();});
-        dialog.show();if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);dialog.getWindow().setLayout(-1,-2);}
+        dialog.show();if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setWindowAnimations(com.keplerslicer.app.R.style.KeplerSheetAnim);dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);dialog.getWindow().setLayout(-1,-2);}
     }
 
     private static File readCache(File index,File data,String sourceHash,Options options)throws IOException {
