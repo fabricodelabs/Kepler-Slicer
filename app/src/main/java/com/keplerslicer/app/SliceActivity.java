@@ -284,7 +284,7 @@ public final class SliceActivity extends Activity {
                 boolean saved = prefs.edit().putString(RESULT_PATH, output.getCanonicalPath()).putString(RESULT_DETAILS, details).putString(RESULT_MODEL, model.name).putString(RESULT_OVERRIDES, selection.overrides).putString(RESULT_FINGERPRINT, jobFingerprint).commit();
                 // A failed commit may still change the in-memory preference map.
                 if (!saved) prefs.edit().putString(RESULT_PATH, previousPath).putString(RESULT_DETAILS, previousDetails).putString(RESULT_MODEL, previousModel).putString(RESULT_OVERRIDES, previousOverrides).putString(RESULT_FINGERPRINT, previousFingerprint).apply();
-                update(getString(R.string.l10n_sl_last_run) + details + L.t("\n\nНарезка завершена: ") + output.length() + getString(R.string.l10n_sl_done_bytes) + (saved ? "" : L.t("\nНе удалось сохранить ссылку на результат для просмотра и экспорта.")));
+                update(getString(R.string.l10n_sl_last_run) + details + L.t("\n\nНарезка завершена: ") + android.text.format.Formatter.formatShortFileSize(this, output.length()) + getString(R.string.l10n_sl_done_bytes).replaceFirst("^\\s*\\S+", "") + (saved ? "" : L.t("\nНе удалось сохранить ссылку на результат для просмотра и экспорта.")));
             } catch (Throwable error) {
                 String message = error.getMessage();
                 String diagnostic = error instanceof LinkageError ? nativeDiagnostic(context) : "";

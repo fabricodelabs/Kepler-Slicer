@@ -547,7 +547,7 @@
     <string name="l10n_net_slice_first">Slice the current model with the chosen settings first.</string>
     <string name="l10n_net_send_first">Send the current file to this printer first.</string>
     <string name="l10n_net_state">State:</string>
-    <string name="l10n_net_save_note">Saving does not contact the server. Bambu Lab works in LAN mode: enter the printer IP, the serial number in the User field and the LAN access code in the key field; status and AMS are read, file transfer to Bambu is not supported yet. SL1 can connect but does not take FFF G-code.</string>
+    <string name="l10n_net_save_note">Saving does not contact the printer; check the connection on the printer screen afterwards. SL1 can connect but does not take FFF G-code.</string>
     <string name="l10n_net_save">Save the connection</string>
     <string name="l10n_net_saving_choice">Saving the selection…</string>
     <string name="l10n_net_saved_printers">Saved printers</string>

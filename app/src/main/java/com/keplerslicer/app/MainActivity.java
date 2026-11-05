@@ -468,7 +468,7 @@ public class MainActivity extends Activity {
             previewReady = error == null; transform.setEnabled(previewReady&&hasModel); transform.setAlpha(previewReady&&hasModel ? 1 : .38f);
             if (previewReady && pendingPaint != null) { String kind = pendingPaint; pendingPaint = null; setToolsMode(true); startPaint(kind); }
             view.setMoveMode(previewReady&&editable&&moveMode&&toolsMode&&activeTool==0, moved);
-            boolean sliceable = previewReady&&canSliceModel(); ui.setEnabled(slice, sliceable);
+            boolean sliceable = previewReady&&canSliceModel()&&materialChosen(); slice.setEnabled(true); slice.setAlpha(sliceable ? 1f : .42f);
             refreshToolFields();
             if (error != null) {pendingLayerPreview=false;dialog(getString(R.string.l10n_ws_update_failed),error.getMessage());} else maybeOpenRequestedLayers();
         });
@@ -1033,7 +1033,7 @@ public class MainActivity extends Activity {
         if (modeBar != null) modeBar.select(on ? 2 : layersMode ? 1 : 0);
         syncPanels();
         if (bedHint != null && on) bedHint.setVisibility(View.GONE); else if (bedHint != null && !layersMode) bedHint.setVisibility(View.VISIBLE);
-        if (stlView != null) stlView.setMoveMode(on && activeTool == 0 && previewReady && moveMode, viewportMoveCallback);
+        if (stlView != null) { stlView.setMoveMode(on && activeTool == 0 && previewReady && moveMode, viewportMoveCallback); stlView.setRotateGizmo(on && activeTool == 1 && previewReady); }
         if (on) refreshToolFields();
     }
     private void selectTool(int index) {
@@ -1046,7 +1046,7 @@ public class MainActivity extends Activity {
             ((ImageView) t.getChildAt(0)).setImageDrawable(kui.icon(new int[]{R.drawable.kv3_move, R.drawable.kv3_refresh, R.drawable.kv3_scale, R.drawable.kv3_lay_on_face, R.drawable.kv3_cut, R.drawable.kv3_support_paint, R.drawable.kv3_seam_paint, R.drawable.kv3_fuzzy_skin, R.drawable.kv3_text, R.drawable.kv3_measure, R.drawable.kv3_assembly, R.drawable.kv3_brim_ears}[i], on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : com.keplerslicer.app.glass.KeplerUi.WHITE));
             ((TextView) t.getChildAt(1)).setTextColor(on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : com.keplerslicer.app.glass.KeplerUi.WHITE);
         }
-        if (stlView != null) stlView.setMoveMode(toolsMode && index == 0 && previewReady, viewportMoveCallback);
+        if (stlView != null) { stlView.setMoveMode(toolsMode && index == 0 && previewReady, viewportMoveCallback); stlView.setRotateGizmo(toolsMode && index == 1 && previewReady); }
         refreshToolFields();
     }
     /** Values shown in the X/Y/Z fields for the active tool, from the stored model transform. */
@@ -1101,7 +1101,7 @@ public class MainActivity extends Activity {
 
     private void dragReady(StlView view,View transform,View move,boolean ready) {
         previewReady=ready;transform.setEnabled(ready);move.setEnabled(ready);transform.setAlpha(ready?1:.38f);move.setAlpha(ready?1:.38f);
-        if(workspaceSlice!=null){boolean sliceable=ready&&canSliceModel();workspaceSlice.setEnabled(sliceable);workspaceSlice.setAlpha(sliceable?1:.42f);}
+        if(workspaceSlice!=null){boolean sliceable=ready&&canSliceModel()&&materialChosen();workspaceSlice.setEnabled(true);workspaceSlice.setAlpha(sliceable?1:.42f);}
         view.setMoveMode(ready&&moveMode&&toolsMode&&activeTool==0,value->commitDrag(view,value,transform,move));
         if(ready)refreshToolFields();
     }
@@ -1252,7 +1252,7 @@ public class MainActivity extends Activity {
     private void openLayerPreview(){
         if(layersMode)return;if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_open_wait));return;}
         if(loadedBed==null){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_wait_bed));return;}
-        cancelLayerWork();final int request=layerRequest;final StlView view=stlView;layersMode=true;setToolsMode(false);updatePreviewTabs();view.setMoveMode(false,null);
+        cancelLayerWork();final int request=layerRequest;final StlView view=stlView;layersMode=true;setToolsMode(false);updatePreviewTabs();view.setMoveMode(false,null);view.setRotateGizmo(false);
         if(viewportTransform!=null){viewportTransform.setEnabled(false);viewportTransform.setAlpha(.38f);}if(viewportMove!=null){viewportMove.setEnabled(false);viewportMove.setAlpha(.38f);}if(viewportMode!=null)viewportMode.setText(getString(R.string.l10n_ws_reading_layers));
         layerReader=new Thread(()->{try{
             java.io.File file=lastResult();if(file==null)throw new java.io.IOException(getString(R.string.l10n_ws_reslice_first));long length=file.length(),modified=file.lastModified();
@@ -1273,7 +1273,7 @@ public class MainActivity extends Activity {
         java.io.File file=lastResult(); if(file==null) { dialog(getString(R.string.l10n_export),getString(R.string.l10n_ws_reslice_first)); return false; }
         String name=getSharedPreferences("last_slice_result",MODE_PRIVATE).getString("model","kepler-result");
         if(name==null || name.trim().isEmpty()) name="kepler-result";
-        if(name.toLowerCase(java.util.Locale.ROOT).endsWith(".stl")) name=name.substring(0,name.length()-4);
+        name=name.replaceFirst("(?i)\\.(stl|3mf|obj|step|stp|amf)$","");
         com.keplerslicer.app.glass.KeplerUi.tab(this,new Intent(this,GcodeExportActivity.class).putExtra(GcodeExportActivity.EXTRA_RESULT_PATH,file.getAbsolutePath()).putExtra(GcodeExportActivity.EXTRA_FILE_NAME,name+".gcode"),false);
         return true;
     }
@@ -1302,10 +1302,18 @@ public class MainActivity extends Activity {
     }
     private void openModelDetails() { startActivityForResult(new Intent().setClassName(this,getPackageName()+".ModelDetailsActivity"),REQUEST_MODEL_DETAILS); }
 
+    /** A 3MF project brings its own filaments; otherwise a filament profile must be selected. */
+    private boolean materialChosen() { return modelProjectMode > 0 || PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.FILAMENT) != null; }
     private void openSlice() {
         if (mesh == null || loadingMesh) { dialog(getString(R.string.l10n_ws_slicing), getString(R.string.l10n_ws_open_first)); return; }
         if(!canSliceModel()){dialog(getString(R.string.l10n_ws_slicing),needsProjectModeReview()?getString(R.string.native_project_legacy_mode):modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false)?getString(R.string.l10n_ws_plate_mapping):getString(R.string.l10n_ws_check_project));return;}
         if (!previewReady) { dialog(getString(R.string.l10n_ws_model_updating), getString(R.string.l10n_ws_wait_preview)); return; }
+        if (!materialChosen()) {
+            // Slicing needs a filament profile; a printer connection is not required.
+            MdUi.alert(this).setTitle(getString(R.string.l10n_ws_slicing)).setMessage(L.t("Выберите материал (профиль пластика) — без него нарезка невозможна. Подключение к принтеру для нарезки не нужно."))
+                .setNegativeButton(R.string.l10n_cancel, null).setPositiveButton(getString(R.string.kv3_choose_material), (d, w) -> openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT)).show();
+            return;
+        }
         startActivity(new Intent(this, SliceActivity.class));
     }
 

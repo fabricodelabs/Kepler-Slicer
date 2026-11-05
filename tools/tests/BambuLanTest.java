@@ -21,6 +21,24 @@ public final class BambuLanTest {
     private static int checks;
     private static void check(boolean ok, String what) { if (!ok) throw new AssertionError(what); checks++; }
 
+    /** SSDP announcement of a P1S (as sent on UDP 2021) is recognised; other devices and paper printers are not. */
+    private static final String CRLF = String.valueOf((char) 13) + (char) 10;
+    private static void ssdp() {
+        String notify = String.join(CRLF, "NOTIFY * HTTP/1.1", "HOST: 239.255.255.250:1990", "Server: UPnP/1.0", "Location: 192.168.1.110", "NT: urn:bambulab-com:device:3dprinter:1", "USN: 01p00c123456789", "Cache-Control: max-age=1800", "DevModel.bambu.com: C12", "DevName.bambu.com: Workshop", "DevConnect.bambu.com: lan", "", "");
+        byte[] b = notify.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        BambuSsdp.Device d = BambuSsdp.parse(b, b.length, "192.168.1.110");
+        check(d != null && "192.168.1.110".equals(d.ip) && "01P00C123456789".equals(d.serial) && "Workshop".equals(d.name) && "Bambu Lab P1S".equals(d.model), "a Bambu SSDP announcement gives IP, serial, name and model");
+        String tv = String.join(CRLF, "NOTIFY * HTTP/1.1", "Location: http://192.168.1.20:8008/desc.xml", "NT: urn:dial-multiscreen-org:service:dial:1", "USN: uuid:1234", "", "");
+        byte[] t = tv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        check(BambuSsdp.parse(t, t.length, "192.168.1.20") == null, "non-Bambu SSDP devices are ignored");
+        String noLocation = notify.replace("Location: 192.168.1.110" + CRLF, "");
+        byte[] n = noLocation.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        BambuSsdp.Device fromSender = BambuSsdp.parse(n, n.length, "192.168.1.111");
+        check(fromSender != null && "192.168.1.111".equals(fromSender.ip), "without Location the sender address is used");
+        check(BambuSsdp.isPaperPrinter("HP LaserJet MFP M140w") && BambuSsdp.isPaperPrinter("Canon PIXMA G3410") && !BambuSsdp.isPaperPrinter("Voron 2.4 Mainsail"), "office printers are filtered, 3D hosts are kept");
+        check(new String(BambuSsdp.search(), java.nio.charset.StandardCharsets.US_ASCII).contains("urn:bambulab-com:device:3dprinter:1"), "the search request asks for Bambu 3D printers");
+    }
+
     public static void main(String[] a) throws Exception {
         String keystore = a[0], pass = a[1];
         KeyStore ks = KeyStore.getInstance("PKCS12"); try (FileInputStream in = new FileInputStream(keystore)) { ks.load(in, pass.toCharArray()); }
@@ -75,6 +93,7 @@ public final class BambuLanTest {
 
         ftps(tls);
         commands(tls);
+        ssdp();
         System.out.println("Bambu LAN: " + checks + " checks passed (loopback simulators: status, FTPS upload, commands)");
     }
 

@@ -33,6 +33,8 @@ final class StlView extends GLSurfaceView {
     private ModelTransform dragBase;
     private MoveCallback moveCallback;
     interface MoveCallback { void completed(ModelTransform transform); }
+    /** Rotate tool: three axis rings around the model (X red, Y green, Z blue), as in the desktop rotate gizmo. */
+    void setRotateGizmo(boolean on) { boolean want = on && !toolpathMode; if (renderer.rotateRings == want) return; renderer.rotateRings = want; queueEvent(() -> { if (renderer.lastScene != null) renderer.buildGizmo(renderer.lastScene); }); requestRender(); }
     void setMoveMode(boolean enabled, MoveCallback callback) { cancelDrag(); moveMode=enabled&&!toolpathMode; moveCallback=callback; setContentDescription(cameraDescription(moveMode,toolpathMode)); renderer.gizmo=moveMode; requestRender(); }
     void discardPendingMove() { cancelDrag(); renderer.dragX=renderer.dragY=0; requestRender(); }
     @Override public void onPause() { cancelDrag(); super.onPause(); }
@@ -344,7 +346,7 @@ final class StlView extends GLSurfaceView {
         final float[] projection = new float[16], model = new float[16], mvp = new float[16];
         int program, pos, norm, matrix, modelMatrix, gridProgram, gridPos, gridMatrix, gridColor;
         int colorProgram, colorPos, colorAttr, colorMatrix;
-        volatile boolean gizmo; FloatBuffer gizmoPositions, gizmoColors; int gizmoCount;
+        volatile boolean gizmo, rotateRings; float[] lastScene; FloatBuffer gizmoPositions, gizmoColors; int gizmoCount;
         /** Plate label (Figma "TEXTURED PEI PLATE", 10/600, 60%): a text texture lying on the bed along its front edge. */
         int labelProgram, labelPos, labelUv, labelMatrix, labelSampler, labelTexture; volatile android.graphics.Bitmap labelBitmap; boolean labelDirty; FloatBuffer labelQuad; float labelAspect = 6;
         volatile boolean volumeLabel = true;
@@ -370,6 +372,22 @@ final class StlView extends GLSurfaceView {
             float[] box = {1f, .706f, .329f};
             for (int[] edge : e) { float[] a = c[edge[0]], b = c[edge[1]]; int dashes = 8; for (int d = 0; d < dashes; d++) { float t0 = d / (float) dashes, t1 = (d + .55f) / dashes; lines.add(new float[]{a[0]+(b[0]-a[0])*t0, a[1]+(b[1]-a[1])*t0, a[2]+(b[2]-a[2])*t0, a[0]+(b[0]-a[0])*t1, a[1]+(b[1]-a[1])*t1, a[2]+(b[2]-a[2])*t1, box[0], box[1], box[2]}); } }
             float cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, len = .55f * Math.max(.4f, Math.max(x1 - x0, y1 - y0)), up = .7f * Math.max(.4f, z1 - z0) + (z1 - z0);
+            if (rotateRings) {
+                float cz = (z0 + z1) / 2, r = .62f * Math.max(.4f, Math.max(x1 - x0, Math.max(y1 - y0, z1 - z0)));
+                int seg = 72;
+                for (int ring = 0; ring < 3; ring++) {
+                    float cr = ring == 0 ? 1f : ring == 1 ? .545f : .541f, cg = ring == 0 ? .541f : ring == 1 ? .886f : .706f, cb = ring == 0 ? .502f : ring == 1 ? .545f : 1f;
+                    for (int i = 0; i < seg; i++) {
+                        double a0 = 2 * Math.PI * i / seg, a1 = 2 * Math.PI * (i + 1) / seg; float u0 = (float) Math.cos(a0) * r, v0 = (float) Math.sin(a0) * r, u1 = (float) Math.cos(a1) * r, v1 = (float) Math.sin(a1) * r;
+                        if (ring == 0) lines.add(new float[]{cx, cy + u0, cz + v0, cx, cy + u1, cz + v1, cr, cg, cb});        // around X: YZ plane
+                        else if (ring == 1) lines.add(new float[]{cx + u0, cy, cz + v0, cx + u1, cy, cz + v1, cr, cg, cb}); // around Y: XZ plane
+                        else lines.add(new float[]{cx + u0, cy + v0, cz, cx + u1, cy + v1, cz, cr, cg, cb});                // around Z: XY plane
+                    }
+                }
+                float[] p = new float[lines.size() * 6], col = new float[lines.size() * 6]; int k = 0;
+                for (float[] l : lines) { System.arraycopy(l, 0, p, k, 6); col[k] = col[k+3] = l[6]; col[k+1] = col[k+4] = l[7]; col[k+2] = col[k+5] = l[8]; k += 6; }
+                gizmoPositions = buffer(p); gizmoColors = buffer(col); gizmoCount = p.length / 3; return;
+            }
             float[][] axes = {{len,0,0, 1f,.541f,.502f},{0,len,0, .545f,.886f,.545f},{0,0,up, .541f,.706f,1f}};
             for (float[] a : axes) { float ex = cx + a[0], ey = cy + a[1], ez = z0 + a[2]; lines.add(new float[]{cx, cy, z0, ex, ey, ez, a[3], a[4], a[5]});
                 float hx = a[0] * .15f, hy = a[1] * .15f, hz = a[2] * .15f, sx = a[2] != 0 ? .08f * up : 0, sy = a[0] != 0 ? .08f * len : a[1] != 0 ? 0 : 0, sz = a[2] == 0 ? .08f * len : 0;
@@ -427,7 +445,7 @@ final class StlView extends GLSurfaceView {
             }
             sceneScale = bed == null ? 0 : bedScale;
             bedCenterX=bed==null?0:bed.centerX;bedCenterY=bed==null?0:bed.centerY;
-            count = scene.length / 3; buildGizmo(scene);
+            count = scene.length / 3; lastScene = scene; buildGizmo(scene);
             positions = buffer(scene); sceneVertices = scene;
             float[] n = new float[scene.length];
             for (int i=0; i<scene.length; i+=9) {
@@ -524,7 +542,7 @@ final class StlView extends GLSurfaceView {
             if (tint >= 0) { if (tints != null) { tints.position(0); GLES20.glEnableVertexAttribArray(tint); GLES20.glVertexAttribPointer(tint,4,GLES20.GL_FLOAT,false,0,tints); } else { GLES20.glDisableVertexAttribArray(tint); GLES20.glVertexAttrib4f(tint,0,0,0,0); } }
             GLES20.glDrawArrays(GLES20.GL_TRIANGLES,0,count); if (tint >= 0 && tints != null) GLES20.glDisableVertexAttribArray(tint);
             GLES20.glDisableVertexAttribArray(pos); GLES20.glDisableVertexAttribArray(norm);
-            if (gizmo && gizmoCount > 0) { GLES20.glDisable(GLES20.GL_DEPTH_TEST); GLES20.glUseProgram(colorProgram); GLES20.glUniformMatrix4fv(colorMatrix,1,false,objectMvp,0); GLES20.glEnableVertexAttribArray(colorPos); GLES20.glEnableVertexAttribArray(colorAttr); gizmoPositions.position(0); gizmoColors.position(0); GLES20.glVertexAttribPointer(colorPos,3,GLES20.GL_FLOAT,false,0,gizmoPositions); GLES20.glVertexAttribPointer(colorAttr,3,GLES20.GL_FLOAT,false,0,gizmoColors); GLES20.glLineWidth(3f); GLES20.glDrawArrays(GLES20.GL_LINES,0,gizmoCount); GLES20.glDisableVertexAttribArray(colorPos); GLES20.glDisableVertexAttribArray(colorAttr); GLES20.glEnable(GLES20.GL_DEPTH_TEST); }
+            if ((gizmo || rotateRings) && gizmoCount > 0) { GLES20.glDisable(GLES20.GL_DEPTH_TEST); GLES20.glUseProgram(colorProgram); GLES20.glUniformMatrix4fv(colorMatrix,1,false,objectMvp,0); GLES20.glEnableVertexAttribArray(colorPos); GLES20.glEnableVertexAttribArray(colorAttr); gizmoPositions.position(0); gizmoColors.position(0); GLES20.glVertexAttribPointer(colorPos,3,GLES20.GL_FLOAT,false,0,gizmoPositions); GLES20.glVertexAttribPointer(colorAttr,3,GLES20.GL_FLOAT,false,0,gizmoColors); GLES20.glLineWidth(3f); GLES20.glDrawArrays(GLES20.GL_LINES,0,gizmoCount); GLES20.glDisableVertexAttribArray(colorPos); GLES20.glDisableVertexAttribArray(colorAttr); GLES20.glEnable(GLES20.GL_DEPTH_TEST); }
         }
     }
 }
