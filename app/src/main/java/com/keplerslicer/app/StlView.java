@@ -56,6 +56,17 @@ final class StlView extends GLSurfaceView {
     }
     /** Camera as yaw, pitch, zoom, panX, panY: kept when the workspace is rebuilt. */
     float[] camera() { return new float[]{renderer.yaw, renderer.pitch, renderer.zoom, renderer.panX, renderer.panY}; }
+    /** Moves the scene up by {@code px} on screen (for a panel covering the bottom) without resizing the surface. */
+    private volatile float sceneShift;
+    void setSceneShift(float px) { sceneShift = px; renderer.sceneShift = px; requestRender(); }
+    /** Perspective plus the screen-space shift; used for drawing and for touch picking alike. */
+    private void project(float[] out, float aspect) { project(out, aspect, sceneShift, getHeight()); }
+    static void project(float[] out, float aspect, float sceneShift, int h) {
+        Matrix.perspectiveM(out, 0, 40, aspect, .1f, 20f);
+        if (h <= 0 || sceneShift == 0) return;
+        float[] shift = new float[16], tmp = new float[16]; Matrix.setIdentityM(shift, 0); Matrix.translateM(shift, 0, 0, 2f * sceneShift / h, 0);
+        Matrix.multiplyMM(tmp, 0, shift, 0, out, 0); System.arraycopy(tmp, 0, out, 0, 16);
+    }
     void setCamera(float[] c) { if (c == null || c.length != 5) return; renderer.yaw = c[0]; renderer.pitch = c[1]; renderer.zoom = c[2]; renderer.panX = c[3]; renderer.panY = c[4]; requestRender(); }
     void resetCamera() { renderer.yaw = -35; renderer.pitch = 25; renderer.zoom = 1;renderer.panX=renderer.panY=0; requestRender(); }
     void setDarkMode(boolean dark) { renderer.dark = dark; requestRender(); }
@@ -209,7 +220,7 @@ final class StlView extends GLSurfaceView {
     private void paintAt(float x, float y) {
         final int w = getWidth(), h = getHeight(); final PaintCallback cb = paintCallback; if (cb == null || w <= 0 || h <= 0) return;
         float[] p = new float[16], camera = new float[16], mvp = new float[16], inverse = new float[16];
-        Matrix.perspectiveM(p, 0, 40, (float) w / h, .1f, 20f); cameraMatrix(camera); Matrix.multiplyMM(mvp, 0, p, 0, camera, 0);
+        project(p, (float) w / h); cameraMatrix(camera); Matrix.multiplyMM(mvp, 0, p, 0, camera, 0);
         if (!Matrix.invertM(inverse, 0, mvp, 0)) return;
         float nx = 2f * x / w - 1, ny = 1 - 2f * y / h; float[] a = new float[4], b = new float[4];
         Matrix.multiplyMV(a, 0, inverse, 0, new float[]{nx, ny, -1, 1}, 0); Matrix.multiplyMV(b, 0, inverse, 0, new float[]{nx, ny, 1, 1}, 0);
@@ -289,7 +300,7 @@ final class StlView extends GLSurfaceView {
         if(anchor==null)return;
         int w=getWidth(),h=getHeight();if(w<=0||h<=0)return;
         float[] projection=new float[16],camera=new float[16],mvp=new float[16],point={(float)anchor[0],(float)anchor[1],0,1},eye=new float[4],clip=new float[4];
-        Matrix.perspectiveM(projection,0,40,(float)w/h,.1f,20f);cameraMatrix(camera);Matrix.multiplyMV(eye,0,camera,0,point,0);
+        project(projection,(float)w/h);cameraMatrix(camera);Matrix.multiplyMV(eye,0,camera,0,point,0);
         Matrix.multiplyMM(mvp,0,projection,0,camera,0);Matrix.multiplyMV(clip,0,mvp,0,point,0);
         if(!Float.isFinite(clip[3])||clip[3]<=.00001f||!Float.isFinite(eye[2])||eye[2]>=-.1f)return;
         float sx=(clip[0]/clip[3]+1)*w/2,sy=(1-clip[1]/clip[3])*h/2;
@@ -322,7 +333,7 @@ final class StlView extends GLSurfaceView {
         Matrix.rotateM(camera,0,renderer.yaw,0,1,0);Matrix.rotateM(camera,0,-90,1,0,0);
     }
     private double[] bedPoint(float x,float y){int w=getWidth(),h=getHeight();if(w<=0||h<=0)return null;float[] p=new float[16],camera=new float[16],mvp=new float[16],inverse=new float[16];
-        Matrix.perspectiveM(p,0,40,(float)w/h,.1f,20f);cameraMatrix(camera);Matrix.multiplyMM(mvp,0,p,0,camera,0);if(!Matrix.invertM(inverse,0,mvp,0))return null;return intersectBed(inverse,x,y,w,h);}
+        project(p,(float)w/h);cameraMatrix(camera);Matrix.multiplyMM(mvp,0,p,0,camera,0);if(!Matrix.invertM(inverse,0,mvp,0))return null;return intersectBed(inverse,x,y,w,h);}
     static double[] intersectBed(float[] inverse,float x,float y,int width,int height){float nx=2*x/width-1,ny=1-2*y/height;float[] near={nx,ny,-1,1},far={nx,ny,1,1},a=new float[4],b=new float[4];Matrix.multiplyMV(a,0,inverse,0,near,0);Matrix.multiplyMV(b,0,inverse,0,far,0);
         if(Math.abs(a[3])<1e-8||Math.abs(b[3])<1e-8)return null;double ax=a[0]/a[3],ay=a[1]/a[3],az=a[2]/a[3],bx=b[0]/b[3],by=b[1]/b[3],bz=b[2]/b[3],dz=bz-az;if(Math.abs(dz)<1e-7)return null;double t=-az/dz;if(t<0||t>1)return null;double px=ax+t*(bx-ax),py=ay+t*(by-ay);return Double.isFinite(px)&&Double.isFinite(py)?new double[]{px,py}:null;}
     private static float distance(MotionEvent e) { return (float)Math.hypot(e.getX(0)-e.getX(1), e.getY(0)-e.getY(1)); }
@@ -505,10 +516,11 @@ final class StlView extends GLSurfaceView {
             GLES20.glGetProgramiv(gridProgram,GLES20.GL_LINK_STATUS,ok,0); if(ok[0]==0) throw new IllegalStateException(GLES20.glGetProgramInfoLog(gridProgram));
             gridPos=GLES20.glGetAttribLocation(gridProgram,"aPosition"); gridMatrix=GLES20.glGetUniformLocation(gridProgram,"uMvp"); gridColor=GLES20.glGetUniformLocation(gridProgram,"uColor");
         }
-        public void onSurfaceChanged(GL10 gl, int width, int height) { GLES20.glViewport(0,0,width,height); float aspect=(float)width/Math.max(height,1); Matrix.perspectiveM(projection,0,40,aspect,.1f,20f); }
+        public void onSurfaceChanged(GL10 gl, int width, int height) { GLES20.glViewport(0,0,width,height); aspect=(float)width/Math.max(height,1); surfaceHeight=height; }
+        float aspect = 1; int surfaceHeight; volatile float sceneShift;
         public void onDrawFrame(GL10 gl) {
             if (dark) GLES20.glClearColor(.220f,.239f,.275f,1); else GLES20.glClearColor(.980f,.980f,.969f,1);
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT|GLES20.GL_DEPTH_BUFFER_BIT); drawBackdrop();
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT|GLES20.GL_DEPTH_BUFFER_BIT); drawBackdrop(); StlView.project(projection, aspect, sceneShift, surfaceHeight);
             GLES20.glEnable(GLES20.GL_BLEND); GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA); Matrix.setIdentityM(model,0); Matrix.translateM(model,0,panX,panY,-9.5f); Matrix.scaleM(model,0,zoom,zoom,zoom); Matrix.rotateM(model,0,pitch,1,0,0); Matrix.rotateM(model,0,yaw,0,1,0);
             // STL and the bed use Z-up. Convert to OpenGL's Y-up camera after
             // camera orbit, without changing the printable object transform.
