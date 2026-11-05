@@ -44,21 +44,21 @@ final class ProcessOption {
     }
     /** Parse a field/switch/enum input into a correctly typed JSON value. Native validates again. */
     Object parseInput(String text) {
-        if (!editable) throw new IllegalArgumentException("Этот параметр доступен только для просмотра.");
+        if (!editable) throw new IllegalArgumentException(L.t("Этот параметр доступен только для просмотра."));
         if (type.equals("string")) {
             if (text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 4096 || text.indexOf('\n') >= 0 || text.indexOf('\r') >= 0 || text.indexOf('\0') >= 0)
-                throw new IllegalArgumentException("Текст слишком длинный или содержит недопустимые символы.");
+                throw new IllegalArgumentException(L.t("Текст слишком длинный или содержит недопустимые символы."));
             return text;
         }
         String input = text.trim();
         if (type.equals("boolean")) {
             if (input.equals("true")) return Boolean.TRUE;
             if (input.equals("false")) return Boolean.FALSE;
-            throw new IllegalArgumentException("Ожидается включено или выключено.");
+            throw new IllegalArgumentException(L.t("Ожидается включено или выключено."));
         }
         if (type.equals("enum")) {
             for (Choice choice : choices) if (choice.value.equals(input)) return input;
-            throw new IllegalArgumentException("Выберите допустимое значение.");
+            throw new IllegalArgumentException(L.t("Выберите допустимое значение."));
         }
         boolean suffix = input.endsWith("%");
         if ((type.equals("percent") || type.equals("float_or_percent")) && suffix) input = input.substring(0, input.length() - 1).trim();
@@ -69,13 +69,13 @@ final class ProcessOption {
             }
             double number = Double.parseDouble(input); checkRange(number);
             if (type.equals("float_or_percent") && !suffix && maxLiteral != null && number > maxLiteral)
-                throw new IllegalArgumentException("Абсолютное значение превышает допустимый предел; для процента добавьте %.");
+                throw new IllegalArgumentException(L.t("Абсолютное значение превышает допустимый предел; для процента добавьте %."));
             return type.equals("float_or_percent") ? Double.toString(number) + (suffix ? "%" : "") : number;
-        } catch (NumberFormatException e) { throw new IllegalArgumentException("Введите корректное число.", e); }
+        } catch (NumberFormatException e) { throw new IllegalArgumentException(L.t("Введите корректное число."), e); }
     }
     private void checkRange(double number) {
         if (!Double.isFinite(number) || (min != null && number < min) || (max != null && number > max))
-            throw new IllegalArgumentException("Значение вне допустимого диапазона.");
+            throw new IllegalArgumentException(L.t("Значение вне допустимого диапазона."));
     }
     static String encodeOverrides(Map<String, Object> changes) throws JSONException {
         JSONObject object = new JSONObject();

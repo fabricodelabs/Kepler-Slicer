@@ -64,7 +64,7 @@ public final class PrinterProfileCatalog {
         }
 
         public String displayName() {
-            return imported ? name + " · импортирован" : vendor + " · " + name;
+            return imported ? name + L.t(" · импортирован") : vendor + " · " + name;
         }
     }
 
@@ -72,7 +72,7 @@ public final class PrinterProfileCatalog {
     public static List<Profile> load(Context context) throws IOException {
         try (InputStream in = context.getAssets().open("kepler_printer_catalog.json")) {
             JSONObject root = new JSONObject(readUtf8(in));
-            if (!UPSTREAM_REVISION.equals(root.optString("revision"))) throw new IOException("Неверная версия каталога профилей");
+            if (!UPSTREAM_REVISION.equals(root.optString("revision"))) throw new IOException(L.t("Неверная версия каталога профилей"));
             JSONArray profiles = root.getJSONArray("profiles");
             List<Profile> result = new ArrayList<>(profiles.length());
             for (int i = 0; i < profiles.length(); i++) {
@@ -81,32 +81,32 @@ public final class PrinterProfileCatalog {
                         p.optString("model", ""), p.optString("variant", ""), false));
             }
             return Collections.unmodifiableList(result);
-        } catch (JSONException e) { throw new IOException("Не удалось прочитать каталог профилей", e); }
+        } catch (JSONException e) { throw new IOException(L.t("Не удалось прочитать каталог профилей"), e); }
     }
 
     /** Read the original JSON unchanged. Parent profiles are not merged. */
     public static String readOriginal(Context context, Profile profile) throws IOException {
-        if (profile.imported || profile.path.isEmpty()) throw new IOException("Для импортированного профиля нет записи в каталоге");
+        if (profile.imported || profile.path.isEmpty()) throw new IOException(L.t("Для импортированного профиля нет записи в каталоге"));
         try (ZipInputStream zip = new ZipInputStream(context.getAssets().open("kepler_profiles.zip"))) {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 if (!entry.isDirectory() && entry.getName().equals(profile.path)) return readUtf8(zip);
             }
         }
-        throw new IOException("Профиль не найден в архиве");
+        throw new IOException(L.t("Профиль не найден в архиве"));
     }
 
     /** Inspect a user-selected machine JSON without treating it as a fully resolved print configuration. */
     public static Profile inspectImported(Context context, Uri uri) throws IOException {
         try (InputStream in = context.getContentResolver().openInputStream(uri)) {
-            if (in == null) throw new IOException("Файл недоступен");
+            if (in == null) throw new IOException(L.t("Файл недоступен"));
             JSONObject obj = new JSONObject(readUtf8(in));
             String name = obj.optString("name", "").trim();
             if (!"machine".equals(obj.optString("type")) || name.isEmpty()) {
-                throw new IOException("Ожидался JSON-профиль принтера с полями type=machine и name");
+                throw new IOException(L.t("Ожидался JSON-профиль принтера с полями type=machine и name"));
             }
             return new Profile(name, "", "", obj.optString("printer_model", ""), obj.optString("printer_variant", ""), true);
-        } catch (JSONException e) { throw new IOException("Неверный JSON профиля", e); }
+        } catch (JSONException e) { throw new IOException(L.t("Неверный JSON профиля"), e); }
     }
 
     /** Save the visible selection only; imported file content is not retained or applied to slicing. */
@@ -130,7 +130,7 @@ public final class PrinterProfileCatalog {
         byte[] buffer = new byte[8192]; int n, total = 0;
         while ((n = input.read(buffer)) != -1) {
             total += n;
-            if (total > MAX_JSON_BYTES) throw new IOException("Файл профиля слишком большой");
+            if (total > MAX_JSON_BYTES) throw new IOException(L.t("Файл профиля слишком большой"));
             out.write(buffer, 0, n);
         }
         String s = new String(out.toByteArray(), StandardCharsets.UTF_8);

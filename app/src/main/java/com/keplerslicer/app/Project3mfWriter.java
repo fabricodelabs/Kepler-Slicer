@@ -80,12 +80,12 @@ final class Project3mfWriter {
 
     /** Full-resolution STL reader (binary or ASCII), millimetres, 9 floats per triangle. */
     static float[] readStl(File file) throws IOException {
-        long length = file.length(); if (length < 84) throw new IOException("STL слишком короткий.");
+        long length = file.length(); if (length < 84) throw new IOException(L.t("STL слишком короткий."));
         long count; try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
             byte[] head = new byte[84]; in.readFully(head);
             count = (head[80] & 0xFFL) | (head[81] & 0xFFL) << 8 | (head[82] & 0xFFL) << 16 | (head[83] & 0xFFL) << 24;
             if (84 + count * 50 == length) {
-                if (count > 20_000_000) throw new IOException("Слишком много треугольников.");
+                if (count > 20_000_000) throw new IOException(L.t("Слишком много треугольников."));
                 float[] v = new float[(int) count * 9]; byte[] rec = new byte[50]; java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(rec).order(java.nio.ByteOrder.LITTLE_ENDIAN);
                 for (int t = 0; t < count; t++) { in.readFully(rec); for (int k = 0; k < 9; k++) v[t * 9 + k] = bb.getFloat(12 + k * 4); }
                 return v;
@@ -95,7 +95,7 @@ final class Project3mfWriter {
         try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new FileInputStream(file), StandardCharsets.US_ASCII))) {
             String line; while ((line = r.readLine()) != null) { line = line.trim(); if (!line.startsWith("vertex")) continue; String[] p = line.split("\\s+"); if (p.length < 4) continue; for (int k = 1; k <= 3; k++) list.add(Float.parseFloat(p[k])); }
         }
-        if (list.isEmpty() || list.size() % 9 != 0) throw new IOException("Не удалось прочитать STL.");
+        if (list.isEmpty() || list.size() % 9 != 0) throw new IOException(L.t("Не удалось прочитать STL."));
         float[] v = new float[list.size()]; for (int i = 0; i < v.length; i++) v[i] = list.get(i); return v;
     }
 }

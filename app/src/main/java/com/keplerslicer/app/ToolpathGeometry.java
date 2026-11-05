@@ -31,7 +31,7 @@ final class ToolpathGeometry {
         FloatBuffer out = ByteBuffer.allocateDirect(Math.max(1, vertexCount) * 3 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
         double[] r = mode == MODE_FEATURE ? null : range(a, mode); double prev = 0;
         for (GcodeAnalysis.Layer l : a.layers) {
-            if (Thread.currentThread().isInterrupted()) throw new IOException("Подготовка предпросмотра отменена.");
+            if (Thread.currentThread().isInterrupted()) throw new IOException(L.t("Подготовка предпросмотра отменена."));
             if (!Double.isFinite(l.z) || Math.abs(l.z) > Float.MAX_VALUE) continue;
             double height = l.z - prev; prev = l.z;
             for (int s = 0; s < l.size / 4; s++) {
@@ -50,31 +50,31 @@ final class ToolpathGeometry {
     }
     /** Translation and uniform scale for mapping absolute machine millimetres into the bed scene. */
     static float[] sceneTransform(double centerX,double centerY,double scale) {
-        if(!Double.isFinite(centerX)||!Double.isFinite(centerY)||!Double.isFinite(scale)||scale<=0)throw new IllegalArgumentException("Некорректные координаты стола.");
+        if(!Double.isFinite(centerX)||!Double.isFinite(centerY)||!Double.isFinite(scale)||scale<=0)throw new IllegalArgumentException(L.t("Некорректные координаты стола."));
         float x=(float)(-centerX*scale),y=(float)(-centerY*scale),s=(float)scale;
-        if(!Float.isFinite(x)||!Float.isFinite(y)||!Float.isFinite(s)||s<=0)throw new IllegalArgumentException("Некорректный масштаб стола.");
+        if(!Float.isFinite(x)||!Float.isFinite(y)||!Float.isFinite(s)||s<=0)throw new IllegalArgumentException(L.t("Некорректный масштаб стола."));
         return new float[]{x,y,s};
     }
     static ToolpathGeometry build(GcodeAnalysis analysis) throws IOException {
-        if(analysis==null||analysis.layers.isEmpty())throw new IOException("G-code не содержит слоёв для просмотра.");
+        if(analysis==null||analysis.layers.isEmpty())throw new IOException(L.t("G-code не содержит слоёв для просмотра."));
         long points=0;int skipped=0;
         for(GcodeAnalysis.Layer layer:analysis.layers) {
-            if(Thread.currentThread().isInterrupted())throw new IOException("Подготовка предпросмотра отменена.");
-            if(layer.size<0 || layer.size>layer.segments.length || layer.size%4!=0)throw new IOException("Некорректные данные слоя.");
+            if(Thread.currentThread().isInterrupted())throw new IOException(L.t("Подготовка предпросмотра отменена."));
+            if(layer.size<0 || layer.size>layer.segments.length || layer.size%4!=0)throw new IOException(L.t("Некорректные данные слоя."));
             if(!Double.isFinite(layer.z)||Math.abs(layer.z)>Float.MAX_VALUE) {if(layer.size>0)skipped++;continue;}
             points+=layer.size/2L;
-            if(points>2_000_000L)throw new IOException("Слишком много отрезков для 3D-предпросмотра.");
+            if(points>2_000_000L)throw new IOException(L.t("Слишком много отрезков для 3D-предпросмотра."));
         }
-        if(points==0)throw new IOException("Нет поддерживаемых траекторий с известной высотой слоя.");
+        if(points==0)throw new IOException(L.t("Нет поддерживаемых траекторий с известной высотой слоя."));
         FloatBuffer out=ByteBuffer.allocateDirect((int)points*3*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
         int[] ends=new int[analysis.layers.size()+1];int layerIndex=0;
         for(GcodeAnalysis.Layer layer:analysis.layers) {
-            if(Thread.currentThread().isInterrupted())throw new IOException("Подготовка предпросмотра отменена.");
+            if(Thread.currentThread().isInterrupted())throw new IOException(L.t("Подготовка предпросмотра отменена."));
             if(Double.isFinite(layer.z)&&Math.abs(layer.z)<=Float.MAX_VALUE) {
                 float z=(float)layer.z;
                 for(int i=0;i<layer.size;i+=4) {
                     float x1=layer.segments[i],y1=layer.segments[i+1],x2=layer.segments[i+2],y2=layer.segments[i+3];
-                    if(!Float.isFinite(x1)||!Float.isFinite(y1)||!Float.isFinite(x2)||!Float.isFinite(y2))throw new IOException("Некорректные координаты траектории.");
+                    if(!Float.isFinite(x1)||!Float.isFinite(y1)||!Float.isFinite(x2)||!Float.isFinite(y2))throw new IOException(L.t("Некорректные координаты траектории."));
                     out.put(x1).put(y1).put(z).put(x2).put(y2).put(z);
                 }
             }

@@ -29,7 +29,7 @@ public final class PrinterHostClient {
     private PrinterDigestAuth.Challenge challenge;
     private String cnonce;
     private long nonceCount;
-    public PrinterHostClient(PrinterEndpoint endpoint) { if(endpoint==null) throw new IllegalArgumentException("Не указан принтер.");this.endpoint=endpoint; }
+    public PrinterHostClient(PrinterEndpoint endpoint) { if(endpoint==null) throw new IllegalArgumentException(L.t("Не указан принтер."));this.endpoint=endpoint; }
 
     /** Verifies the expected service and, for PrusaLink, its PUT capability. */
     public HostInfo test(NetworkHttp.Cancellation cancel) throws IOException {
@@ -38,21 +38,21 @@ public final class PrinterHostClient {
         switch(endpoint.type) {
             case OCTOPRINT: case PRUSALINK: case PRUSACONNECT: case SL1: {
                 JSONObject version=json(get("api/version",cancel));
-                if(!version.has("api")||version.isNull("api")) throw new IOException("Сервер не вернул версию API.");
+                if(!version.has("api")||version.isNull("api")) throw new IOException(L.t("Сервер не вернул версию API."));
                 String text=version.optString("text","");
-                if(endpoint.type==PrinterEndpoint.Type.OCTOPRINT && !text.isEmpty()&&!text.startsWith("OctoPrint")) throw new IOException("Сервер не похож на OctoPrint.");
-                if(endpoint.type==PrinterEndpoint.Type.SL1 && !text.startsWith("Prusa SLA")) throw new IOException("Сервер не похож на Prusa SLA.");
-                if(endpoint.type!=PrinterEndpoint.Type.OCTOPRINT && endpoint.type!=PrinterEndpoint.Type.SL1 && !(text.startsWith("PrusaLink")||text.startsWith("OctoPrint"))) throw new IOException("Сервер не похож на PrusaLink.");
+                if(endpoint.type==PrinterEndpoint.Type.OCTOPRINT && !text.isEmpty()&&!text.startsWith("OctoPrint")) throw new IOException(L.t("Сервер не похож на OctoPrint."));
+                if(endpoint.type==PrinterEndpoint.Type.SL1 && !text.startsWith("Prusa SLA")) throw new IOException(L.t("Сервер не похож на Prusa SLA."));
+                if(endpoint.type!=PrinterEndpoint.Type.OCTOPRINT && endpoint.type!=PrinterEndpoint.Type.SL1 && !(text.startsWith("PrusaLink")||text.startsWith("OctoPrint"))) throw new IOException(L.t("Сервер не похож на PrusaLink."));
                 JSONObject capabilities=version.optJSONObject("capabilities");
                 return new HostInfo(text.isEmpty()?endpoint.type.name():text,"unknown",capabilities!=null&&capabilities.optBoolean("upload-by-put",false));
             }
             case MOONRAKER: {
                 JSONObject result=json(get("server/info",cancel)).optJSONObject("result");
-                if(result==null||!result.has("klippy_state")||result.isNull("klippy_state")) throw new IOException("Ответ не похож на Moonraker.");
+                if(result==null||!result.has("klippy_state")||result.isNull("klippy_state")) throw new IOException(L.t("Ответ не похож на Moonraker."));
                 return new HostInfo("Moonraker",result.optString("klippy_state","unknown"),false);
             }
             case BAMBU: case BAMBU_CLOUD: { JSONObject r = BambuLan.report(endpoint, cancel); return new HostInfo("Bambu Lab " + endpoint.username.trim(), r.optString("gcode_state", "unknown"), false); }
-            default: throw new IOException("Этот тип сервера пока не поддерживается.");
+            default: throw new IOException(L.t("Этот тип сервера пока не поддерживается."));
         }
     }
 
@@ -79,23 +79,23 @@ public final class PrinterHostClient {
             case PRUSACONNECT:
                 test(cancel); return new Status("unknown","");
             case BAMBU: case BAMBU_CLOUD: { JSONObject r = BambuLan.report(endpoint, cancel); return new Status(r.optString("gcode_state", "unknown"), r.toString()); }
-            default: throw new IOException("Статус для этого сервера пока не поддерживается.");
+            default: throw new IOException(L.t("Статус для этого сервера пока не поддерживается."));
         }
     }
 
     /** Uploads only: no start/queue action is included in the request. */
     public UploadResult upload(File file,String remoteName,NetworkHttp.Cancellation cancel) throws IOException {
-        if(file==null||!file.isFile()||!file.canRead()) throw new IOException("Файл G-code недоступен.");
+        if(file==null||!file.isFile()||!file.canRead()) throw new IOException(L.t("Файл G-code недоступен."));
         PrinterEndpoint.encodeComponent(remoteName); // validates one filename, not a path
         if(endpoint.type==PrinterEndpoint.Type.SL1 && !(remoteName.toLowerCase(java.util.Locale.ROOT).endsWith(".sl1") || remoteName.toLowerCase(java.util.Locale.ROOT).endsWith(".sl1s")))
-            throw new IOException("Для Prusa SL1 нужен подготовленный SLA-файл .sl1 или .sl1s; FDM G-code не подходит.");
+            throw new IOException(L.t("Для Prusa SL1 нужен подготовленный SLA-файл .sl1 или .sl1s; FDM G-code не подходит."));
         if(LegacyPrinterHosts.supports(endpoint.type)) {
             String sentName=LegacyPrinterHosts.remoteName(endpoint.type,remoteName);
             LegacyPrinterHosts.upload(endpoint,file,remoteName,cancel);
-            return new UploadResult(sentName,0,null,"Файл отправлен; команда запуска не отправлялась."+(sentName.equals(remoteName)?"":" Имя для передачи изменено; проверьте возможное совпадение на сервере."));
+            return new UploadResult(sentName,0,null,L.t("Файл отправлен; команда запуска не отправлялась.")+(sentName.equals(remoteName)?"":L.t(" Имя для передачи изменено; проверьте возможное совпадение на сервере.")));
         }
         if(CloudPrinterHosts.supports(endpoint.type)) return CloudPrinterHosts.upload(endpoint,file,remoteName,cancel);
-        if(endpoint.type==PrinterEndpoint.Type.BAMBU||endpoint.type==PrinterEndpoint.Type.BAMBU_CLOUD) { String stored=BambuLan.upload(endpoint,file,remoteName,cancel); return new UploadResult(stored,0,null,"Файл отправлен; команда запуска не отправлялась."); }
+        if(endpoint.type==PrinterEndpoint.Type.BAMBU||endpoint.type==PrinterEndpoint.Type.BAMBU_CLOUD) { String stored=BambuLan.upload(endpoint,file,remoteName,cancel); return new UploadResult(stored,0,null,L.t("Файл отправлен; команда запуска не отправлялась.")); }
         HostInfo info=test(cancel); NetworkHttp.Response response; String path;
         switch(endpoint.type) {
             case OCTOPRINT: {
@@ -121,22 +121,22 @@ public final class PrinterHostClient {
                 }
                 break;
             }
-            default: throw new IOException("Загрузка для этого сервера пока не поддерживается.");
+            default: throw new IOException(L.t("Загрузка для этого сервера пока не поддерживается."));
         }
         response.requireSuccess();
-        String stored=remoteName, note=response.status==202?"Файл принят сервером; обработка может продолжаться.":"Файл отправлен; команда запуска не отправлялась.";
+        String stored=remoteName, note=response.status==202?L.t("Файл принят сервером; обработка может продолжаться."):L.t("Файл отправлен; команда запуска не отправлялась.");
         if(endpoint.type==PrinterEndpoint.Type.OCTOPRINT) {
             stored=null;
             try {JSONObject files=new JSONObject(response.text()).optJSONObject("files"),local=files==null?null:files.optJSONObject("local");stored=confirmedRemotePath(local);}
             catch(JSONException ignored) { }
-            if(stored==null)note+=" Сервер не подтвердил путь файла; запуск недоступен.";
+            if(stored==null)note+=L.t(" Сервер не подтвердил путь файла; запуск недоступен.");
         } else if(endpoint.type==PrinterEndpoint.Type.MOONRAKER) {
             stored=null;boolean startedOrQueued=false;
             try { JSONObject reply=new JSONObject(response.text()); JSONObject item=reply.optJSONObject("item");
                 if(item!=null && "gcodes".equals(endpoint.storage) && "gcodes".equals(item.optString("root","")))stored=confirmedRemotePath(item);
-                if(reply.optBoolean("print_started",false)||reply.optBoolean("print_queued",false)) {stored=null;startedOrQueued=true;note="Сервер сообщил о запуске или постановке в очередь, хотя запрос был без запуска. Повторный запуск отключён.";} }
+                if(reply.optBoolean("print_started",false)||reply.optBoolean("print_queued",false)) {stored=null;startedOrQueued=true;note=L.t("Сервер сообщил о запуске или постановке в очередь, хотя запрос был без запуска. Повторный запуск отключён.");} }
             catch(JSONException ignored) { /* Older servers may omit their item envelope. */ }
-            if(stored==null&&!startedOrQueued)note+=" Сервер не подтвердил путь в gcodes; запуск недоступен.";
+            if(stored==null&&!startedOrQueued)note+=L.t(" Сервер не подтвердил путь в gcodes; запуск недоступен.");
         }
         return new UploadResult(stored,response.status,null,note);
     }
@@ -148,11 +148,11 @@ public final class PrinterHostClient {
      */
     public void startUploaded(String remotePath, NetworkHttp.Cancellation cancel) throws IOException {
         String path=encodeRemotePath(remotePath);
-        if(endpoint.type==PrinterEndpoint.Type.DUET) { if(remotePath.contains("/"))throw new IOException("Недопустимый путь файла на принтере."); LegacyPrinterControl.startDuet(endpoint,remotePath,cancel); return; }
-        if(endpoint.type==PrinterEndpoint.Type.BAMBU) { if(remotePath.contains("/"))throw new IOException("Недопустимый путь файла на принтере."); BambuLan.startFile(endpoint,remotePath,cancel); return; }
+        if(endpoint.type==PrinterEndpoint.Type.DUET) { if(remotePath.contains("/"))throw new IOException(L.t("Недопустимый путь файла на принтере.")); LegacyPrinterControl.startDuet(endpoint,remotePath,cancel); return; }
+        if(endpoint.type==PrinterEndpoint.Type.BAMBU) { if(remotePath.contains("/"))throw new IOException(L.t("Недопустимый путь файла на принтере.")); BambuLan.startFile(endpoint,remotePath,cancel); return; }
         if(endpoint.type!=PrinterEndpoint.Type.OCTOPRINT && endpoint.type!=PrinterEndpoint.Type.MOONRAKER)
-            throw new IOException("Запуск уже загруженного файла для этого сервера пока не поддерживается.");
-        if(endpoint.type==PrinterEndpoint.Type.MOONRAKER && !"gcodes".equals(endpoint.storage))throw new IOException("Запуск доступен только для файлов в хранилище gcodes.");
+            throw new IOException(L.t("Запуск уже загруженного файла для этого сервера пока не поддерживается."));
+        if(endpoint.type==PrinterEndpoint.Type.MOONRAKER && !"gcodes".equals(endpoint.storage))throw new IOException(L.t("Запуск доступен только для файлов в хранилище gcodes."));
         test(cancel); // read-only request also initializes Digest before any state-changing command
         NetworkHttp.Response response;
         if(endpoint.type==PrinterEndpoint.Type.OCTOPRINT) {
@@ -164,7 +164,7 @@ public final class PrinterHostClient {
         }
         response.requireSuccess();
         if(endpoint.type==PrinterEndpoint.Type.MOONRAKER && !"ok".equals(json(response).optString("result","")))
-            throw new IOException("Moonraker не подтвердил запуск печати.");
+            throw new IOException(L.t("Moonraker не подтвердил запуск печати."));
     }
     // ---- Job control: explicit actions only, each confirmed by the user in the UI; never retried. ----
     public enum Job { PAUSE, RESUME, CANCEL }
@@ -190,13 +190,13 @@ public final class PrinterHostClient {
             }
             case PRUSALINK: {
                 test(cancel);
-                JSONObject current=json(get("api/v1/job",cancel)); if(!current.has("id"))throw new IOException("Принтер не сообщил о текущем задании.");
-                long id=current.optLong("id",-1); if(id<0)throw new IOException("Принтер не сообщил о текущем задании.");
+                JSONObject current=json(get("api/v1/job",cancel)); if(!current.has("id"))throw new IOException(L.t("Принтер не сообщил о текущем задании."));
+                long id=current.optLong("id",-1); if(id<0)throw new IOException(L.t("Принтер не сообщил о текущем задании."));
                 String path="api/v1/job/"+id+(job==Job.CANCEL?"":job==Job.PAUSE?"/pause":"/resume");
                 NetworkHttp.Response r=send(job==Job.CANCEL?"DELETE":"PUT",endpoint.url(path),new LinkedHashMap<>(),null,cancel,false); r.requireSuccess(); return;
             }
             case DUET: case REPETIER: case CREALITYPRINT: case ELEGOOLINK: LegacyPrinterControl.job(endpoint,job,cancel); return;
-            default: throw new IOException("Управление печатью для этого сервера пока не поддерживается.");
+            default: throw new IOException(L.t("Управление печатью для этого сервера пока не поддерживается."));
         }
     }
     /** Speed mode 1 silent (50%), 2 standard (100%), 3 sport (124%), 4 ludicrous (166%), as on Bambu printers. */
@@ -207,11 +207,11 @@ public final class PrinterHostClient {
     }
     public void chamberLight(boolean on, NetworkHttp.Cancellation cancel) throws IOException {
         if(endpoint.type==PrinterEndpoint.Type.CREALITYPRINT||endpoint.type==PrinterEndpoint.Type.ELEGOOLINK){LegacyPrinterControl.light(endpoint,on,cancel);return;}
-        if(endpoint.type!=PrinterEndpoint.Type.BAMBU&&endpoint.type!=PrinterEndpoint.Type.BAMBU_CLOUD)throw new IOException("Подсветка доступна не на всех принтерах.");
+        if(endpoint.type!=PrinterEndpoint.Type.BAMBU&&endpoint.type!=PrinterEndpoint.Type.BAMBU_CLOUD)throw new IOException(L.t("Подсветка доступна не на всех принтерах."));
         BambuLan.chamberLight(endpoint,on,cancel);
     }
     public void auxFan(boolean on, NetworkHttp.Cancellation cancel) throws IOException {
-        if(endpoint.type!=PrinterEndpoint.Type.BAMBU&&endpoint.type!=PrinterEndpoint.Type.BAMBU_CLOUD)throw new IOException("Вспомогательный вентилятор доступен только на Bambu Lab.");
+        if(endpoint.type!=PrinterEndpoint.Type.BAMBU&&endpoint.type!=PrinterEndpoint.Type.BAMBU_CLOUD)throw new IOException(L.t("Вспомогательный вентилятор доступен только на Bambu Lab."));
         BambuLan.gcode(endpoint,"M106 P2 S"+(on?255:0)+"\n",cancel);
     }
     /** Relative move of one axis (mm, |d| <= 100) or homing (axis 'H'). The caller refuses this while printing. */
@@ -229,7 +229,7 @@ public final class PrinterHostClient {
             case OCTOPRINT: { test(cancel); org.json.JSONArray list=new org.json.JSONArray(); for(String l:lines.split("\n"))if(!l.isEmpty())list.put(l); postJson("api/printer/command","{\"commands\":"+list+"}",cancel); return; }
             case MOONRAKER: { test(cancel); NetworkHttp.Response r=send("POST",endpoint.url("printer/gcode/script?script="+java.net.URLEncoder.encode(lines.trim(),"UTF-8").replace("+","%20")),new LinkedHashMap<>(),null,cancel,false); r.requireSuccess(); return; }
             case DUET: case REPETIER: LegacyPrinterControl.gcode(endpoint,lines,cancel); return;
-            default: throw new IOException("Команды G-code для этого сервера не поддерживаются.");
+            default: throw new IOException(L.t("Команды G-code для этого сервера не поддерживаются."));
         }
     }
     private void postJson(String path,String body,NetworkHttp.Cancellation cancel) throws IOException {
@@ -238,7 +238,7 @@ public final class PrinterHostClient {
     }
 
     private static String encodeRemotePath(String path) {
-        if(path==null || path.isEmpty() || path.startsWith("/") || path.endsWith("/"))throw new IllegalArgumentException("Недопустимый путь файла на принтере.");
+        if(path==null || path.isEmpty() || path.startsWith("/") || path.endsWith("/"))throw new IllegalArgumentException(L.t("Недопустимый путь файла на принтере."));
         StringBuilder out=new StringBuilder();for(String component:path.split("/",-1)){if(out.length()>0)out.append('/');out.append(PrinterEndpoint.encodeComponent(component));}return out.toString();
     }
     private static String confirmedRemotePath(JSONObject object) {
@@ -249,16 +249,16 @@ public final class PrinterHostClient {
         NetworkHttp.Response r=send("GET",endpoint.url(path),new LinkedHashMap<>(),null,cancel,true);r.requireSuccess();return r;
     }
     private static JSONObject json(NetworkHttp.Response response) throws IOException {
-        try { return new JSONObject(response.text()); } catch(JSONException e) { throw new IOException("Сервер вернул некорректный JSON.",e); }
+        try { return new JSONObject(response.text()); } catch(JSONException e) { throw new IOException(L.t("Сервер вернул некорректный JSON."),e); }
     }
     private NetworkHttp.Response send(String method,URI uri,Map<String,String> headers,NetworkHttp.Body body,NetworkHttp.Cancellation cancel,boolean safeRetry) throws IOException {
         Map<String,String> requestHeaders=new LinkedHashMap<>(headers);
         if(endpoint.auth==PrinterEndpoint.Auth.API_KEY) requestHeaders.put("X-Api-Key",endpoint.secret());
         else if(endpoint.auth==PrinterEndpoint.Auth.DIGEST) {
-            if(endpoint.type!=PrinterEndpoint.Type.PRUSALINK&&endpoint.type!=PrinterEndpoint.Type.PRUSACONNECT&&endpoint.type!=PrinterEndpoint.Type.SL1) throw new IOException("Digest для этого протокола не поддерживается.");
+            if(endpoint.type!=PrinterEndpoint.Type.PRUSALINK&&endpoint.type!=PrinterEndpoint.Type.PRUSACONNECT&&endpoint.type!=PrinterEndpoint.Type.SL1) throw new IOException(L.t("Digest для этого протокола не поддерживается."));
             String auth=digestHeader(method,uri); if(auth!=null) requestHeaders.put("Authorization",auth);
-            else if(body!=null) throw new IOException("Сначала проверьте авторизацию сервера.");
-        } else if(endpoint.auth!=PrinterEndpoint.Auth.NONE) throw new IOException("Этот способ авторизации для сервера не поддерживается.");
+            else if(body!=null) throw new IOException(L.t("Сначала проверьте авторизацию сервера."));
+        } else if(endpoint.auth!=PrinterEndpoint.Auth.NONE) throw new IOException(L.t("Этот способ авторизации для сервера не поддерживается."));
         NetworkHttp.Response response=NetworkHttp.request(method,uri,requestHeaders,body,cancel);
         // Retry only read-only requests. Never replay an upload whose outcome could be uncertain.
         if(response.status==401&&endpoint.auth==PrinterEndpoint.Auth.DIGEST&&safeRetry&&body==null) {
@@ -282,6 +282,6 @@ public final class PrinterHostClient {
                 try { return PrinterDigestAuth.parse(value); } catch(IOException e) { problem=e; }
             }
         }
-        throw problem==null?new IOException("Сервер не предложил Digest."):problem;
+        throw problem==null?new IOException(L.t("Сервер не предложил Digest.")):problem;
     }
 }

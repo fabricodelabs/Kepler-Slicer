@@ -37,7 +37,7 @@ final class LegacyPrinterControl {
             case REPETIER: k = repetierStatus(e, c); break;
             case CREALITYPRINT: k = crealityStatus(e, c); break;
             case ELEGOOLINK: k = elegooModel(e) == 1 ? sdcpStatus(e, c) : elegooOctoStatus(e, c); break;
-            default: throw new IOException("Статус для этого сервера не поддерживается.");
+            default: throw new IOException(L.t("Статус для этого сервера не поддерживается."));
         }
         try { return new PrinterHostClient.Status(k.optString("state", "unknown"), new JSONObject().put("kepler", k).toString()); }
         catch (JSONException x) { throw new IOException(x); }
@@ -56,9 +56,9 @@ final class LegacyPrinterControl {
                 int m = elegooModel(e);
                 if (m == 1) { sdcpCommand(e, job == PrinterHostClient.Job.PAUSE ? 129 : job == PrinterHostClient.Job.RESUME ? 131 : 130, new JSONObject(), c); return; }
                 if (m == 0) { octo(e).job(job, c); return; }
-                throw new IOException("Elegoo Centauri Carbon 2: управление пока не поддерживается.");
+                throw new IOException(L.t("Elegoo Centauri Carbon 2: управление пока не поддерживается."));
             }
-            default: throw new IOException("Управление печатью для этого сервера не поддерживается.");
+            default: throw new IOException(L.t("Управление печатью для этого сервера не поддерживается."));
         }
     }
 
@@ -67,7 +67,7 @@ final class LegacyPrinterControl {
         switch (e.type) {
             case DUET: duetGcode(e, lines.trim(), c); return;
             case REPETIER: for (String l : lines.split("\n")) if (!l.isEmpty()) repetier(e, "send", new JSONObject(map("cmd", l)), c); return;
-            default: throw new IOException("Команды G-code для этого сервера не поддерживаются.");
+            default: throw new IOException(L.t("Команды G-code для этого сервера не поддерживаются."));
         }
     }
 
@@ -77,12 +77,12 @@ final class LegacyPrinterControl {
             try { sdcpCommand(e, 403, new JSONObject().put("LightStatus", new JSONObject().put("SecondLight", on)), c); } catch (JSONException x) { throw new IOException(x); }
             return;
         }
-        throw new IOException("Подсветка для этого принтера не поддерживается.");
+        throw new IOException(L.t("Подсветка для этого принтера не поддерживается."));
     }
 
     /** Duet only: starts a file previously uploaded to 0:/gcodes. */
     static void startDuet(PrinterEndpoint e, String name, NetworkHttp.Cancellation c) throws IOException {
-        if (name == null || !name.matches("[^\"/\\\\\\p{Cntrl}]{1,200}")) throw new IOException("Недопустимое имя файла.");
+        if (name == null || !name.matches("[^\"/\\\\\\p{Cntrl}]{1,200}")) throw new IOException(L.t("Недопустимое имя файла."));
         duetGcode(e, "M32 \"0:/gcodes/" + name + "\"", c);
     }
 
@@ -94,7 +94,7 @@ final class LegacyPrinterControl {
         catch (java.io.InterruptedIOException x) { throw x; } catch (IOException unavailable) { return new DuetSession(false, null); }
         if (r.status == 404 || r.status == 405) return new DuetSession(false, null);
         r.requireSuccess(); JSONObject j = json(r.text());
-        if (j.optInt("err", -1) != 0) throw new IOException("Duet отклонил подключение: проверьте пароль.");
+        if (j.optInt("err", -1) != 0) throw new IOException(L.t("Duet отклонил подключение: проверьте пароль."));
         String key = j.optString("sessionKey", ""); return new DuetSession(true, key.isEmpty() ? null : key);
     }
     private static Map<String, String> duetHeaders(DuetSession s) { Map<String, String> h = new LinkedHashMap<>(); if (s.key != null) h.put("X-Session-Key", s.key); return h; }
@@ -107,7 +107,7 @@ final class LegacyPrinterControl {
                 NetworkHttp.Response r = NetworkHttp.request("GET", e.url("rr_model?key=&flags=d99fn"), duetHeaders(s), null, c); r.requireSuccess();
                 model = json(r.text()).optJSONObject("result");
             } else { NetworkHttp.Response r = NetworkHttp.request("GET", e.url("machine/status"), null, null, c); r.requireSuccess(); model = json(r.text()); }
-            if (model == null) throw new IOException("Duet не вернул модель состояния.");
+            if (model == null) throw new IOException(L.t("Duet не вернул модель состояния."));
             return duetTelemetry(model);
         } finally { duetClose(e, s, c); }
     }
@@ -173,7 +173,7 @@ final class LegacyPrinterControl {
                 }
             }
             return k.put("state", state);
-        } catch (JSONException x) { throw new IOException("Repetier вернул некорректный ответ.", x); }
+        } catch (JSONException x) { throw new IOException(L.t("Repetier вернул некорректный ответ."), x); }
     }
     private static void tempPair(JSONObject k, String name, JSONArray list) throws JSONException {
         JSONObject t = list == null || list.length() == 0 ? null : list.optJSONObject(0); if (t == null) return;
@@ -190,7 +190,7 @@ final class LegacyPrinterControl {
                 try { JSONObject j = new JSONObject(m); for (java.util.Iterator<String> it = j.keys(); it.hasNext(); ) { String key = it.next(); merged.put(key, j.get(key)); } } catch (JSONException ignored) { continue; }
                 if (merged.has("nozzleTemp") && merged.has("state")) break;
             }
-            if (!merged.has("nozzleTemp") && !merged.has("state")) throw new IOException("Creality не прислал состояние (порт 9999).");
+            if (!merged.has("nozzleTemp") && !merged.has("state")) throw new IOException(L.t("Creality не прислал состояние (порт 9999)."));
             return crealityTelemetry(merged);
         }
     }
@@ -237,10 +237,10 @@ final class LegacyPrinterControl {
             byte[] buf = new byte[4096]; DatagramPacket reply = new DatagramPacket(buf, buf.length); udp.receive(reply); c.check();
             JSONObject data = new JSONObject(new String(buf, 0, reply.getLength(), StandardCharsets.UTF_8)).optJSONObject("Data");
             String id = data == null ? "" : data.optString("MainboardID", "");
-            if (!id.matches("[A-Za-z0-9]{4,64}")) throw new IOException("Elegoo не сообщил идентификатор платы.");
+            if (!id.matches("[A-Za-z0-9]{4,64}")) throw new IOException(L.t("Elegoo не сообщил идентификатор платы."));
             return id;
-        } catch (SocketTimeoutException t) { throw new IOException("Elegoo не ответил на поиск SDCP (UDP 3000)."); }
-        catch (JSONException x) { throw new IOException("Elegoo вернул некорректный ответ SDCP.", x); }
+        } catch (SocketTimeoutException t) { throw new IOException(L.t("Elegoo не ответил на поиск SDCP (UDP 3000).")); }
+        catch (JSONException x) { throw new IOException(L.t("Elegoo вернул некорректный ответ SDCP."), x); }
     }
     private static String sdcpRequest(String mainboard, int cmd, JSONObject data) throws JSONException {
         String id = UUID.randomUUID().toString().replace("-", "");
@@ -258,7 +258,7 @@ final class LegacyPrinterControl {
                 JSONObject s = j.optJSONObject("Status"); if (s == null && j.optJSONObject("Data") != null) s = j.optJSONObject("Data").optJSONObject("Status");
                 if (s != null) return sdcpTelemetry(s);
             }
-            throw new IOException("Elegoo не прислал состояние (SDCP).");
+            throw new IOException(L.t("Elegoo не прислал состояние (SDCP)."));
         } catch (JSONException x) { throw new IOException(x); }
     }
     static JSONObject sdcpTelemetry(JSONObject s) throws IOException {
@@ -284,14 +284,14 @@ final class LegacyPrinterControl {
             long until = System.currentTimeMillis() + 5000; // wait briefly for the acknowledgement
             while (System.currentTimeMillis() < until) {
                 String m = ws.receive(); if (m == null) break;
-                try { JSONObject d = new JSONObject(m).optJSONObject("Data"); if (d != null && d.optInt("Cmd", -1) == cmd) { JSONObject r = d.optJSONObject("Data"); if (r != null && r.optInt("Ack", 0) != 0) throw new IOException("Elegoo отклонил команду (" + r.optInt("Ack") + ")."); return; } } catch (JSONException ignored) { }
+                try { JSONObject d = new JSONObject(m).optJSONObject("Data"); if (d != null && d.optInt("Cmd", -1) == cmd) { JSONObject r = d.optJSONObject("Data"); if (r != null && r.optInt("Ack", 0) != 0) throw new IOException(L.t("Elegoo отклонил команду (") + r.optInt("Ack") + ")."); return; } } catch (JSONException ignored) { }
             }
         } catch (JSONException x) { throw new IOException(x); }
     }
 
     // ---------------------------------------------------------------- helpers
     private static Map<String, String> map(String k, String v) { Map<String, String> m = new LinkedHashMap<>(); m.put(k, v); return m; }
-    private static JSONObject json(String body) throws IOException { try { return new JSONObject(body); } catch (JSONException x) { throw new IOException("Принтер вернул некорректный JSON.", x); } }
+    private static JSONObject json(String body) throws IOException { try { return new JSONObject(body); } catch (JSONException x) { throw new IOException(L.t("Принтер вернул некорректный JSON."), x); } }
     private static String q(String s) {
         StringBuilder b = new StringBuilder(); char[] h = "0123456789ABCDEF".toCharArray();
         for (byte x : s.getBytes(StandardCharsets.UTF_8)) { int v = x & 255; if ((v >= 'a' && v <= 'z') || (v >= 'A' && v <= 'Z') || (v >= '0' && v <= '9') || v == '-' || v == '_' || v == '.' || v == '~') b.append((char) v); else b.append('%').append(h[v >> 4]).append(h[v & 15]); }

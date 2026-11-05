@@ -11,6 +11,7 @@ $keystore=Join-Path $testRoot 'printer.p12'; $pass='kepler-test'
 if($LASTEXITCODE -ne 0){throw 'Test key generation failed'}
 $sources=@((Join-Path $java 'BambuLan.java'),(Join-Path $java 'PrinterHostClient.java'),(Join-Path $java 'PrinterDigestAuth.java'),(Join-Path $java 'LegacyPrinterHosts.java'),(Join-Path $java 'CloudPrinterHosts.java'),(Join-Path $java 'LegacyTcpConsole.java'),(Join-Path $java 'TlsEngineChannel.java'),(Join-Path $java 'LegacyPrinterControl.java'),(Join-Path $java 'MiniWebSocket.java'),(Join-Path $java 'BambuCloud.java'),(Join-Path $java 'LegacyHostFiles.java'),(Join-Path $java 'AmsTrays.java'),(Join-Path $java 'PrinterEndpoint.java'),(Join-Path $java 'NetworkHttp.java'),(Join-Path $PSScriptRoot 'tests\BambuLanTest.java'))
 $sources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
+$sources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $classes @sources
 if($LASTEXITCODE -ne 0){throw 'Bambu LAN tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') -cp ($classes+';'+$JsonJar) com.keplerslicer.app.BambuLanTest $keystore $pass

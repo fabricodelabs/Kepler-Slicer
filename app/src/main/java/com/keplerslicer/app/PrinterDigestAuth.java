@@ -24,25 +24,25 @@ final class PrinterDigestAuth {
             realm = required(p,"realm"); nonce = required(p,"nonce"); opaque = p.get("opaque");
             algorithmAdvertised=p.containsKey("algorithm"); algorithm = algorithmAdvertised ? p.get("algorithm") : "MD5";
             String alg=algorithm.toUpperCase(Locale.ROOT);
-            if (!alg.equals("MD5") && !alg.equals("MD5-SESS") && !alg.equals("SHA-256") && !alg.equals("SHA-256-SESS")) throw new IOException("Неподдерживаемый алгоритм Digest.");
+            if (!alg.equals("MD5") && !alg.equals("MD5-SESS") && !alg.equals("SHA-256") && !alg.equals("SHA-256-SESS")) throw new IOException(L.t("Неподдерживаемый алгоритм Digest."));
             String offered=p.get("qop"); String selected=null;
-            if(offered!=null) { for(String item:offered.split(",")) if(item.trim().equalsIgnoreCase("auth")) selected="auth"; if(selected==null) throw new IOException("Сервер не поддерживает Digest qop=auth."); }
+            if(offered!=null) { for(String item:offered.split(",")) if(item.trim().equalsIgnoreCase("auth")) selected="auth"; if(selected==null) throw new IOException(L.t("Сервер не поддерживает Digest qop=auth.")); }
             qop=selected;
             String cs=p.get("charset");
-            if(cs!=null&&!cs.equalsIgnoreCase("UTF-8")) throw new IOException("Неподдерживаемая кодировка Digest.");
+            if(cs!=null&&!cs.equalsIgnoreCase("UTF-8")) throw new IOException(L.t("Неподдерживаемая кодировка Digest."));
             charset=cs==null?StandardCharsets.ISO_8859_1:StandardCharsets.UTF_8;
         }
-        private static String required(Map<String,String> p,String key) throws IOException { String s=p.get(key); if(s==null||s.isEmpty()) throw new IOException("Неполный запрос Digest: "+key); return s; }
+        private static String required(Map<String,String> p,String key) throws IOException { String s=p.get(key); if(s==null||s.isEmpty()) throw new IOException(L.t("Неполный запрос Digest: ")+key); return s; }
     }
     static Challenge parse(String header) throws IOException {
-        if(header==null||header.length()>8192||header.indexOf('\r')>=0||header.indexOf('\n')>=0) throw new IOException("Отсутствует корректный вызов Digest.");
-        int start=findDigest(header); if(start<0) throw new IOException("Сервер не предложил Digest.");
+        if(header==null||header.length()>8192||header.indexOf('\r')>=0||header.indexOf('\n')>=0) throw new IOException(L.t("Отсутствует корректный вызов Digest."));
+        int start=findDigest(header); if(start<0) throw new IOException(L.t("Сервер не предложил Digest."));
         int n=start+6; Map<String,String> p=new LinkedHashMap<>();
         while(n<header.length()) {
             while(n<header.length()&&(Character.isWhitespace(header.charAt(n))||header.charAt(n)==',')) n++;
             if(n>=header.length()) break;
             int begin=n; while(n<header.length()&&(Character.isLetterOrDigit(header.charAt(n))||header.charAt(n)=='-'||header.charAt(n)=='_')) n++;
-            if(begin==n) throw new IOException("Некорректный параметр Digest.");
+            if(begin==n) throw new IOException(L.t("Некорректный параметр Digest."));
             String key=header.substring(begin,n).toLowerCase(Locale.ROOT);
             while(n<header.length()&&Character.isWhitespace(header.charAt(n))) n++;
             if(n>=header.length()||header.charAt(n)!='=') break; // next authentication scheme
@@ -51,9 +51,9 @@ final class PrinterDigestAuth {
             if(n<header.length()&&header.charAt(n)=='"') {
                 n++; StringBuilder b=new StringBuilder(); boolean closed=false;
                 while(n<header.length()) { char c=header.charAt(n++); if(c=='"'){closed=true;break;} if(c=='\\'){if(n>=header.length()) throw new IOException("Некорректное экранирование Digest.");c=header.charAt(n++);} if(c<0x20||c==0x7f) throw new IOException("Недопустимый символ Digest."); b.append(c); }
-                if(!closed) throw new IOException("Незакрытая строка Digest."); value=b.toString();
+                if(!closed) throw new IOException(L.t("Незакрытая строка Digest.")); value=b.toString();
             } else { begin=n; while(n<header.length()&&header.charAt(n)!=','&&!Character.isWhitespace(header.charAt(n))) n++; value=header.substring(begin,n); }
-            if(p.put(key,value)!=null) throw new IOException("Повторный параметр Digest.");
+            if(p.put(key,value)!=null) throw new IOException(L.t("Повторный параметр Digest."));
         }
         return new Challenge(p);
     }
@@ -67,7 +67,7 @@ final class PrinterDigestAuth {
     }
     static String nonce() { byte[] bytes=new byte[16]; new SecureRandom().nextBytes(bytes); return hex(bytes); }
     static String authorization(Challenge c,String user,String password,String method,String uri,long nonceCount,String cnonce) throws IOException {
-        if(user==null||password==null||method==null||uri==null||cnonce==null||nonceCount<1||nonceCount>0xffffffffL) throw new IOException("Неверные параметры Digest.");
+        if(user==null||password==null||method==null||uri==null||cnonce==null||nonceCount<1||nonceCount>0xffffffffL) throw new IOException(L.t("Неверные параметры Digest."));
         check(user); check(password); check(method); check(uri); check(cnonce);
         String upper=c.algorithm.toUpperCase(Locale.ROOT); String hash=upper.startsWith("SHA-256")?"SHA-256":"MD5";
         String a1=digest(hash,user+":"+c.realm+":"+password,c.charset);
@@ -81,13 +81,13 @@ final class PrinterDigestAuth {
         else if(upper.endsWith("-SESS")) out.append(", cnonce=\"").append(quote(cnonce)).append('"');
         return out.toString();
     }
-    private static void check(String s) throws IOException { for(int i=0;i<s.length();i++) if(s.charAt(i)<0x20||s.charAt(i)==0x7f) throw new IOException("Недопустимый символ Digest."); }
+    private static void check(String s) throws IOException { for(int i=0;i<s.length();i++) if(s.charAt(i)<0x20||s.charAt(i)==0x7f) throw new IOException(L.t("Недопустимый символ Digest.")); }
     private static String quote(String s) throws IOException { check(s); return s.replace("\\","\\\\").replace("\"","\\\""); }
     private static String digest(String algorithm,String text,Charset charset) throws IOException {
         try {
             ByteBuffer bytes=charset.newEncoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).encode(CharBuffer.wrap(text));
             MessageDigest md=MessageDigest.getInstance(algorithm); md.update(bytes); return hex(md.digest());
-        } catch(CharacterCodingException|NoSuchAlgorithmException e) { throw new IOException("Не удалось вычислить Digest.",e); }
+        } catch(CharacterCodingException|NoSuchAlgorithmException e) { throw new IOException(L.t("Не удалось вычислить Digest."),e); }
     }
     private static String hex(byte[] bytes) { char[] table="0123456789abcdef".toCharArray(), result=new char[bytes.length*2]; for(int i=0;i<bytes.length;i++){int n=bytes[i]&255;result[i*2]=table[n>>>4];result[i*2+1]=table[n&15];}return new String(result); }
 }

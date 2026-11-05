@@ -49,10 +49,10 @@ final class CurrentModelStore {
         try {
             try (InputStream in = context.getContentResolver().openInputStream(uri);
                  FileOutputStream out = new FileOutputStream(staged)) {
-                if (in == null) throw new IOException("Не удалось открыть файл.");
+                if (in == null) throw new IOException(L.t("Не удалось открыть файл."));
                 byte[] bytes = new byte[65536]; int n;
                 while ((n = in.read(bytes)) != -1) {
-                    if (Thread.currentThread().isInterrupted()) throw new IOException("Импорт STL отменён.");
+                    if (Thread.currentThread().isInterrupted()) throw new IOException(L.t("Импорт STL отменён."));
                     out.write(bytes, 0, n);
                 }
                 out.getFD().sync();
@@ -63,7 +63,7 @@ final class CurrentModelStore {
                       if(StepImportPreferences.isStep(staged)){StepImportPreferences.Options options=suppliedStepOptions==null?StepImportPreferences.capture(context):suppliedStepOptions;preview=StepImportPreferences.preview(context,staged,options);StepImportPreferences.saveOptions(staged,options);}
                       else preview=ImportedModelPreview.read(context,staged,-1);
                       mesh=preview.mesh;metadata=preview.metadata; } }
-            catch (OutOfMemoryError e) { throw new IOException("Недостаточно оперативной памяти для просмотра STL.",e); }
+            catch (OutOfMemoryError e) { throw new IOException(L.t("Недостаточно оперативной памяти для просмотра STL."),e); }
             valid = true;
             CurrentModelStore result=new CurrentModelStore(staged,name,mesh,ModelTransform.identity(),metadata);if(StepImportPreferences.isStep(staged))result.setProjectMode(0);return result;
         } finally {
@@ -78,17 +78,17 @@ final class CurrentModelStore {
         if (fileName == null || fileName.isEmpty()) return null;
         // Never treat an arbitrary preference as a path outside the private model directory.
         if (!validName(fileName))
-            throw new IOException("Недопустимое имя сохранённой модели.");
+            throw new IOException(L.t("Недопустимое имя сохранённой модели."));
         File file = new File(directory(context), fileName);
-        if (!file.isFile()) throw new IOException("Сохранённая модель недоступна.");
+        if (!file.isFile()) throw new IOException(L.t("Сохранённая модель недоступна."));
         try {
             StlMesh mesh; org.json.JSONObject metadata=null;
             if(fileName.endsWith(".stl")) { try(InputStream in=new FileInputStream(file)) { mesh=StlMesh.read(in,file.length()); } }
             else { ImportedModelPreview preview=StepImportPreferences.isStep(file)?StepImportPreferences.preview(context,file,StepImportPreferences.saved(file)):ImportedModelPreview.read(context,file,readPlate(prefs));mesh=preview.mesh;metadata=preview.metadata; }
             File snapshotFile=new File(file.getPath()+".project-snapshot.json");
             if(metadata!=null&&snapshotFile.isFile())try{org.json.JSONObject snapshot=new org.json.JSONObject(new String(java.nio.file.Files.readAllBytes(snapshotFile.toPath()),java.nio.charset.StandardCharsets.UTF_8));if(snapshot.optInt("selected_plate",-2)==metadata.optInt("selected_plate",-1))metadata.put("project_settings_snapshot",snapshot);}catch(Exception ignored){}
-            CurrentModelStore result=new CurrentModelStore(file,prefs.getString(NAME,"Модель"),mesh,readTransform(prefs),metadata);result.setProjectMode(readProjectMode(prefs));return result;
-        } catch (OutOfMemoryError e) { throw new IOException("Недостаточно оперативной памяти для просмотра STL.",e); }
+            CurrentModelStore result=new CurrentModelStore(file,prefs.getString(NAME,L.t("Модель")),mesh,readTransform(prefs),metadata);result.setProjectMode(readProjectMode(prefs));return result;
+        } catch (OutOfMemoryError e) { throw new IOException(L.t("Недостаточно оперативной памяти для просмотра STL."),e); }
       }
     }
 
@@ -115,7 +115,7 @@ final class CurrentModelStore {
         if (!edit.commit()) {
             // Android updates the in-memory preferences even if the disk write fails.
             prefs.edit().putString(FILE, previous).putString(NAME, previousName).putString(TRANSFORM, previousTransform).putString(PLATE,previousPlate).putInt("project_mode",previousMode).putString("material_edits",previousMaterials).apply();
-            throw new IOException("Не удалось сохранить выбор модели.");
+            throw new IOException(L.t("Не удалось сохранить выбор модели."));
         }
         if (validName(previous) && !previous.equals(file.getName())) {new File(directory(context), previous).delete();new File(directory(context),previous+".step-settings.json").delete();new File(directory(context),previous+".project-snapshot.json").delete();}
       }
@@ -164,11 +164,11 @@ final class CurrentModelStore {
     static void saveTransform(Context context, String expectedFile, ModelTransform transform) throws IOException {
       synchronized (LOCK) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        if (!expectedFile.equals(prefs.getString(FILE, ""))) throw new IOException("Модель изменилась. Откройте настройки снова.");
+        if (!expectedFile.equals(prefs.getString(FILE, ""))) throw new IOException(L.t("Модель изменилась. Откройте настройки снова."));
         String previous = prefs.getString(TRANSFORM, "");
         if (!prefs.edit().putString(TRANSFORM, transform.encode()).commit()) {
             prefs.edit().putString(TRANSFORM, previous).apply();
-            throw new IOException("Не удалось сохранить преобразование модели.");
+            throw new IOException(L.t("Не удалось сохранить преобразование модели."));
         }
       }
     }
@@ -213,7 +213,7 @@ final class CurrentModelStore {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String fileName = prefs.getString(FILE, "");
         if (!validName(fileName) || !new File(directory(context), fileName).isFile())
-            throw new IOException("Сначала откройте STL-модель.");
+            throw new IOException(L.t("Сначала откройте STL-модель."));
         return selectionKey(fileName,readTransform(prefs),readPlate(prefs),readProjectMode(prefs),readMaterialEdits(prefs));
       }
     }
@@ -223,23 +223,23 @@ final class CurrentModelStore {
       synchronized (LOCK) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String fileName = prefs.getString(FILE, "");
-        if (!validName(fileName)) throw new IOException("Сначала откройте модель.");
+        if (!validName(fileName)) throw new IOException(L.t("Сначала откройте модель."));
         File file = new File(directory(context), fileName);
-        if (!file.isFile()) throw new IOException("Сохранённая модель недоступна.");
+        if (!file.isFile()) throw new IOException(L.t("Сохранённая модель недоступна."));
         ModelTransform transform = readTransform(prefs);
-        if (destination.exists()) throw new IOException("Файл задания уже существует.");
+        if (destination.exists()) throw new IOException(L.t("Файл задания уже существует."));
         File parent=destination.getParentFile();
         if (parent != null && parent.getUsableSpace() > 0 && file.length() > parent.getUsableSpace())
-            throw new IOException("Недостаточно свободного места для копии модели.");
+            throw new IOException(L.t("Недостаточно свободного места для копии модели."));
         try (InputStream in = new FileInputStream(file); FileOutputStream out = new FileOutputStream(destination)) {
             byte[] bytes = new byte[65536]; int n;
             while ((n = in.read(bytes)) != -1) {
-                if (Thread.currentThread().isInterrupted()) throw new IOException("Подготовка STL отменена.");
+                if (Thread.currentThread().isInterrupted()) throw new IOException(L.t("Подготовка STL отменена."));
                 out.write(bytes, 0, n);
             }
         } catch (IOException e) { destination.delete(); throw e; }
         int plate=readPlate(prefs);
-        int mode=readProjectMode(prefs);String edits=readMaterialEdits(prefs);return new Snapshot(prefs.getString(NAME,"Модель"),transform,selectionKey(fileName,transform,plate,mode,edits),destination,plate,mode,edits);
+        int mode=readProjectMode(prefs);String edits=readMaterialEdits(prefs);return new Snapshot(prefs.getString(NAME,L.t("Модель")),transform,selectionKey(fileName,transform,plate,mode,edits),destination,plate,mode,edits);
       }
     }
 
@@ -248,7 +248,7 @@ final class CurrentModelStore {
       Snapshot result;StepImportPreferences.Options step=null;
       synchronized(LOCK) {
         String filename=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).getString(FILE,"");
-        if(!validName(filename)) throw new IOException("Сначала откройте модель.");
+        if(!validName(filename)) throw new IOException(L.t("Сначала откройте модель."));
         if(StepImportPreferences.isStep(new File(filename)))step=StepImportPreferences.saved(new File(directory(context),filename));
         result=snapshot(context,new File(targetDirectory,"model"+extension(filename)));
       }
@@ -262,33 +262,33 @@ final class CurrentModelStore {
     private static boolean validName(String name) { if(name==null||!name.startsWith("model-")||name.indexOf('/')>=0||name.indexOf('\\')>=0)return false; try {extension(name);return true;}catch(IOException e){return false;} }
     private static String extension(String name) throws IOException {
         if(name!=null) {String n=name.toLowerCase(java.util.Locale.ROOT);for(String ext:new String[]{".stl",".obj",".3mf",".step",".stp"})if(n.endsWith(ext))return ext;}
-        throw new IOException("Выберите файл STL, OBJ или 3MF с подходящим расширением.");
+        throw new IOException(L.t("Выберите файл STL, OBJ или 3MF с подходящим расширением."));
     }
     private static int readPlate(SharedPreferences prefs) throws IOException {
         try { int plate=Integer.parseInt(prefs.getString(PLATE,"-1")); if(plate < -1)throw new NumberFormatException();return plate; }
-        catch(RuntimeException e) { throw new IOException("Не удалось прочитать выбранный стол проекта.",e); }
+        catch(RuntimeException e) { throw new IOException(L.t("Не удалось прочитать выбранный стол проекта."),e); }
     }
     /** Validate the new plate before changing the selection or its fingerprint. */
     static CurrentModelStore selectPlate(Context context,String expectedFile,int plate) throws IOException {
       synchronized(LOCK) {
         SharedPreferences p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE);
-        String filename=p.getString(FILE,""); if(!validName(filename)||!filename.equals(expectedFile)||!filename.endsWith(".3mf")||plate<0)throw new IOException("Проект изменился или выбран недопустимый стол.");
+        String filename=p.getString(FILE,""); if(!validName(filename)||!filename.equals(expectedFile)||!filename.endsWith(".3mf")||plate<0)throw new IOException(L.t("Проект изменился или выбран недопустимый стол."));
         File file=new File(directory(context),filename); ImportedModelPreview preview=ImportedModelPreview.read(context,file,plate);
-        String previous=p.getString(PLATE,"-1"); if(!p.edit().putString(PLATE,Integer.toString(plate)).commit()){p.edit().putString(PLATE,previous).apply();throw new IOException("Не удалось сохранить выбранный стол.");}
-        CurrentModelStore selected=new CurrentModelStore(file,p.getString(NAME,"Модель"),preview.mesh,readTransform(p),preview.metadata);selected.setProjectMode(readProjectMode(p));return selected;
+        String previous=p.getString(PLATE,"-1"); if(!p.edit().putString(PLATE,Integer.toString(plate)).commit()){p.edit().putString(PLATE,previous).apply();throw new IOException(L.t("Не удалось сохранить выбранный стол."));}
+        CurrentModelStore selected=new CurrentModelStore(file,p.getString(NAME,L.t("Модель")),preview.mesh,readTransform(p),preview.metadata);selected.setProjectMode(readProjectMode(p));return selected;
       }
     }
 
     private static ModelTransform readTransform(SharedPreferences prefs) throws IOException {
         try { return ModelTransform.decode(prefs.getString(TRANSFORM, "")); }
-        catch (IllegalArgumentException e) { throw new IOException("Не удалось прочитать сохранённые настройки модели.", e); }
+        catch (IllegalArgumentException e) { throw new IOException(L.t("Не удалось прочитать сохранённые настройки модели."), e); }
     }
 
     void discard() { file.delete();new File(file.getPath()+".step-settings.json").delete();new File(file.getPath()+".project-snapshot.json").delete(); }
 
     private static File directory(Context context) throws IOException {
         File dir = new File(context.getFilesDir(), "models");
-        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Не удалось создать хранилище моделей.");
+        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException(L.t("Не удалось создать хранилище моделей."));
         return dir;
     }
 }

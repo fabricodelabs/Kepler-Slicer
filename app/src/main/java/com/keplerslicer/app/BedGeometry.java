@@ -16,12 +16,12 @@ final class BedGeometry {
     BedGeometry(double[] data) {
         if (data == null || data.length < 7 || data.length % 2 != 1 || data.length > 1025 ||
                 !Double.isFinite(data[0]) || data[0] <= 0 || data[0] > 1_000_000)
-            throw new IllegalArgumentException("Некорректная область печати профиля.");
+            throw new IllegalArgumentException(L.t("Некорректная область печати профиля."));
         height = data[0]; List<P> pts = new ArrayList<>();
         for (int i=1;i<data.length;i+=2) {
             double x=data[i], y=data[i+1];
             if (!Double.isFinite(x) || !Double.isFinite(y) || Math.abs(x)>1_000_000 || Math.abs(y)>1_000_000)
-                throw new IllegalArgumentException("Некорректные координаты стола.");
+                throw new IllegalArgumentException(L.t("Некорректные координаты стола."));
             P v=new P(x,y); if(pts.isEmpty() || !same(pts.get(pts.size()-1),v)) pts.add(v);
         }
         if(pts.size()>1 && same(pts.get(0),pts.get(pts.size()-1))) pts.remove(pts.size()-1);
@@ -33,13 +33,13 @@ final class BedGeometry {
                 if(Math.abs(cross(a,b,c))<EPS && between(a,b,c)) { pts.remove(i); changed=true; break; }
             }
         }
-        if(pts.size()<3 || !simple(pts)) throw new IllegalArgumentException("Контур стола повреждён или пересекает себя.");
-        double area=area(pts); if(Math.abs(area)<EPS) throw new IllegalArgumentException("Контур стола не имеет площади.");
+        if(pts.size()<3 || !simple(pts)) throw new IllegalArgumentException(L.t("Контур стола повреждён или пересекает себя."));
+        double area=area(pts); if(Math.abs(area)<EPS) throw new IllegalArgumentException(L.t("Контур стола не имеет площади."));
         if(area<0) Collections.reverse(pts);
         double minX=Double.POSITIVE_INFINITY,minY=minX,maxX=Double.NEGATIVE_INFINITY,maxY=maxX;
         for(P p:pts) { minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y); }
         width=maxX-minX; depth=maxY-minY; centerX=(minX+maxX)/2; centerY=(minY+maxY)/2;
-        if(width<EPS || depth<EPS) throw new IllegalArgumentException("Стол не имеет размеров.");
+        if(width<EPS || depth<EPS) throw new IllegalArgumentException(L.t("Стол не имеет размеров."));
         polygon=new ArrayList<>(); for(P p:pts) polygon.add(new P(p.x-centerX,p.y-centerY));
         triangulate();
         // 20 divisions per bounding axis. Clip every grid segment to the real polygon.
@@ -76,12 +76,12 @@ final class BedGeometry {
                 if(cross(a,b,c)<=EPS) continue;
                 boolean blocked=false;
                 for(int j=0;j<rest.size();j++) {
-                    if (++checks > 3_000_000) throw new IllegalArgumentException("Контур стола слишком сложен для предпросмотра.");
+                    if (++checks > 3_000_000) throw new IllegalArgumentException(L.t("Контур стола слишком сложен для предпросмотра."));
                     P q=rest.get(j); if(q!=a&&q!=b&&q!=c&&inTriangle(q,a,b,c)){blocked=true;break;}
                 }
                 if(!blocked){triangles.add(a);triangles.add(b);triangles.add(c);rest.remove(i);found=true;break;}
             }
-            if(!found) throw new IllegalArgumentException("Не удалось построить контур стола.");
+            if(!found) throw new IllegalArgumentException(L.t("Не удалось построить контур стола."));
         }
         triangles.addAll(rest);
     }
@@ -95,7 +95,7 @@ final class BedGeometry {
             }
         }
         Collections.sort(intersections);
-        if(intersections.size()%2!=0) throw new IllegalArgumentException("Не удалось построить сетку стола.");
+        if(intersections.size()%2!=0) throw new IllegalArgumentException(L.t("Не удалось построить сетку стола."));
         for(int i=0;i<intersections.size();i+=2) {
             double a=intersections.get(i),b=intersections.get(i+1);
             grid.add(vertical?new P(scan,a):new P(a,scan)); grid.add(vertical?new P(scan,b):new P(b,scan));
@@ -104,7 +104,7 @@ final class BedGeometry {
     float[] floor(double scale,float z){return make(triangles,scale,z);}
     float[] lines(double scale,float z){return make(grid,scale,z);}
     private static float[] make(List<P> points,double scale,float z) {
-        if(!Double.isFinite(scale)||scale<=0) throw new IllegalArgumentException("Некорректный масштаб сцены.");
+        if(!Double.isFinite(scale)||scale<=0) throw new IllegalArgumentException(L.t("Некорректный масштаб сцены."));
         float[] result=new float[points.size()*3]; int i=0;
         for(P p:points){result[i++]=(float)(p.x*scale);result[i++]=(float)(p.y*scale);result[i++]=z;}
         return result;

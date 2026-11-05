@@ -15,6 +15,7 @@ $schemaSources=@(
     (Join-Path $PSScriptRoot 'tests\ProfileIniCodecTest.java')
 )
 $schemaSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
+$schemaSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $schemaClasses @schemaSources
 if($LASTEXITCODE -ne 0){throw 'Schema tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') -cp ($schemaClasses+';'+$JsonJar) SettingsSchemaTest (Join-Path $schemaProjectRoot 'app\src\main\assets\kepler_settings_runtime.json')

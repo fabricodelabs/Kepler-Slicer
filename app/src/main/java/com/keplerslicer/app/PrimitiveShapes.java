@@ -25,7 +25,7 @@ final class PrimitiveShapes {
             case 2: revolve(t, new double[][]{{0, 0}, {R, 0}, {0, SIZE}}); break;
             default: { double[][] p = new double[RINGS + 1][]; for (int i = 0; i <= RINGS; i++) { double a = -Math.PI / 2 + Math.PI * i / RINGS; p[i] = new double[]{i == 0 || i == RINGS ? 0 : R * Math.cos(a), R + R * Math.sin(a)}; } revolve(t, p); }
         }
-        File dir = new File(context.getCacheDir(), "shapes"); if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Не удалось подготовить фигуру.");
+        File dir = new File(context.getCacheDir(), "shapes"); if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException(L.t("Не удалось подготовить фигуру."));
         File out = new File(dir, name + ".stl");
         try (OutputStream o = new BufferedOutputStream(new FileOutputStream(out))) {
             byte[] header = new byte[80]; byte[] label = ("Kepler Slicer " + name).getBytes(java.nio.charset.StandardCharsets.US_ASCII); System.arraycopy(label, 0, header, 0, Math.min(80, label.length)); o.write(header);

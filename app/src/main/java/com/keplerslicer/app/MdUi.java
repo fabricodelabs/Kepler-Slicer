@@ -86,7 +86,7 @@ final class MdUi {
             case "✓": return R.drawable.kv3_check; case "↗": return R.drawable.kv3_share; default: return 0;
         }
     }
-    void navigation(Activity a,int selected) { if(pageRoot==null)throw new IllegalStateException("Сначала создайте страницу."); navigation(a,pageRoot,selected); }
+    void navigation(Activity a,int selected) { if(pageRoot==null)throw new IllegalStateException(L.t("Сначала создайте страницу.")); navigation(a,pageRoot,selected); }
     /** Figma v3 navigation (node 2:318) with the original routes through MainActivity. */
     void navigation(Activity a,LinearLayout parent,int selected) {
         FrameLayout shell=new FrameLayout(context);

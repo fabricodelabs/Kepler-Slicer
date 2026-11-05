@@ -27,14 +27,14 @@ final class LegacyHostFiles {
             char[] hex = "0123456789abcdef".toCharArray(), out = new char[32]; byte[] sum=md.digest();
             for(int i=0;i<sum.length;i++){int b=sum[i]&255;out[i*2]=hex[b>>>4];out[i*2+1]=hex[b&15];}
             return new String(out);
-        } catch (NoSuchAlgorithmException impossible) { throw new IOException("Не удалось вычислить контрольную сумму.",impossible); }
+        } catch (NoSuchAlgorithmException impossible) { throw new IOException(L.t("Не удалось вычислить контрольную сумму."),impossible); }
     }
     static String short83(String filename) {
         PrinterEndpoint.encodeComponent(filename);
         int p=filename.lastIndexOf('.'); String stem=p>0?filename.substring(0,p):filename, extension=p>0?filename.substring(p+1):"";
         String cleanStem=ascii83(stem),cleanExt=ascii83(extension);
         boolean changed=!cleanStem.equals(stem)||!cleanExt.equals(extension)||cleanStem.length()>8||cleanExt.length()>3;
-        if(cleanStem.isEmpty())throw new IllegalArgumentException("Неверное имя файла ESP3D.");
+        if(cleanStem.isEmpty())throw new IllegalArgumentException(L.t("Неверное имя файла ESP3D."));
         if(changed) {
             try {
                 byte[] digest=MessageDigest.getInstance("SHA-256").digest(filename.getBytes(StandardCharsets.UTF_8));
@@ -53,7 +53,7 @@ final class LegacyHostFiles {
     static String flashforgeName(String filename) {
         PrinterEndpoint.encodeComponent(filename); StringBuilder out=new StringBuilder();
         for(int i=0;i<filename.length();i++) { char c=filename.charAt(i); out.append((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='.'||c=='_'||c=='-'?c:'_'); }
-        if(out.length()==0 || out.toString().equals(".") || out.toString().equals("..")) throw new IllegalArgumentException("Неверное имя файла Flashforge.");
+        if(out.length()==0 || out.toString().equals(".") || out.toString().equals("..")) throw new IllegalArgumentException(L.t("Неверное имя файла Flashforge."));
         return out.toString();
     }
     static String fatTimestamp(long epochMillis) {
@@ -66,12 +66,12 @@ final class LegacyHostFiles {
     private static final Pattern TIME=Pattern.compile("^; estimated printing time \\(normal mode\\) = (?:(\\d+)h )?(\\d+)m (\\d+)s.*$");
     /** Upstream rewrites Griffin headers; preserve the original file, use a private temporary copy. */
     static File griffinCopy(File source, NetworkHttp.Cancellation cancel) throws IOException {
-        if(source==null||!source.isFile()||source.length()==0) throw new IOException("Файл задания недоступен.");
+        if(source==null||!source.isFile()||source.length()==0) throw new IOException(L.t("Файл задания недоступен."));
         long seconds=0;
         try(BufferedReader in=reader(source)) {
             String line; while((line=in.readLine())!=null) { cancel.check(); Matcher m=TIME.matcher(line); if(m.matches()) {
                 try {long h=m.group(1)==null?0:Long.parseLong(m.group(1)), min=Long.parseLong(m.group(2)), sec=Long.parseLong(m.group(3)); seconds=Math.addExact(Math.addExact(Math.multiplyExact(h,3600),Math.multiplyExact(min,60)),sec);}
-                catch(ArithmeticException|NumberFormatException e){throw new IOException("Некорректное время печати.",e);} break; }
+                catch(ArithmeticException|NumberFormatException e){throw new IOException(L.t("Некорректное время печати."),e);} break; }
             }
         }
         File result=File.createTempFile("kepler-griffin-", ".gcode",source.getParentFile()); boolean ok=false, header=false;
@@ -82,7 +82,7 @@ final class LegacyHostFiles {
                 if(line.startsWith(";PRINT.TIME:")) line=";PRINT.TIME:"+seconds;
                 out.write(line); out.newLine();
             }
-            if(!header)throw new IOException("В G-code отсутствует заголовок Griffin UltiMaker.");
+            if(!header)throw new IOException(L.t("В G-code отсутствует заголовок Griffin UltiMaker."));
             ok=true; return result;
         } finally { if(!ok) result.delete(); }
     }

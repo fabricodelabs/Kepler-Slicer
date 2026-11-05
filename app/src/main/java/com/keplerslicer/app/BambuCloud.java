@@ -36,10 +36,10 @@ final class BambuCloud {
 
     /** Password sign-in, or code sign-in when {@code code} is not empty. A verification code is e-mailed when Bambu asks for one. */
     static Login signIn(String region, String email, String password, String code, NetworkHttp.Cancellation c) throws IOException {
-        if (email == null || !email.matches("[^@\\s]{1,128}@[^@\\s]{1,128}")) throw new IOException("Bambu: введите адрес почты аккаунта.");
+        if (email == null || !email.matches("[^@\\s]{1,128}@[^@\\s]{1,128}")) throw new IOException(L.t("Bambu: введите адрес почты аккаунта."));
         try {
             JSONObject body = new JSONObject().put("account", email.trim());
-            if (code != null && !code.trim().isEmpty()) { if (!code.trim().matches("[0-9]{4,8}")) throw new IOException("Bambu: код из письма состоит из цифр."); body.put("code", code.trim()); }
+            if (code != null && !code.trim().isEmpty()) { if (!code.trim().matches("[0-9]{4,8}")) throw new IOException(L.t("Bambu: код из письма состоит из цифр.")); body.put("code", code.trim()); }
             else if (password == null || password.isEmpty()) { post(region, "v1/user-service/user/sendemail/code", new JSONObject().put("email", email.trim()).put("type", "codeLogin"), null, c); return new Login(null, null, null, true, false); }
             else body.put("password", password);
             JSONObject r = post(region, "v1/user-service/user/login", body, null, c);
@@ -48,17 +48,17 @@ final class BambuCloud {
                 String type = r.optString("loginType", "");
                 if ("verifyCode".equals(type)) { post(region, "v1/user-service/user/sendemail/code", new JSONObject().put("email", email.trim()).put("type", "codeLogin"), null, c); return new Login(null, null, null, true, false); }
                 if ("tfa".equals(type)) return new Login(null, null, null, false, true);
-                throw new IOException("Bambu не выдал токен входа.");
+                throw new IOException(L.t("Bambu не выдал токен входа."));
             }
             String uid = profileUid(region, token, c);
             return new Login(token, r.optString("refreshToken", ""), uid, false, false);
-        } catch (JSONException e) { throw new IOException("Bambu вернул некорректный ответ.", e); }
+        } catch (JSONException e) { throw new IOException(L.t("Bambu вернул некорректный ответ."), e); }
     }
 
     static String profileUid(String region, String token, NetworkHttp.Cancellation c) throws IOException {
         JSONObject p = get(region, "v1/user-service/my/profile", token, c);
         String uid = p.has("uid") ? String.valueOf(p.opt("uid")) : "";
-        if (!uid.matches("[0-9]{1,20}")) throw new IOException("Bambu не сообщил идентификатор аккаунта.");
+        if (!uid.matches("[0-9]{1,20}")) throw new IOException(L.t("Bambu не сообщил идентификатор аккаунта."));
         return uid;
     }
 
@@ -84,8 +84,8 @@ final class BambuCloud {
         return reply(NetworkHttp.request("GET", URI.create(apiBase(region) + "/" + path), headers(token), null, c));
     }
     private static JSONObject reply(NetworkHttp.Response r) throws IOException {
-        if (r.status == 401 || r.status == 403) throw new IOException("Bambu отклонил вход: проверьте почту, пароль или код и войдите снова.");
-        if (r.status / 100 != 2) throw new IOException("Bambu: ошибка сервера (HTTP " + r.status + ").");
-        try { return new JSONObject(r.text()); } catch (JSONException e) { throw new IOException("Bambu вернул некорректный ответ.", e); }
+        if (r.status == 401 || r.status == 403) throw new IOException(L.t("Bambu отклонил вход: проверьте почту, пароль или код и войдите снова."));
+        if (r.status / 100 != 2) throw new IOException(L.t("Bambu: ошибка сервера (HTTP ") + r.status + ").");
+        try { return new JSONObject(r.text()); } catch (JSONException e) { throw new IOException(L.t("Bambu вернул некорректный ответ."), e); }
     }
 }

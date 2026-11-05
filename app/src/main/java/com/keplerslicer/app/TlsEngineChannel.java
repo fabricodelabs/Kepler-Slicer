@@ -66,7 +66,7 @@ final class TlsEngineChannel {
         netOut.clear();
         SSLEngineResult r = engine.wrap(src, netOut);
         if (r.getStatus() == SSLEngineResult.Status.BUFFER_OVERFLOW) { netOut = ByteBuffer.allocate(netOut.capacity() * 2); return; }
-        if (r.getStatus() == SSLEngineResult.Status.CLOSED && !engine.isOutboundDone()) throw new IOException("TLS channel closed");
+        if (r.getStatus() == SSLEngineResult.Status.CLOSED && !engine.isOutboundDone()) throw new IOException(L.t("TLS channel closed"));
         netOut.flip(); out.write(netOut.array(), 0, netOut.limit()); out.flush();
     }
 
@@ -81,11 +81,11 @@ final class TlsEngineChannel {
                     if (netIn.limit() == netIn.capacity()) { ByteBuffer bigger = ByteBuffer.allocate(netIn.capacity() * 2); bigger.put(netIn); bigger.flip(); netIn = bigger; }
                     netIn.compact();
                     int n = in.read(netIn.array(), netIn.position(), netIn.remaining());
-                    if (n < 0) { netIn.flip(); throw new EOFException("TLS handshake ended early"); }
+                    if (n < 0) { netIn.flip(); throw new EOFException(L.t("TLS handshake ended early")); }
                     netIn.position(netIn.position() + n); netIn.flip();
                     break;
                 }
-                case CLOSED: throw new IOException("TLS channel closed");
+                case CLOSED: throw new IOException(L.t("TLS channel closed"));
             }
         }
     }

@@ -49,18 +49,18 @@ final class BambuLan {
         if (e.type == PrinterEndpoint.Type.BAMBU_CLOUD) {
             // Cloud: the account broker, username u_<uid>, password = the account token; normal certificate checks.
             String serial = e.username.trim(), token = e.secret(), uid = e.extras.get("uid"); if (uid == null) uid = "";
-            if (!serial.matches("[A-Za-z0-9]{6,32}")) throw new IOException("Bambu: выберите принтер аккаунта (кнопка входа в облако).");
-            if (token.isEmpty() || !uid.matches("[0-9]{1,20}")) throw new IOException("Bambu: войдите в облако заново.");
+            if (!serial.matches("[A-Za-z0-9]{6,32}")) throw new IOException(L.t("Bambu: выберите принтер аккаунта (кнопка входа в облако)."));
+            if (token.isEmpty() || !uid.matches("[0-9]{1,20}")) throw new IOException(L.t("Bambu: войдите в облако заново."));
             String host = BambuCloud.mqttHost(e.extras.get("region"));
             return new Target(InetAddress.getByName(host), host, serial, token, "u_" + uid, true);
         }
         String host = e.baseUri.getHost(), serial = e.username.trim(), code = e.secret();
-        if (host == null || host.isEmpty()) throw new IOException("Bambu: printer IP address is missing.");
-        if (serial.isEmpty() || !serial.matches("[A-Za-z0-9]{6,32}")) throw new IOException("Bambu: enter the printer serial number in the User field.");
-        if (code.isEmpty()) throw new IOException("Bambu: enter the LAN access code in the key field.");
+        if (host == null || host.isEmpty()) throw new IOException(L.t("Bambu: printer IP address is missing."));
+        if (serial.isEmpty() || !serial.matches("[A-Za-z0-9]{6,32}")) throw new IOException(L.t("Bambu: enter the printer serial number in the User field."));
+        if (code.isEmpty()) throw new IOException(L.t("Bambu: enter the LAN access code in the key field."));
         InetAddress address = InetAddress.getByName(host);
         if (!(address.isSiteLocalAddress() || address.isLinkLocalAddress() || address.isLoopbackAddress()))
-            throw new IOException("Bambu LAN mode is limited to printers on the local network.");
+            throw new IOException(L.t("Bambu LAN mode is limited to printers on the local network."));
         return new Target(address, host, serial, code);
     }
 
@@ -112,8 +112,8 @@ final class BambuLan {
             OutputStream out = tls.getOutputStream(); DataInputStream in = new DataInputStream(tls.getInputStream());
             write(out, 0x10, connect("kepler-" + Long.toHexString(System.nanoTime()), t.user, t.code));
             Packet ack = read(in);
-            if (ack.header >> 4 != 2 || ack.body.length < 2) throw new IOException("Bambu: unexpected MQTT reply.");
-            if (ack.body[1] != 0) throw new IOException(ack.body[1] == 5 || ack.body[1] == 4 ? (t.cloud ? "Bambu: облако отклонило токен, войдите заново." : "Bambu: the access code was rejected.") : "Bambu: connection refused (" + ack.body[1] + ").");
+            if (ack.header >> 4 != 2 || ack.body.length < 2) throw new IOException(L.t("Bambu: unexpected MQTT reply."));
+            if (ack.body[1] != 0) throw new IOException(ack.body[1] == 5 || ack.body[1] == 4 ? (t.cloud ? L.t("Bambu: облако отклонило токен, войдите заново.") : L.t("Bambu: the access code was rejected.")) : L.t("Bambu: connection refused (") + ack.body[1] + ").");
             String report = "device/" + t.serial + "/report", request = "device/" + t.serial + "/request";
             if (waitReport) write(out, 0x82, subscribe(1, report));
             cancel.check();
@@ -135,7 +135,7 @@ final class BambuLan {
                     }
                 } catch (JSONException ignored) { }
             }
-            throw new IOException("Bambu: the printer did not send a status report. Check LAN mode and the serial number.");
+            throw new IOException(L.t("Bambu: the printer did not send a status report. Check LAN mode and the serial number."));
         } finally {
             cancel.clearCloser(raw);
             try { raw.close(); } catch (IOException ignored) { }
@@ -144,12 +144,12 @@ final class BambuLan {
 
     // ---- implicit FTPS upload (no start) ----
     private static void checkName(String name) throws IOException {
-        if (name == null || !name.matches("[^/\\\\\\p{Cntrl}]{1,200}") || name.equals(".") || name.equals("..")) throw new IOException("Bambu: invalid file name.");
+        if (name == null || !name.matches("[^/\\\\\\p{Cntrl}]{1,200}") || name.equals(".") || name.equals("..")) throw new IOException(L.t("Bambu: invalid file name."));
     }
     /** Uploads one file to the printer's storage root over FTPS. Returns the stored name. */
     static String upload(PrinterEndpoint e, File file, String remoteName, NetworkHttp.Cancellation cancel) throws IOException {
         checkName(remoteName);
-        if (e.type == PrinterEndpoint.Type.BAMBU_CLOUD) throw new IOException("Отправка файла через облако Bambu не поддерживается. Добавьте этот принтер как Bambu Lab (LAN).");
+        if (e.type == PrinterEndpoint.Type.BAMBU_CLOUD) throw new IOException(L.t("Отправка файла через облако Bambu не поддерживается. Добавьте этот принтер как Bambu Lab (LAN)."));
         Target t = target(e);
         SSLContext context = lanTls();
         Socket raw = new Socket();
@@ -163,15 +163,15 @@ final class BambuLan {
             Writer out = new OutputStreamWriter(control.getOutputStream(), StandardCharsets.UTF_8);
             expect(in, 220);
             command(out, in, "USER bblp", 331);
-            command(out, in, "PASS " + t.code, 230, "Bambu: the access code was rejected.");
+            command(out, in, "PASS " + t.code, 230, L.t("Bambu: the access code was rejected."));
             command(out, in, "PBSZ 0", 200);
             command(out, in, "PROT P", 200);
             command(out, in, "TYPE I", 200);
             String pasv = command(out, in, "PASV", 227);
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+),(\\d+),(\\d+),(\\d+),(\\d+),(\\d+)").matcher(pasv);
-            if (!m.find()) throw new IOException("Bambu: unexpected FTP passive reply.");
+            if (!m.find()) throw new IOException(L.t("Bambu: unexpected FTP passive reply."));
             int port = Integer.parseInt(m.group(5)) * 256 + Integer.parseInt(m.group(6));
-            if (port <= 0 || port > 65535) throw new IOException("Bambu: invalid FTP data port.");
+            if (port <= 0 || port > 65535) throw new IOException(L.t("Bambu: invalid FTP data port."));
             // The data connection goes to the printer's own address (never the address in the reply).
             Socket dataRaw = new Socket();
             cancel.setCloser(dataRaw);
@@ -184,7 +184,7 @@ final class BambuLan {
                 TlsEngineChannel data = new TlsEngineChannel(context, dataRaw, t.host, ftpsPort);
                 data.handshake();
                 int mark = code(reply(in));
-                if (mark != 150 && mark != 125) throw new IOException("Bambu: the printer refused the file (" + mark + ").");
+                if (mark != 150 && mark != 125) throw new IOException(L.t("Bambu: the printer refused the file (") + mark + ").");
                 try (InputStream src = new FileInputStream(file)) {
                     byte[] buf = new byte[64 * 1024]; int n; long sent = 0, total = file.length();
                     while ((n = src.read(buf)) != -1) { cancel.check(); data.write(buf, 0, n); sent += n; cancel.progress(sent, total); }
@@ -196,7 +196,7 @@ final class BambuLan {
             }
             raw.setSoTimeout(120000); // the printer writes to its card before confirming
             int done = code(reply(in));
-            if (done != 226 && done != 250) throw new IOException("Bambu: the transfer was not confirmed (" + done + ").");
+            if (done != 226 && done != 250) throw new IOException(L.t("Bambu: the transfer was not confirmed (") + done + ").");
             try { send(out, "QUIT"); } catch (IOException ignored) { }
             return remoteName;
         } finally {
@@ -208,15 +208,15 @@ final class BambuLan {
     private static String command(Writer out, BufferedReader in, String line, int expected) throws IOException { return command(out, in, line, expected, null); }
     private static String command(Writer out, BufferedReader in, String line, int expected, String failure) throws IOException {
         send(out, line); String last = reply(in); int code = code(last);
-        if (code != expected) throw new IOException(failure != null ? failure : "Bambu: FTP " + line.split(" ")[0] + " failed (" + code + ").");
+        if (code != expected) throw new IOException(failure != null ? failure : L.t("Bambu: FTP ") + line.split(" ")[0] + L.t(" failed (") + code + ").");
         return last;
     }
-    private static void expect(BufferedReader in, int expected) throws IOException { int code = code(reply(in)); if (code != expected) throw new IOException("Bambu: unexpected FTP greeting (" + code + ")."); }
-    private static int code(String line) throws IOException { try { return Integer.parseInt(line.substring(0, 3)); } catch (NumberFormatException e) { throw new IOException("Bambu: invalid FTP reply."); } }
+    private static void expect(BufferedReader in, int expected) throws IOException { int code = code(reply(in)); if (code != expected) throw new IOException(L.t("Bambu: unexpected FTP greeting (") + code + ")."); }
+    private static int code(String line) throws IOException { try { return Integer.parseInt(line.substring(0, 3)); } catch (NumberFormatException e) { throw new IOException(L.t("Bambu: invalid FTP reply.")); } }
     /** Reads one (possibly multi-line) FTP reply and returns its last line. */
     private static String reply(BufferedReader in) throws IOException {
-        String line = in.readLine(); if (line == null || line.length() < 3) throw new IOException("Bambu: the FTP connection closed.");
-        if (line.length() > 3 && line.charAt(3) == '-') { String end = line.substring(0, 3) + " "; do { line = in.readLine(); if (line == null) throw new IOException("Bambu: the FTP connection closed."); } while (!line.startsWith(end)); }
+        String line = in.readLine(); if (line == null || line.length() < 3) throw new IOException(L.t("Bambu: the FTP connection closed."));
+        if (line.length() > 3 && line.charAt(3) == '-') { String end = line.substring(0, 3) + " "; do { line = in.readLine(); if (line == null) throw new IOException(L.t("Bambu: the FTP connection closed.")); } while (!line.startsWith(end)); }
         return line;
     }
 
@@ -229,7 +229,7 @@ final class BambuLan {
                 @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
             }}, null);
             return context;
-        } catch (Exception e) { throw new IOException("TLS is unavailable", e); }
+        } catch (Exception e) { throw new IOException(L.t("TLS is unavailable"), e); }
     }
 
     // ---- minimal MQTT 3.1.1 framing ----
@@ -257,7 +257,7 @@ final class BambuLan {
     private static Packet read(DataInputStream in) throws IOException {
         int header = in.readUnsignedByte(), len = 0, mult = 1, d;
         do { d = in.readUnsignedByte(); len += (d & 127) * mult; mult *= 128; if (mult > 128 * 128 * 128 * 128) throw new IOException("MQTT length"); } while ((d & 128) != 0);
-        if (len > 4 * 1024 * 1024) throw new IOException("Bambu: report too large.");
+        if (len > 4 * 1024 * 1024) throw new IOException(L.t("Bambu: report too large."));
         byte[] body = new byte[len]; in.readFully(body);
         return new Packet(header, body);
     }

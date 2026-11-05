@@ -60,7 +60,7 @@ public final class GcodePreviewActivity extends Activity {
     private void showResult(TextView state, GcodeAnalysis result) {
         int count = result.layers.size();
         int last = count % 10, lastTwo = count % 100;
-        String suffix = last == 1 && lastTwo != 11 ? "слой" : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? "слоя" : "слоёв";
+        String suffix = last == 1 && lastTwo != 11 ? L.t("слой") : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? L.t("слоя") : L.t("слоёв");
         state.setText(count + " " + suffix + getString(R.string.l10n_gp_top_view));
         if (result.layers.isEmpty() || result.segments + result.arcSegments == 0) {
             gap(18); content.addView(text(getString(R.string.l10n_gp_no_paths), 14, true));
@@ -73,7 +73,7 @@ public final class GcodePreviewActivity extends Activity {
                 @Override public void onProgressChanged(SeekBar bar, int layer, boolean user) {
                     savedLayer = layer; preview.setLayer(layer);
                     double z = result.layers.get(layer).z;
-                    layerLabel.setText(getString(R.string.l10n_gp_layer) + (layer + 1) + " / " + result.layers.size() + (Double.isFinite(z) ? String.format(Locale.getDefault(), "  ·  Z %.3f мм", z) : ""));
+                    layerLabel.setText(getString(R.string.l10n_gp_layer) + (layer + 1) + " / " + result.layers.size() + (Double.isFinite(z) ? String.format(Locale.getDefault(), L.t("  ·  Z %.3f мм"), z) : ""));
                 }
                 @Override public void onStartTrackingTouch(SeekBar bar) { }
                 @Override public void onStopTrackingTouch(SeekBar bar) { }
@@ -81,7 +81,7 @@ public final class GcodePreviewActivity extends Activity {
             slider.setProgress(Math.max(0, Math.min(savedLayer, result.layers.size() - 1)));
             // Setting a zero progress may not emit a callback.
             int index = slider.getProgress(); preview.setLayer(index); double z = result.layers.get(index).z;
-            layerLabel.setText(getString(R.string.l10n_gp_layer) + (index + 1) + " / " + result.layers.size() + (Double.isFinite(z) ? String.format(Locale.getDefault(), "  ·  Z %.3f мм", z) : ""));
+            layerLabel.setText(getString(R.string.l10n_gp_layer) + (index + 1) + " / " + result.layers.size() + (Double.isFinite(z) ? String.format(Locale.getDefault(), L.t("  ·  Z %.3f мм"), z) : ""));
         }
 
         gap(20);
@@ -100,10 +100,10 @@ public final class GcodePreviewActivity extends Activity {
         details.addView(text(getString(R.string.l10n_gp_linear) + result.segments + getString(R.string.l10n_gp_arcs_shown) + result.renderedArcs, 13, false));
         if (result.segments > 0) {
             ui.gap(details,12);
-            details.addView(text(String.format(Locale.getDefault(), "Границы показанных линейных линий во всех слоях: X %.2f…%.2f, Y %.2f…%.2f мм. Ширина %.2f мм, высота %.2f мм. Это не габариты всех траекторий или печатной области.", result.linearMinX, result.linearMaxX, result.linearMinY, result.linearMaxY, result.linearMaxX - result.linearMinX, result.linearMaxY - result.linearMinY), 13, false));
+            details.addView(text(String.format(Locale.getDefault(), L.t("Границы показанных линейных линий во всех слоях: X %.2f…%.2f, Y %.2f…%.2f мм. Ширина %.2f мм, высота %.2f мм. Это не габариты всех траекторий или печатной области."), result.linearMinX, result.linearMaxX, result.linearMinY, result.linearMaxY, result.linearMaxX - result.linearMinX, result.linearMaxY - result.linearMinY), 13, false));
         }
         ui.gap(details,12);
-        details.addView(text("Приблизительный вид сверху: показаны линейные перемещения и поддерживаемые дуги XY с положительной экструзией после маркеров слоёв движка. Дуги заменены отрезками; холостые перемещения, толщина линий, скорость, температура, экструзия без XY и физика печати не отображаются. Макросы и поведение прошивки могут изменить реальные координаты; просмотр не проверяет пригодность к печати.", 13, false));
+        details.addView(text(L.t("Приблизительный вид сверху: показаны линейные перемещения и поддерживаемые дуги XY с положительной экструзией после маркеров слоёв движка. Дуги заменены отрезками; холостые перемещения, толщина линий, скорость, температура, экструзия без XY и физика печати не отображаются. Макросы и поведение прошивки могут изменить реальные координаты; просмотр не проверяет пригодность к печати."), 13, false));
         if (result.arcMoves + result.unsupportedMoves + result.skippedUnknown + result.malformedLines + result.unknownResets > 0) {
             ui.gap(details,10); details.addView(text(getString(R.string.l10n_gp_arcs_skipped) + result.arcMoves + getString(R.string.l10n_gp_unsupported_moves) + result.unsupportedMoves + getString(R.string.l10n_gp_unknown_segments) + result.skippedUnknown + getString(R.string.l10n_gp_bad_lines) + result.malformedLines + getString(R.string.l10n_gp_xy_resets) + result.unknownResets + ".", 12, false));
         }

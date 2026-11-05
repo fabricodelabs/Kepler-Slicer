@@ -1,15 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="glass_open_gallery">Галерея Glass UI</string>
-  <string name="glass_open_gallery_detail">Фаза 1 · компоненты нового интерфейса</string>
-  <string name="glass_search_empty_title">Настройки не найдены</string>
-  <string name="glass_search_empty_hub">По запросу «%1$s» ничего не найдено. Попробуйте название или ключ настройки.</string>
-  <string name="glass_search_empty_editor">В этом разделе нет настроек по запросу «%1$s».</string>
-  <string name="glass_search_empty_editor_simple">Базовых настроек по запросу «%1$s» нет. Включите расширенные или очистите поиск.</string>
-  <string name="glass_search_clear">Очистить поиск</string>
+  <string name="glass_open_gallery">Glass UI gallery</string>
+  <string name="glass_open_gallery_detail">Phase 1 · New interface components</string>
+  <string name="glass_search_empty_title">No settings found</string>
+  <string name="glass_search_empty_hub">No settings match “%1$s”. Try a name or a setting key.</string>
+  <string name="glass_search_empty_editor">No settings match “%1$s” in this section.</string>
+  <string name="glass_search_empty_editor_simple">No basic settings match “%1$s”. Try Advanced or clear the search.</string>
+  <string name="glass_search_clear">Clear search</string>
   <plurals name="glass_search_count">
-    <item quantity="one">Найдена %d настройка</item>
-    <item quantity="few">Найдено %d настройки</item>
-    <item quantity="many">Найдено %d настроек</item>
-    <item quantity="other">Найдено %d настройки</item>
+    <item quantity="one">%d setting found</item>
+    <item quantity="other">%d settings found</item>
   </plurals>
 </resources>

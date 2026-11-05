@@ -1,8 +1,8 @@
 <resources>
-    <string name="preferences_unsaved_message">Сохранить изменения профиля и параметров объекта перед выходом?</string>
-    <string name="preferences_unsaved_save">Сохранить</string>
-    <string name="preferences_unsaved_discard">Не сохранять</string>
-    <string name="preferences_unsaved_keep">Продолжить редактирование</string>
-    <string name="preferences_unsaved_remember">Запомнить выбор</string>
-    <string name="preferences_unsaved_activate_for_object">Сначала примените выбранный профиль процесса, затем сохраните параметры объекта.</string>
+    <string name="preferences_unsaved_message">Save profile and object setting changes before leaving?</string>
+    <string name="preferences_unsaved_save">Save</string>
+    <string name="preferences_unsaved_discard">Discard</string>
+    <string name="preferences_unsaved_keep">Keep editing</string>
+    <string name="preferences_unsaved_remember">Remember my choice</string>
+    <string name="preferences_unsaved_activate_for_object">Apply the selected process profile before saving object settings.</string>
 </resources>

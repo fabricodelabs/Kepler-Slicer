@@ -106,13 +106,13 @@ final class StlView extends GLSurfaceView {
     interface TransformCallback { void completed(Exception error); }
     /** Geometry is built off-thread by ToolpathGeometry.build; completion runs on UI thread. */
     void setToolpaths(ToolpathGeometry geometry,int visibleLayers,TransformCallback callback) {
-        if(geometry==null||visibleLayers<1||visibleLayers>geometry.layerCount)throw new IllegalArgumentException("Некорректный слой предпросмотра.");
+        if(geometry==null||visibleLayers<1||visibleLayers>geometry.layerCount)throw new IllegalArgumentException(L.t("Некорректный слой предпросмотра."));
         cancelDrag();moveMode=false;toolpathMode=true;final int revision=pathRevision.incrementAndGet();
         setContentDescription(cameraDescription(false,true));
         queueEvent(()->{
             if(revision!=pathRevision.get())return;
             try {
-                if(bed==null||!volumeReady||renderer.sceneScale<=0)throw new IllegalStateException("Область печати ещё не готова.");
+                if(bed==null||!volumeReady||renderer.sceneScale<=0)throw new IllegalStateException(L.t("Область печати ещё не готова."));
                 renderer.setToolpaths(geometry,visibleLayers);requestRender();
                 if(callback!=null)post(()->{if(revision==pathRevision.get())callback.completed(null);});
             } catch(RuntimeException error) {
@@ -131,7 +131,7 @@ final class StlView extends GLSurfaceView {
     }
     /** Object editing is separate from camera gestures. Completion runs on the UI thread. */
     void setModelTransform(ModelTransform transform, TransformCallback callback) {
-        if (transform == null || sourceMesh == null) throw new IllegalArgumentException("Требуется модель и её преобразование.");
+        if (transform == null || sourceMesh == null) throw new IllegalArgumentException(L.t("Требуется модель и её преобразование."));
         final int revision = transformRevision.incrementAndGet();
         queueEvent(() -> {
             if (revision != transformRevision.get()) return;
@@ -152,17 +152,17 @@ final class StlView extends GLSurfaceView {
     private float[] previewGeometry(ModelTransform transform) {
         if(sourceMesh==null||sourceMesh.vertices.length==0)return new float[0];
         if(projectBounds==null)return transform.previewVertices(sourceMesh.vertices,sourceMesh.size);
-        if(projectBounds.length!=6)throw new IllegalArgumentException("Не удалось определить координаты проекта 3MF.");
-        if(transform.rx!=0||transform.ry!=0||transform.rz!=0||transform.sx!=1||transform.sy!=1||transform.sz!=1||transform.offsetX!=0||transform.offsetY!=0)throw new IllegalArgumentException("Преобразование проекта 3MF пока не поддерживается.");
-        for(double value:projectBounds)if(!Double.isFinite(value))throw new IllegalArgumentException("Некорректные координаты проекта 3MF.");
+        if(projectBounds.length!=6)throw new IllegalArgumentException(L.t("Не удалось определить координаты проекта 3MF."));
+        if(transform.rx!=0||transform.ry!=0||transform.rz!=0||transform.sx!=1||transform.sy!=1||transform.sz!=1||transform.offsetX!=0||transform.offsetY!=0)throw new IllegalArgumentException(L.t("Преобразование проекта 3MF пока не поддерживается."));
+        for(double value:projectBounds)if(!Double.isFinite(value))throw new IllegalArgumentException(L.t("Некорректные координаты проекта 3MF."));
         return sourceMesh.vertices;
     }
     /** Converts normalized native-preview points to the bed-centred scene, retaining world Z. */
     static float[] projectVertices(float[] vertices,double[] size,double[] bounds,double bedCenterX,double bedCenterY,double scale) {
-        if(bounds==null||bounds.length!=6||size==null||size.length!=3||!(scale>0)||!Double.isFinite(scale))throw new IllegalArgumentException("Некорректная геометрия проекта.");
+        if(bounds==null||bounds.length!=6||size==null||size.length!=3||!(scale>0)||!Double.isFinite(scale))throw new IllegalArgumentException(L.t("Некорректная геометрия проекта."));
         double unit=Math.max(size[0],Math.max(size[1],size[2]))/1.6,cx=bounds[0]/2+bounds[3]/2,cy=bounds[1]/2+bounds[4]/2,cz=bounds[2]/2+bounds[5]/2;
-        if(!(unit>0)||!Double.isFinite(unit)||!Double.isFinite(cx)||!Double.isFinite(cy)||!Double.isFinite(cz))throw new IllegalArgumentException("Некорректные размеры проекта.");
-        float[] result=new float[vertices.length];for(int i=0;i<vertices.length;i+=3){double x=(vertices[i]*unit+cx-bedCenterX)*scale,y=(vertices[i+1]*unit+cy-bedCenterY)*scale,z=(vertices[i+2]*unit+cz)*scale;if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||Math.abs(x)>Float.MAX_VALUE||Math.abs(y)>Float.MAX_VALUE||Math.abs(z)>Float.MAX_VALUE)throw new IllegalArgumentException("Координаты проекта вне диапазона предпросмотра.");result[i]=(float)x;result[i+1]=(float)y;result[i+2]=(float)z;}return result;
+        if(!(unit>0)||!Double.isFinite(unit)||!Double.isFinite(cx)||!Double.isFinite(cy)||!Double.isFinite(cz))throw new IllegalArgumentException(L.t("Некорректные размеры проекта."));
+        float[] result=new float[vertices.length];for(int i=0;i<vertices.length;i+=3){double x=(vertices[i]*unit+cx-bedCenterX)*scale,y=(vertices[i+1]*unit+cy-bedCenterY)*scale,z=(vertices[i+2]*unit+cz)*scale;if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||Math.abs(x)>Float.MAX_VALUE||Math.abs(y)>Float.MAX_VALUE||Math.abs(z)>Float.MAX_VALUE)throw new IllegalArgumentException(L.t("Координаты проекта вне диапазона предпросмотра."));result[i]=(float)x;result[i+1]=(float)y;result[i+2]=(float)z;}return result;
     }
     @Override public boolean onTouchEvent(MotionEvent e) {
         int action=e.getActionMasked();
@@ -185,9 +185,9 @@ final class StlView extends GLSurfaceView {
     }
     private static boolean isMouse(MotionEvent e){return (e.getSource()&android.view.InputDevice.SOURCE_MOUSE)==android.view.InputDevice.SOURCE_MOUSE;}
     private String cameraDescription(boolean moving,boolean paths){
-        String subject=paths?"Траектории печати на трёхмерном столе. ":"Трёхмерный стол. ";
-        if(moving)return subject+(swapGestures?"Одним пальцем перемещайте модель, двумя вращайте или изменяйте масштаб вида.":"Одним пальцем перемещайте модель, двумя панорамируйте или изменяйте масштаб вида.");
-        return subject+(swapGestures?"Одним пальцем панорамируйте; двумя вращайте или изменяйте масштаб вида.":"Одним пальцем вращайте; двумя панорамируйте или изменяйте масштаб вида.");
+        String subject=paths?L.t("Траектории печати на трёхмерном столе. "):L.t("Трёхмерный стол. ");
+        if(moving)return subject+(swapGestures?L.t("Одним пальцем перемещайте модель, двумя вращайте или изменяйте масштаб вида."):L.t("Одним пальцем перемещайте модель, двумя панорамируйте или изменяйте масштаб вида."));
+        return subject+(swapGestures?L.t("Одним пальцем панорамируйте; двумя вращайте или изменяйте масштаб вида."):L.t("Одним пальцем вращайте; двумя панорамируйте или изменяйте масштаб вида."));
     }
     private int mouseAction(MotionEvent e) {
         if(!isMouse(e))return 0;
@@ -335,11 +335,11 @@ final class StlView extends GLSurfaceView {
                     minZ = Math.min(minZ, vertices[i+2] * mmPerUnit); maxZ = Math.max(maxZ, vertices[i+2] * mmPerUnit);
                 }
                 if (vertices.length > 0) sceneSpan = Math.max(sceneSpan,Math.max(maxZ-minZ,Math.max(maxX-minX,maxY-minY)));
-                if (!Double.isFinite(sceneSpan) || sceneSpan <= 0) throw new IllegalArgumentException("Не удалось рассчитать масштаб стола.");
-                if(worldBounds!=null && vertices.length>0){if(worldBounds.length!=6)throw new IllegalArgumentException("Не удалось определить координаты проекта 3MF.");for(double value:worldBounds)if(!Double.isFinite(value))throw new IllegalArgumentException("Некорректные координаты проекта 3MF.");
+                if (!Double.isFinite(sceneSpan) || sceneSpan <= 0) throw new IllegalArgumentException(L.t("Не удалось рассчитать масштаб стола."));
+                if(worldBounds!=null && vertices.length>0){if(worldBounds.length!=6)throw new IllegalArgumentException(L.t("Не удалось определить координаты проекта 3MF."));for(double value:worldBounds)if(!Double.isFinite(value))throw new IllegalArgumentException(L.t("Некорректные координаты проекта 3MF."));
                     sceneSpan=Math.max(sceneSpan,2*Math.max(Math.max(Math.abs(worldBounds[0]-bed.centerX),Math.abs(worldBounds[3]-bed.centerX)),Math.max(Math.abs(worldBounds[1]-bed.centerY),Math.abs(worldBounds[4]-bed.centerY))));sceneSpan=Math.max(sceneSpan,2*Math.max(Math.abs(worldBounds[2]),Math.abs(worldBounds[5])));
                 }
-                if(!Double.isFinite(sceneSpan)||sceneSpan<=0)throw new IllegalArgumentException("Недопустимые границы проекта 3MF.");
+                if(!Double.isFinite(sceneSpan)||sceneSpan<=0)throw new IllegalArgumentException(L.t("Недопустимые границы проекта 3MF."));
                 bedScale = 3.2 / sceneSpan;
                 if(worldBounds!=null && vertices.length>0)scene=projectVertices(vertices,sourceSize,worldBounds,bed.centerX,bed.centerY,bedScale);
                 else {scene = new float[vertices.length];for (int i=0; i<vertices.length; i+=3) {

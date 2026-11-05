@@ -8,6 +8,7 @@ $java=Join-Path $project 'app\src\main\java\com\keplerslicer\app'
 $sources=@((Join-Path $java 'OnlineRules.java'),(Join-Path $java 'NetworkHttp.java'),(Join-Path $java 'CloudProfileSync.java'),(Join-Path $java 'CloudProfileStore.java'),(Join-Path $java 'StorageNames.java'),(Join-Path $PSScriptRoot 'tests\OnlineRulesTest.java'),(Join-Path $PSScriptRoot 'tests\CloudMirrorTest.java'))
 $sources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
 $sources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\cloud_stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
+$sources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 --add-modules jdk.httpserver -cp $JsonJar -d $classes @sources
 if($LASTEXITCODE -ne 0){throw 'Online preference tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') --add-modules jdk.httpserver -cp ($classes+';'+$JsonJar) com.keplerslicer.app.OnlineRulesTest

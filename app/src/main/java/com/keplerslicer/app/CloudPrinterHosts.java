@@ -21,41 +21,41 @@ public final class CloudPrinterHosts {
         switch(e.type) {
             case OBICO: client.testObico(); return new PrinterHostClient.HostInfo("Obico","unknown",false);
             case SIMPLYPRINT: ok(client.transport.get(Server.SIMPLYPRINT_API,"oauth2/TokenInfo"));return new PrinterHostClient.HostInfo("SimplyPrint","unknown",false);
-            case THREE_D_PRINTER_OS: if(!client.printerOsSession(e.secret()).optBoolean("result",false))throw new IOException("Сессия 3DPrinterOS недействительна.");return new PrinterHostClient.HostInfo("3DPrinterOS","unknown",false);
-            default: throw new IOException("Неизвестный облачный сервис.");
+            case THREE_D_PRINTER_OS: if(!client.printerOsSession(e.secret()).optBoolean("result",false))throw new IOException(L.t("Сессия 3DPrinterOS недействительна."));return new PrinterHostClient.HostInfo("3DPrinterOS","unknown",false);
+            default: throw new IOException(L.t("Неизвестный облачный сервис."));
         }
     }
     public static PrinterHostClient.Status status(PrinterEndpoint e,NetworkHttp.Cancellation cancel) throws IOException {test(e,cancel);return new PrinterHostClient.Status("unknown","");}
     static JSONArray listObicoPrinters(PrinterEndpoint e,NetworkHttp.Cancellation cancel)throws IOException {
-        if(e.type!=PrinterEndpoint.Type.OBICO)throw new IOException("Требуется подключение Obico.");return client(e,cancel).obicoPrinters();
+        if(e.type!=PrinterEndpoint.Type.OBICO)throw new IOException(L.t("Требуется подключение Obico."));return client(e,cancel).obicoPrinters();
     }
     static JSONObject listPrinterOsProjects(PrinterEndpoint e,NetworkHttp.Cancellation cancel)throws IOException {
-        if(e.type!=PrinterEndpoint.Type.THREE_D_PRINTER_OS)throw new IOException("Требуется подключение 3DPrinterOS.");return client(e,cancel).printerOsProjects(e.secret());
+        if(e.type!=PrinterEndpoint.Type.THREE_D_PRINTER_OS)throw new IOException(L.t("Требуется подключение 3DPrinterOS."));return client(e,cancel).printerOsProjects(e.secret());
     }
     static JSONObject listPrinterOsTypes(PrinterEndpoint e,String query,NetworkHttp.Cancellation cancel)throws IOException {
-        if(e.type!=PrinterEndpoint.Type.THREE_D_PRINTER_OS)throw new IOException("Требуется подключение 3DPrinterOS.");return client(e,cancel).printerOsTypes(e.secret(),query);
+        if(e.type!=PrinterEndpoint.Type.THREE_D_PRINTER_OS)throw new IOException(L.t("Требуется подключение 3DPrinterOS."));return client(e,cancel).printerOsTypes(e.secret(),query);
     }
     public static PrinterHostClient.UploadResult upload(PrinterEndpoint e,File file,String name,NetworkHttp.Cancellation cancel) throws IOException {
         CloudPrinterHosts client=client(e,cancel);
         switch(e.type) {
-            case OBICO: client.uploadObico(file,name,e.extras.get("printer_id"),false);return new PrinterHostClient.UploadResult(name,0,null,"Файл отправлен в Obico; команда запуска не отправлялась.");
-            case SIMPLYPRINT: String url=client.uploadSimplyPrint(file,name);return new PrinterHostClient.UploadResult(name,0,url,"Файл загружен временно; завершите импорт в SimplyPrint.");
+            case OBICO: client.uploadObico(file,name,e.extras.get("printer_id"),false);return new PrinterHostClient.UploadResult(name,0,null,L.t("Файл отправлен в Obico; команда запуска не отправлялась."));
+            case SIMPLYPRINT: String url=client.uploadSimplyPrint(file,name);return new PrinterHostClient.UploadResult(name,0,url,L.t("Файл загружен временно; завершите импорт в SimplyPrint."));
             case THREE_D_PRINTER_OS:
-                if(!client.printerOsSession(e.secret()).optBoolean("result",false))throw new IOException("Сессия 3DPrinterOS недействительна.");
+                if(!client.printerOsSession(e.secret()).optBoolean("result",false))throw new IOException(L.t("Сессия 3DPrinterOS недействительна."));
                 String id=client.uploadPrinterOs(file,name,e.secret(),e.extras.get("project_id"),e.extras.get("project_name"));
                 String type=e.extras.get("printer_type"),gtype=e.extras.get("gcode_type");
                 if(type!=null&&!type.isEmpty()&&gtype!=null&&!gtype.isEmpty()) {
                     JSONObject result=client.updatePrinterOs(e.secret(),id,type,gtype);
-                    if(!result.optBoolean("result",false))return new PrinterHostClient.UploadResult(id,0,null,"Файл загружен, но тип принтера не применён; проверьте 3DPrinterOS.");
+                    if(!result.optBoolean("result",false))return new PrinterHostClient.UploadResult(id,0,null,L.t("Файл загружен, но тип принтера не применён; проверьте 3DPrinterOS."));
                 }
-                return new PrinterHostClient.UploadResult(id,0,null,"Файл загружен в 3DPrinterOS; команда запуска не отправлялась.");
-            default: throw new IOException("Неизвестный облачный сервис.");
+                return new PrinterHostClient.UploadResult(id,0,null,L.t("Файл загружен в 3DPrinterOS; команда запуска не отправлялась."));
+            default: throw new IOException(L.t("Неизвестный облачный сервис."));
         }
     }
     private static CloudPrinterHosts client(PrinterEndpoint endpoint,NetworkHttp.Cancellation cancel) throws IOException {
-        if(!supports(endpoint.type))throw new IOException("Неизвестный облачный сервис.");
-        if(endpoint.secret().isEmpty())throw new IOException("Для облачного сервиса нужен токен или сессия.");
-        if(endpoint.type==PrinterEndpoint.Type.THREE_D_PRINTER_OS && !"https".equalsIgnoreCase(endpoint.baseUri.getScheme()) && !"127.0.0.1".equals(endpoint.baseUri.getHost()) && !"localhost".equalsIgnoreCase(endpoint.baseUri.getHost()))throw new IOException("Для 3DPrinterOS нужен HTTPS.");
+        if(!supports(endpoint.type))throw new IOException(L.t("Неизвестный облачный сервис."));
+        if(endpoint.secret().isEmpty())throw new IOException(L.t("Для облачного сервиса нужен токен или сессия."));
+        if(endpoint.type==PrinterEndpoint.Type.THREE_D_PRINTER_OS && !"https".equalsIgnoreCase(endpoint.baseUri.getScheme()) && !"127.0.0.1".equals(endpoint.baseUri.getHost()) && !"localhost".equalsIgnoreCase(endpoint.baseUri.getHost()))throw new IOException(L.t("Для 3DPrinterOS нужен HTTPS."));
         return new CloudPrinterHosts(new Transport(){
             URI uri(Server server,String path) {
                 if(server==Server.HOST)return endpoint.url(path);
@@ -75,7 +75,7 @@ public final class CloudPrinterHosts {
     private static NetworkHttp.Body multipart(Map<String,String> fields,FilePart part) throws IOException {
         String boundary="Kepler"+UUID.randomUUID().toString().replace("-","");java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();
         for(Map.Entry<String,String> e:fields.entrySet()) {
-            if(!e.getKey().matches("[A-Za-z0-9_]+")||e.getValue()==null)throw new IOException("Недопустимое поле формы.");
+            if(!e.getKey().matches("[A-Za-z0-9_]+")||e.getValue()==null)throw new IOException(L.t("Недопустимое поле формы."));
             out.write(("--"+boundary+"\r\nContent-Disposition: form-data; name=\""+e.getKey()+"\"\r\n\r\n"+e.getValue()+"\r\n").getBytes(StandardCharsets.UTF_8));
         }
         if(part!=null)out.write(("--"+boundary+"\r\nContent-Disposition: form-data; name=\"file\"; filename=\""+part.name.replace("\\","\\\\").replace("\"","\\\"")+"\"\r\nContent-Type: application/octet-stream\r\n\r\n").getBytes(StandardCharsets.UTF_8));

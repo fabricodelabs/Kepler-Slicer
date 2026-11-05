@@ -30,7 +30,7 @@ final class ProcessSettingsPanel {
     private static final Object SAVE_LOCK=new Object();
     private static java.util.concurrent.CountDownLatch pendingSave;
     private static final String[] CATEGORIES={"Quality","Strength","Speed","Support","Multimaterial","Others"};
-    private static final String[] NAMES={"Качество","Прочность","Скорость","Поддержки","Мультиматериал","Прочее"};
+    private static final String[] NAMES={L.t("Качество"),L.t("Прочность"),L.t("Скорость"),L.t("Поддержки"),L.t("Мультиматериал"),L.t("Прочее")};
     private final Activity activity;
     private final Runnable onSaved;
     private final MdUi ui;
@@ -51,8 +51,8 @@ final class ProcessSettingsPanel {
     ProcessSettingsPanel(Activity activity, Runnable onSaved) {
         this.activity=activity;this.onSaved=onSaved;ui=new MdUi(activity);
         root=new LinearLayout(activity);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(ui.bg);
-        status=text("Загружаем настройки профиля…",12,ui.muted,false);status.setPadding(dp(16),dp(6),dp(16),dp(6));status.setMaxLines(2);status.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        status.setOnClickListener(v->{if(statusDetail!=null)MdUi.alert(activity).setTitle("Проверьте параметры").setMessage(statusDetail).setPositiveButton("Закрыть",null).show();});root.addView(status);
+        status=text(L.t("Загружаем настройки профиля…"),12,ui.muted,false);status.setPadding(dp(16),dp(6),dp(16),dp(6));status.setMaxLines(2);status.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        status.setOnClickListener(v->{if(statusDetail!=null)MdUi.alert(activity).setTitle(L.t("Проверьте параметры")).setMessage(statusDetail).setPositiveButton(L.t("Закрыть"),null).show();});root.addView(status);
         HorizontalScrollView strip=new HorizontalScrollView(activity);strip.setHorizontalScrollBarEnabled(false);
         tabs=new LinearLayout(activity);tabs.setOrientation(LinearLayout.HORIZONTAL);tabs.setPadding(dp(12),0,dp(12),dp(4));strip.addView(tabs);root.addView(strip);
         ScrollView scroll=new ScrollView(activity);scroll.setFillViewport(false);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
@@ -66,7 +66,7 @@ final class ProcessSettingsPanel {
         if(disposed)return;
         if(options!=null && identity!=null) pendingDraft=saveDraft();
         final int token=++generation;saving=false;statusDetail=null;options=null;identity=null;resources=null;controls.clear();raw.clear();
-        tabs.removeAllViews();body.removeAllViews();actions.removeAllViews();status.setText("Загружаем настройки профиля…");
+        tabs.removeAllViews();body.removeAllViews();actions.removeAllViews();status.setText(L.t("Загружаем настройки профиля…"));
         final android.content.Context app=activity.getApplicationContext();
         new Thread(()->{try {
             java.util.concurrent.CountDownLatch wait; synchronized(SAVE_LOCK){wait=pendingSave;} if(wait!=null)wait.await();
@@ -102,15 +102,15 @@ final class ProcessSettingsPanel {
             if(!o.section.equals(section)){section=o.section;TextView h=text(tr(section),16,ui.ink,true);h.setPadding(0,dp(8),0,dp(8));body.addView(h);}
             String label=tr(o.label.isEmpty()?o.key:o.label);if(!o.unit.isEmpty()&&!label.contains(o.unit))label+=" · "+tr(o.unit);
             TextView title=text(label,14,ui.ink,true);body.addView(title);
-            if(!o.tooltip.isEmpty()){String description=tr(o.tooltip);TextView hint=text(description.length()>140?description.substring(0,140)+"…":description,12,ui.muted,false);body.addView(hint);if(description.length()>140)hint.setOnClickListener(v->MdUi.alert(activity).setMessage(description).setPositiveButton("Закрыть",null).show());}
+            if(!o.tooltip.isEmpty()){String description=tr(o.tooltip);TextView hint=text(description.length()>140?description.substring(0,140)+"…":description,12,ui.muted,false);body.addView(hint);if(description.length()>140)hint.setOnClickListener(v->MdUi.alert(activity).setMessage(description).setPositiveButton(L.t("Закрыть"),null).show());}
             if(o.editable){String value=raw.containsKey(o.key)?raw.get(o.key):String.valueOf(o.value);View field=control(o,value);controls.put(o.key,field);body.addView(field,new LinearLayout.LayoutParams(-1,dp(48)));}
-            else {String value=String.valueOf(o.value);TextView r=text((value.length()>100?value.substring(0,100)+"…":value)+" · только просмотр",12,ui.muted,false);r.setPadding(0,dp(4),0,dp(4));body.addView(r);if(value.length()>100)r.setOnClickListener(v->MdUi.alert(activity).setTitle(tr(o.label)).setMessage(value).setPositiveButton("Закрыть",null).show());}
+            else {String value=String.valueOf(o.value);TextView r=text((value.length()>100?value.substring(0,100)+"…":value)+L.t(" · только просмотр"),12,ui.muted,false);r.setPadding(0,dp(4),0,dp(4));body.addView(r);if(value.length()>100)r.setOnClickListener(v->MdUi.alert(activity).setTitle(tr(o.label)).setMessage(value).setPositiveButton(L.t("Закрыть"),null).show());}
             View space=new View(activity);body.addView(space,new LinearLayout.LayoutParams(1,dp(10)));
-        }if(n==0)body.addView(text("Нет параметров для выбранного профиля.",13,ui.muted,false));
+        }if(n==0)body.addView(text(L.t("Нет параметров для выбранного профиля."),13,ui.muted,false));
     }
     private View control(ProcessOption o,String value){
-        if(o.type.equals("boolean")){Switch s=new Switch(activity);s.setText("Включено");s.setTextColor(ui.ink);s.setChecked(Boolean.parseBoolean(value));s.setContentDescription(tr(o.label));s.setOnCheckedChangeListener((v,b)->updateStatus(null));return s;}
-        if(o.type.equals("enum")){Spinner s=new Spinner(activity);ArrayList<String> labels=new ArrayList<>();int index=-1;for(int i=0;i<o.choices.size();i++){ProcessOption.Choice c=o.choices.get(i);labels.add(tr(c.label));if(c.value.equals(value))index=i;}if(index<0){index=labels.size();labels.add("Недопустимое значение");}
+        if(o.type.equals("boolean")){Switch s=new Switch(activity);s.setText(L.t("Включено"));s.setTextColor(ui.ink);s.setChecked(Boolean.parseBoolean(value));s.setContentDescription(tr(o.label));s.setOnCheckedChangeListener((v,b)->updateStatus(null));return s;}
+        if(o.type.equals("enum")){Spinner s=new Spinner(activity);ArrayList<String> labels=new ArrayList<>();int index=-1;for(int i=0;i<o.choices.size();i++){ProcessOption.Choice c=o.choices.get(i);labels.add(tr(c.label));if(c.value.equals(value))index=i;}if(index<0){index=labels.size();labels.add(L.t("Недопустимое значение"));}
             ArrayAdapter<String> a=new ArrayAdapter<String>(activity,android.R.layout.simple_spinner_dropdown_item,labels){@Override public View getView(int p,View c,android.view.ViewGroup g){TextView v=(TextView)super.getView(p,c,g);v.setTextColor(ui.ink);return v;}@Override public View getDropDownView(int p,View c,android.view.ViewGroup g){TextView v=(TextView)super.getDropDownView(p,c,g);v.setTextColor(ui.ink);v.setBackgroundColor(ui.surface);return v;}};
             s.setAdapter(a);s.setSelection(index);s.setPopupBackgroundDrawable(ui.shape(ui.surface,12));s.setContentDescription(tr(o.label));s.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,View v,int pos,long id){updateStatus(null);}public void onNothingSelected(android.widget.AdapterView<?> p){updateStatus(null);}});return s;}
         EditText e=new EditText(activity);e.setSingleLine(true);e.setTextSize(15);e.setTextColor(ui.ink);e.setContentDescription(tr(o.label));e.setBackgroundTintList(android.content.res.ColorStateList.valueOf(ui.muted));
@@ -118,22 +118,22 @@ final class ProcessSettingsPanel {
         e.setText(value);e.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){updateStatus(null);}public void afterTextChanged(Editable e){}});return e;
     }
     private void capture(){if(options==null||rebuilding)return;for(ProcessOption o:options){View v=controls.get(o.key);if(v==null)continue;String value;if(v instanceof Switch)value=Boolean.toString(((Switch)v).isChecked());else if(v instanceof Spinner){int i=((Spinner)v).getSelectedItemPosition();value=i>=0&&i<o.choices.size()?o.choices.get(i).value:"";}else value=((EditText)v).getText().toString();raw.put(o.key,value);}}
-    private void renderActions(){actions.removeAllViews();TextView reset=button("Сбросить",false),save=button("Сохранить",true);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(44),1);p.setMargins(0,0,dp(8),0);actions.addView(reset,p);actions.addView(save,new LinearLayout.LayoutParams(0,dp(44),1));
+    private void renderActions(){actions.removeAllViews();TextView reset=button(L.t("Сбросить"),false),save=button(L.t("Сохранить"),true);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(44),1);p.setMargins(0,0,dp(8),0);actions.addView(reset,p);actions.addView(save,new LinearLayout.LayoutParams(0,dp(44),1));
         reset.setOnClickListener(v->{if(!saving){raw.clear();render();}});save.setOnClickListener(v->{if(saving)return;try{capture();Map<String,Object> changes=changes();validateAndSave(ProcessOption.encodeOverrides(changes));}catch(Exception e){error(e);}});actions.setAlpha(saving?.5f:1f);}
     private Map<String,Object> changes(){Map<String,Object> changes=new LinkedHashMap<>();for(ProcessOption o:options)if(o.editable&&raw.containsKey(o.key)){String input=raw.get(o.key);if(input.equals(String.valueOf(o.value)))continue;try{Object value=o.parseInput(input);if(!same(o,value,o.value))changes.put(o.key,value);}catch(IllegalArgumentException e){throw new IllegalArgumentException(tr(o.label.isEmpty()?o.key:o.label)+": "+e.getMessage(),e);}}return changes;}
     private static boolean same(ProcessOption o,Object a,Object b){if(a instanceof Number&&b instanceof Number)return Double.compare(((Number)a).doubleValue(),((Number)b).doubleValue())==0;if(o.type.equals("float_or_percent")){String x=String.valueOf(a),y=String.valueOf(b);boolean xp=x.endsWith("%"),yp=y.endsWith("%");if(xp!=yp)return false;try{return Double.compare(Double.parseDouble(xp?x.substring(0,x.length()-1):x),Double.parseDouble(yp?y.substring(0,y.length()-1):y))==0;}catch(NumberFormatException e){return false;}}return a.equals(b);}
     private void validateAndSave(String json){
         final java.util.concurrent.CountDownLatch operation;
-        synchronized(SAVE_LOCK){if(pendingSave!=null){error(new IllegalStateException("Дождитесь завершения предыдущего сохранения."));return;}operation=new java.util.concurrent.CountDownLatch(1);pendingSave=operation;}
-        saving=true;actions.setAlpha(.5f);setInputsEnabled(false);statusDetail=null;status.setText("Проверяем параметры и совместимость…");
+        synchronized(SAVE_LOCK){if(pendingSave!=null){error(new IllegalStateException(L.t("Дождитесь завершения предыдущего сохранения.")));return;}operation=new java.util.concurrent.CountDownLatch(1);pendingSave=operation;}
+        saving=true;actions.setAlpha(.5f);setInputsEnabled(false);statusDetail=null;status.setText(L.t("Проверяем параметры и совместимость…"));
         final int token=generation;ProcessOverridesStore.Identity id=identity;CompatibilityResources r=resources;android.content.Context app=activity.getApplicationContext();
-        new Thread(()->{try{ExperimentalSlicer.validateProcessSettings(id.printer.vendor,id.process.vendor,id.filament.vendor,id.printer.name,id.process.name,id.filament.name,r.resources.getAbsolutePath(),r.data.getAbsolutePath(),json);ProcessOverridesStore.save(app,id,json);activity.runOnUiThread(()->{if(stale(token))return;saving=false;actions.setAlpha(1f);setInputsEnabled(true);updateStatus("Сохранено");if(onSaved!=null)onSaved.run();});}
+        new Thread(()->{try{ExperimentalSlicer.validateProcessSettings(id.printer.vendor,id.process.vendor,id.filament.vendor,id.printer.name,id.process.name,id.filament.name,r.resources.getAbsolutePath(),r.data.getAbsolutePath(),json);ProcessOverridesStore.save(app,id,json);activity.runOnUiThread(()->{if(stale(token))return;saving=false;actions.setAlpha(1f);setInputsEnabled(true);updateStatus(L.t("Сохранено"));if(onSaved!=null)onSaved.run();});}
             catch(Throwable e){activity.runOnUiThread(()->{if(stale(token))return;saving=false;actions.setAlpha(1f);setInputsEnabled(true);error(e);});}
             finally{synchronized(SAVE_LOCK){if(pendingSave==operation)pendingSave=null;}operation.countDown();}},"kepler-panel-save").start();
     }
     private void setInputsEnabled(boolean enabled){for(View v:controls.values())v.setEnabled(enabled);}
-    private void updateStatus(String note){if(rebuilding||options==null)return;statusDetail=null;capture();int count=0;for(ProcessOption o:options)if(o.editable&&raw.containsKey(o.key)){try{Object v=o.parseInput(raw.get(o.key));if(!same(o,v,o.value))count++;}catch(Exception e){count++;}}status.setText((note==null?"":note+" · ")+"Изменено параметров: "+count);}
-    private void error(Throwable e){String m=EngineText.clean(e.getMessage());statusDetail=m==null?e.getClass().getSimpleName():m;status.setText("Ошибка: "+statusDetail);}
+    private void updateStatus(String note){if(rebuilding||options==null)return;statusDetail=null;capture();int count=0;for(ProcessOption o:options)if(o.editable&&raw.containsKey(o.key)){try{Object v=o.parseInput(raw.get(o.key));if(!same(o,v,o.value))count++;}catch(Exception e){count++;}}status.setText((note==null?"":note+" · ")+L.t("Изменено параметров: ")+count);}
+    private void error(Throwable e){String m=EngineText.clean(e.getMessage());statusDetail=m==null?e.getClass().getSimpleName():m;status.setText(L.t("Ошибка: ")+statusDetail);}
     private int dp(float n){return (int)(activity.getResources().getDisplayMetrics().density*n+.5f);}
     private TextView text(String s,int size,int color,boolean bold){TextView t=new TextView(activity);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setTypeface(android.graphics.Typeface.create("sans-serif",bold?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL));return t;}
     private TextView button(String label,boolean primary){TextView t=text(label,14,primary?ui.bg:ui.ink,true);t.setGravity(Gravity.CENTER);t.setBackground(ui.shape(primary?ui.ink:ui.surface,100));return t;}

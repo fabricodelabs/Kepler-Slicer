@@ -102,7 +102,7 @@ public final class SliceActivity extends Activity {
         }
         previewButton.setVisibility(available ? View.VISIBLE : View.GONE); exportButton.setVisibility(available ? View.VISIBLE : View.GONE); previewDetails.setVisibility(available ? View.VISIBLE : View.GONE);
         previewButton.setEnabled(!checkingResult);exportButton.setEnabled(!checkingResult);
-        if (available) previewDetails.setText("Последний сохранённый результат:\n" + getSharedPreferences(RESULTS, MODE_PRIVATE).getString(RESULT_DETAILS, ""));
+        if (available) previewDetails.setText(L.t("Последний сохранённый результат:\n") + getSharedPreferences(RESULTS, MODE_PRIVATE).getString(RESULT_DETAILS, ""));
     }
     private void requestResultRefresh() {
         final int generation=++resultQueryGeneration;
@@ -231,13 +231,13 @@ public final class SliceActivity extends Activity {
                         &&jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context))){
                     update(getString(R.string.l10n_sl_already));return;
                 }
-                File resources = EngineResources.prepare(context, count -> update(getString(R.string.l10n_sl_preparing) + count + " файлов…"));
+                File resources = EngineResources.prepare(context, count -> update(getString(R.string.l10n_sl_preparing) + count + L.t(" файлов…")));
                 File system = new File(data, "system"); ensureDirectory(system);
                 LinkedHashSet<String> vendors = new LinkedHashSet<>();
                 vendors.add(printer.vendor); vendors.add(process.vendor); vendors.add(filament.vendor); vendors.add("OrcaFilamentLibrary");
                 long needed = 128L * 1024 * 1024;
                 for (String vendor : vendors) {
-                    if (vendor == null || vendor.isEmpty() || vendor.contains("/") || vendor.contains("\\") || vendor.equals(".") || vendor.equals("..")) throw new IOException("Неверное имя производителя профиля.");
+                    if (vendor == null || vendor.isEmpty() || vendor.contains("/") || vendor.contains("\\") || vendor.equals(".") || vendor.equals("..")) throw new IOException(L.t("Неверное имя производителя профиля."));
                     File from = new File(resources, "profiles");
                     needed += treeSize(new File(from, vendor + ".json")) + treeSize(new File(from, vendor));
                 }
@@ -276,7 +276,7 @@ public final class SliceActivity extends Activity {
                 String filamentDisplay=selection.identity.profileSettings.overlays.get("filament").values().optString("name",filament.name);
                 if(projectDetails!=null){org.json.JSONObject actual=projectDetails.effectiveValues(model.projectMode==2);printerDisplay=model.projectMode==2?projectDetails.embeddedPrinterId:projectDetails.selectedPrinterId;processDisplay=actual.optString("print_settings_id",processDisplay);org.json.JSONArray ids=actual.optJSONArray("filament_settings_id");if(ids!=null&&ids.length()>0)filamentDisplay=ids.optString(0,filamentDisplay)+(ids.length()>1?" +"+(ids.length()-1):"");}
                 String details = model.name + "\n" + printerDisplay + "\n" + processDisplay + "\n" + filamentDisplay +
-                        String.format(java.util.Locale.getDefault(), "\nПоворот XYZ: %.2f°, %.2f°, %.2f°\nМасштаб XYZ: %.3f × %.3f × %.3f\nСмещение XY: %.2f, %.2f мм",
+                        String.format(java.util.Locale.getDefault(), L.t("\nПоворот XYZ: %.2f°, %.2f°, %.2f°\nМасштаб XYZ: %.3f × %.3f × %.3f\nСмещение XY: %.2f, %.2f мм"),
                                 transform.rx, transform.ry, transform.rz, transform.sx, transform.sy, transform.sz, transform.offsetX, transform.offsetY);
                 if(input.getName().endsWith(".3mf")&&model.projectMode>=0&&model.projectMode<=2)details+="\n"+context.getString(R.string.native_project_slice_detail,context.getString(model.projectMode==2?R.string.native_project_mode_embedded:model.projectMode==1?R.string.native_project_mode_current:R.string.native_project_mode_geometry));
                 SharedPreferences prefs = context.getSharedPreferences(RESULTS, MODE_PRIVATE);
@@ -284,7 +284,7 @@ public final class SliceActivity extends Activity {
                 boolean saved = prefs.edit().putString(RESULT_PATH, output.getCanonicalPath()).putString(RESULT_DETAILS, details).putString(RESULT_MODEL, model.name).putString(RESULT_OVERRIDES, selection.overrides).putString(RESULT_FINGERPRINT, jobFingerprint).commit();
                 // A failed commit may still change the in-memory preference map.
                 if (!saved) prefs.edit().putString(RESULT_PATH, previousPath).putString(RESULT_DETAILS, previousDetails).putString(RESULT_MODEL, previousModel).putString(RESULT_OVERRIDES, previousOverrides).putString(RESULT_FINGERPRINT, previousFingerprint).apply();
-                update(getString(R.string.l10n_sl_last_run) + details + "\n\nНарезка завершена: " + output.length() + getString(R.string.l10n_sl_done_bytes) + (saved ? "" : "\nНе удалось сохранить ссылку на результат для просмотра и экспорта."));
+                update(getString(R.string.l10n_sl_last_run) + details + L.t("\n\nНарезка завершена: ") + output.length() + getString(R.string.l10n_sl_done_bytes) + (saved ? "" : L.t("\nНе удалось сохранить ссылку на результат для просмотра и экспорта.")));
             } catch (Throwable error) {
                 String message = error.getMessage();
                 String diagnostic = error instanceof LinkageError ? nativeDiagnostic(context) : "";
@@ -327,10 +327,10 @@ public final class SliceActivity extends Activity {
         android.content.pm.ApplicationInfo info = context.getApplicationInfo();
         boolean found = containsNativeLibrary(info.sourceDir);
         if (info.splitSourceDirs != null) for (String split : info.splitSourceDirs) found |= containsNativeLibrary(split);
-        return "\nABI устройства: " + String.join(", ", Build.SUPPORTED_ABIS) +
-                "\nАрхитектура процесса: " + System.getProperty("os.arch", "неизвестна") +
-                "\nARM64-библиотека в установленном APK: " + (found ? "есть" : "нет") +
-                "\nКаталог библиотек: " + info.nativeLibraryDir;
+        return L.t("\nABI устройства: ") + String.join(", ", Build.SUPPORTED_ABIS) +
+                L.t("\nАрхитектура процесса: ") + System.getProperty("os.arch", L.t("неизвестна")) +
+                L.t("\nARM64-библиотека в установленном APK: ") + (found ? L.t("есть") : L.t("нет")) +
+                L.t("\nКаталог библиотек: ") + info.nativeLibraryDir;
     }
     private static boolean containsNativeLibrary(String path) {
         if (path == null) return false;

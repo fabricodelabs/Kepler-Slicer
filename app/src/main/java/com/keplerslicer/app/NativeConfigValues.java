@@ -61,10 +61,10 @@ final class NativeConfigValues {
     /** Values are display-only: a DEFINITION_DEFAULT is not the selected preset's effective value. */
     static Result loadDetailed(Context context, SettingsSchema schema, String kind,
                                ProcessOverridesStore.Identity id) throws IOException {
-        if (context == null || schema == null || id == null) throw new IOException("Не выбраны профили для чтения настроек.");
+        if (context == null || schema == null || id == null) throw new IOException(L.t("Не выбраны профили для чтения настроек."));
         if(CurrentModelStore.projectMode(context)>0)return projectValues(context,schema,kind,id);
         List<SettingsSchema.Option> options = schema.options(kind);
-        if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException("Загрузка отменена.");
+        if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException(L.t("Загрузка отменена."));
         String modelKey = CurrentModelStore.settingsSelectionKey(context), overrides = ProcessOverridesStore.load(context,id);
         CompatibilityResources prepared = CompatibilityResources.prepareTriple(context,id.printer.vendor,
                 id.process.vendor,id.filament.vendor,id.profileSettings);
@@ -96,7 +96,7 @@ final class NativeConfigValues {
     }
 
     private static void requireCurrent(Context context,ProcessOverridesStore.Identity id,String modelKey,String overrides)throws IOException {
-        if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException("Загрузка отменена.");
+        if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException(L.t("Загрузка отменена."));
         if (!modelKey.equals(CurrentModelStore.settingsSelectionKey(context)) || !overrides.equals(ProcessOverridesStore.load(context,id)))
             throw new IOException(context.getString(R.string.native_project_stale_values));
     }
@@ -108,29 +108,29 @@ final class NativeConfigValues {
         JSONObject result = new JSONObject(); Map<String,Source> sources = new HashMap<>();
         String diagnostic = null; boolean resolved = false;
         try {
-            if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException("Загрузка отменена.");
+            if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException(L.t("Загрузка отменена."));
             CompatibilityResources prepared = CompatibilityResources.prepareTriple(context, id.printer.vendor,
                     id.process.vendor, id.filament.vendor, id.profileSettings);
             if ("process".equals(kind)) {
                 byte[] bytes = ExperimentalSlicer.processSettingsMetadata(id.printer.vendor,id.process.vendor,id.filament.vendor,
                         id.printerName,id.processName,id.filamentName,prepared.resources.getAbsolutePath(),prepared.data.getAbsolutePath());
-                if (bytes == null) throw new IOException("Движок не вернул настройки процесса.");
+                if (bytes == null) throw new IOException(L.t("Движок не вернул настройки процесса."));
                 result = readProcessMetadata(bytes, options);
-                if (result.length()==0) throw new IOException("Движок не вернул распознанных параметров процесса.");
+                if (result.length()==0) throw new IOException(L.t("Движок не вернул распознанных параметров процесса."));
                 resolved = true;
                 for (SettingsSchema.Option option:options) if(result.has(option.key))
                     sources.put(option.key,option.isVector() || "coFloatOrPercent".equals(option.type) || "coPoint".equals(option.type)
                             ? Source.PROCESS_METADATA_SERIALIZED : Source.PROCESS_METADATA);
             } else {
                 result = resolveIni(prepared, schema, kind, id);
-                if (result.length()==0) throw new IOException("Нет распознанных параметров в файле движка.");
+                if (result.length()==0) throw new IOException(L.t("Нет распознанных параметров в файле движка."));
                 resolved = true;
                 for (java.util.Iterator<String> keys=result.keys();keys.hasNext();) sources.put(keys.next(),Source.VALIDATED_INI);
             }
         } catch (java.io.InterruptedIOException e) {
             throw e;
         } catch (IOException | RuntimeException | LinkageError e) {
-            if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException("Загрузка отменена.");
+            if (Thread.currentThread().isInterrupted()) throw new java.io.InterruptedIOException(L.t("Загрузка отменена."));
             diagnostic = e.getMessage()==null ? e.getClass().getSimpleName() : e.getMessage();
             Log.i(TAG, "Optional resolved defaults unavailable; using known definition defaults");
         }
@@ -144,7 +144,7 @@ final class NativeConfigValues {
             Object value = definitionValue(option);
             if (value == null) continue;
             try { result.put(option.key,value); sources.put(option.key,Source.DEFINITION_DEFAULT); }
-            catch (JSONException e) { throw new IOException("Некорректное значение определения движка.",e); }
+            catch (JSONException e) { throw new IOException(L.t("Некорректное значение определения движка."),e); }
         }
     }
 
@@ -173,7 +173,7 @@ final class NativeConfigValues {
     private static JSONObject resolveIni(CompatibilityResources prepared, SettingsSchema schema, String kind,
                                          ProcessOverridesStore.Identity id) throws IOException {
         File job = new File(prepared.data, "settings-values-" + UUID.randomUUID());
-        if (job.exists()) throw new IOException("Не удалось создать отдельное задание для чтения профилей.");
+        if (job.exists()) throw new IOException(L.t("Не удалось создать отдельное задание для чтения профилей."));
         try {
             String filename;
             try {
@@ -181,11 +181,11 @@ final class NativeConfigValues {
                         id.printerName, id.processName, id.filamentName,
                         prepared.resources.getAbsolutePath(), prepared.data.getAbsolutePath(), job.getAbsolutePath());
             } catch (RuntimeException | LinkageError e) {
-                throw new IOException("Не удалось прочитать настройки движка: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()), e);
+                throw new IOException(L.t("Не удалось прочитать настройки движка: ") + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()), e);
             }
             File expected = new File(job, "resolved.ini");
             if (filename == null || !expected.getCanonicalFile().equals(new File(filename).getCanonicalFile()) || !expected.isFile())
-                throw new IOException("Движок не создал ожидаемый файл настроек.");
+                throw new IOException(L.t("Движок не создал ожидаемый файл настроек."));
             return read(expected, schema, kind);
         } finally {
             // JNI creates only this private job and resolved.ini. Never recursively traverse elsewhere.
@@ -201,20 +201,20 @@ final class NativeConfigValues {
             String json=StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                     .onUnmappableCharacter(CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(bytes)).toString();
             JSONObject document=new JSONObject(json), result=new JSONObject();
-            if(document.getInt("version")!=2 || !"process_options".equals(document.getString("scope"))) throw new IOException("Неизвестный формат настроек движка.");
+            if(document.getInt("version")!=2 || !"process_options".equals(document.getString("scope"))) throw new IOException(L.t("Неизвестный формат настроек движка."));
             JSONArray rows=document.getJSONArray("options");
-            if(rows.length()>4096)throw new IOException("Неизвестный размер настроек движка.");
+            if(rows.length()>4096)throw new IOException(L.t("Неизвестный размер настроек движка."));
             HashSet<String> seen=new HashSet<>();
             for(int i=0;i<rows.length();i++) {
                 JSONObject row=rows.getJSONObject(i);String key=row.getString("key");
-                if(!seen.add(key))throw new IOException("Повторяющийся ключ настроек движка.");
+                if(!seen.add(key))throw new IOException(L.t("Повторяющийся ключ настроек движка."));
                 SettingsSchema.Option option=indexed.get(key);if(option==null)continue;
                 Object value=metadataValue(option,row.opt("value"));
                 if(value!=null)result.put(key,value);
             }
             return result;
         } catch (JSONException | java.nio.charset.CharacterCodingException ex) {
-            throw new IOException("Некорректные данные настроек движка.",ex);
+            throw new IOException(L.t("Некорректные данные настроек движка."),ex);
         }
     }
     private static Object metadataValue(SettingsSchema.Option option,Object value) {
@@ -262,15 +262,15 @@ final class NativeConfigValues {
             for (String line; (line = reader.readLine()) != null;) {
                 if (line.isEmpty() || line.startsWith("#")) continue;
                 int separator = line.indexOf(" = ");
-                if (separator < 1) throw new IOException("Повреждён файл настроек движка.");
+                if (separator < 1) throw new IOException(L.t("Повреждён файл настроек движка."));
                 String key = line.substring(0, separator);
-                if (!seen.add(key)) throw new IOException("Повторяющийся ключ в файле настроек движка.");
+                if (!seen.add(key)) throw new IOException(L.t("Повторяющийся ключ в файле настроек движка."));
                 SettingsSchema.Option option = options.get(key);
                 if (option == null) continue;
                 Object value = ProfileIniCodec.convert(key, option.type, line.substring(separator + 3));
                 if (value == null) { omitted++; continue; }
                 try { result.put(key, value); }
-                catch (JSONException e) { throw new IOException("Некорректное значение настроек движка.", e); }
+                catch (JSONException e) { throw new IOException(L.t("Некорректное значение настроек движка."), e); }
             }
         }
         if (omitted > 0) Log.i(TAG, "Omitted " + omitted + " values with unsupported or ambiguous INI representation");
