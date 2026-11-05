@@ -1,0 +1,21 @@
+// JNI bridge to the native slicing engine (libkepler_slicer_experimental.so, built by build-native.ps1).
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace 'com.keplerslicer.engine'
+    compileSdk 36
+    defaultConfig { minSdk 33 }
+    sourceSets {
+        main {
+            java.srcDirs = ['java']
+            jniLibs.srcDirs = ['jniLibs']
+            manifest.srcFile 'AndroidManifest.xml'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

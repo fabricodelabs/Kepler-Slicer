@@ -97,7 +97,7 @@ $nativeManifest = [ordered]@{
     published_to_app=[bool]$PublishToApp; built_utc=[datetime]::UtcNow.ToString('o')
 }
 if ($PublishToApp) {
-    $nativeAppFile = Join-Path $nativeProjectRoot 'app/src/main/jniLibs/arm64-v8a/libkepler_slicer_experimental.so'
+    $nativeAppFile = Join-Path $nativeProjectRoot 'engine/jniLibs/arm64-v8a/libkepler_slicer_experimental.so'
     if (Test-Path -LiteralPath $nativeAppFile) {
         $nativeOldHash = (Get-FileHash -LiteralPath $nativeAppFile -Algorithm SHA256).Hash
         $nativeBaselineRoot = Join-Path (Split-Path -Parent $nativeProjectRoot) ('Kepler-Native-Phase2-baseline/'+$nativeOldHash)

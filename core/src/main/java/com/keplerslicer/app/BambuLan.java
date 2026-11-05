@@ -107,7 +107,7 @@ final class BambuLan {
             if (t.cloud) {
                 try { tls = (SSLSocket) SSLContext.getDefault().getSocketFactory().createSocket(raw, t.host, port, true); } catch (java.security.NoSuchAlgorithmException x) { throw new IOException(x); }
                 javax.net.ssl.SSLParameters params = tls.getSSLParameters(); params.setEndpointIdentificationAlgorithm("HTTPS"); tls.setSSLParameters(params);
-            } else tls = (SSLSocket) lanTls().getSocketFactory().createSocket(raw, t.host, port, true);
+            } else tls = (SSLSocket) lanTls(t.serial).getSocketFactory().createSocket(raw, t.host, port, true);
             tls.startHandshake();
             OutputStream out = tls.getOutputStream(); DataInputStream in = new DataInputStream(tls.getInputStream());
             write(out, 0x10, connect("kepler-" + Long.toHexString(System.nanoTime()), t.user, t.code));
@@ -151,7 +151,7 @@ final class BambuLan {
         checkName(remoteName);
         if (e.type == PrinterEndpoint.Type.BAMBU_CLOUD) throw new IOException(L.t("Отправка файла через облако Bambu не поддерживается. Добавьте этот принтер как Bambu Lab (LAN)."));
         Target t = target(e);
-        SSLContext context = lanTls();
+        SSLContext context = lanTls(t.serial);
         Socket raw = new Socket();
         cancel.setCloser(raw);
         try {
@@ -220,17 +220,42 @@ final class BambuLan {
         return line;
     }
 
-    static SSLContext lanTls() throws IOException {
+    /** Remembered printer certificates: serial number -> SHA-256 of the certificate the printer showed first. */
+    interface CertificatePins { String get(String serial); void put(String serial, String sha256); void forget(String serial); }
+    static final class MemoryPins implements CertificatePins {
+        private final java.util.Map<String, String> map = new java.util.concurrent.ConcurrentHashMap<>();
+        public String get(String s) { return map.get(s); } public void put(String s, String v) { map.put(s, v); } public void forget(String s) { map.remove(s); }
+    }
+    /** The app installs a persistent store at start; host tests keep the in-memory one. */
+    static volatile CertificatePins pins = new MemoryPins();
+
+    /**
+     * Bambu printers use self-signed certificates, so a CA check is impossible. Trust on first use instead: the first
+     * certificate seen for a serial number is remembered, and a different one later is refused (someone on the same
+     * Wi-Fi posing as the printer would otherwise receive the LAN access code). Saving the connection again forgets
+     * the remembered certificate, for a printer whose board or firmware was replaced.
+     */
+    static SSLContext lanTls(String serial) throws IOException {
         try {
+            final String key = serial == null ? "" : serial.trim().toUpperCase(java.util.Locale.ROOT);
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(null, new TrustManager[]{new X509TrustManager() {
-                @Override public void checkClientTrusted(X509Certificate[] chain, String authType) {}
-                @Override public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+                @Override public void checkClientTrusted(X509Certificate[] chain, String authType) throws java.security.cert.CertificateException { throw new java.security.cert.CertificateException("Client certificates are not used"); }
+                @Override public void checkServerTrusted(X509Certificate[] chain, String authType) throws java.security.cert.CertificateException {
+                    if (chain == null || chain.length == 0) throw new java.security.cert.CertificateException("No printer certificate");
+                    String seen;
+                    try { seen = hex(java.security.MessageDigest.getInstance("SHA-256").digest(chain[0].getEncoded())); }
+                    catch (java.security.NoSuchAlgorithmException e) { throw new java.security.cert.CertificateException(e); }
+                    String known = pins.get(key);
+                    if (known == null) { pins.put(key, seen); return; }
+                    if (!known.equals(seen)) throw new java.security.cert.CertificateException(L.t("Сертификат принтера изменился. Если меняли плату или прошивку, сохраните подключение заново; иначе в сети может быть подмена принтера."));
+                }
                 @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
             }}, null);
             return context;
-        } catch (Exception e) { throw new IOException(L.t("TLS is unavailable"), e); }
+        } catch (java.security.GeneralSecurityException e) { throw new IOException(L.t("TLS is unavailable"), e); }
     }
+    private static String hex(byte[] b) { StringBuilder s = new StringBuilder(); for (byte x : b) s.append(String.format(java.util.Locale.ROOT, "%02x", x)); return s.toString(); }
 
     // ---- minimal MQTT 3.1.1 framing ----
     private static final class Packet { final int header; final byte[] body; Packet(int header, byte[] body) { this.header = header; this.body = body; } }

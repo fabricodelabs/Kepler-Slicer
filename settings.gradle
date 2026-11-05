@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = 'KeplerSlicer'
-include ':app'
+include ':app', ':core', ':engine'

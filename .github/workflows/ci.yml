@@ -1,0 +1,56 @@
+name: CI
+
+# Every push and pull request: build the app, run the JUnit tests of :core and every JVM host test suite.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    # The host test scripts use Windows paths and classpath separators.
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Android platform for the STEP host test
+        shell: pwsh
+        run: |
+          & "$env:ANDROID_HOME\cmdline-tools\latest\bin\sdkmanager.bat" "platforms;android-36" | Out-Null
+
+      - name: Build the debug app
+        shell: pwsh
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: JUnit tests of :core
+        shell: pwsh
+        run: ./gradlew :core:test --stacktrace
+
+      - name: org.json for the host tests
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          Invoke-WebRequest https://repo1.maven.org/maven2/org/json/json/20231013/json-20231013.jar -OutFile build/json.jar
+
+      - name: Host test suites
+        shell: pwsh
+        run: ./tools/run_host_tests.ps1 -JsonJar build/json.jar -JavaHome $env:JAVA_HOME -AndroidJar "$env:ANDROID_HOME\platforms\android-36\android.jar"
+
+      - name: APK size limit (Play base module 200 MB)
+        shell: pwsh
+        run: |
+          $apk = Get-Item app/build/outputs/apk/debug/app-debug.apk
+          Write-Host ("APK size: {0:N1} MB" -f ($apk.Length / 1MB))
+          if ($apk.Length -gt 200MB) { Write-Host "::warning::APK is larger than the 200 MB Play base-module limit" }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: core/build/reports/tests

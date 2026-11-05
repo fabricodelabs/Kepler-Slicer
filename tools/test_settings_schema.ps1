@@ -15,7 +15,9 @@ $schemaSources=@(
     (Join-Path $PSScriptRoot 'tests\ProfileIniCodecTest.java')
 )
 $schemaSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
-$schemaSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'app\src\main\java\com\keplerslicer\app\L.java')
+$schemaSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'core\src\main\java\com\keplerslicer\app\L.java')
+# Sources moved into the core/engine modules are found at their new place.
+$schemaSources=@($schemaSources | ForEach-Object { $p=[string]$_; if(-not (Test-Path -LiteralPath $p)){ foreach($alt in @($p.Replace('\app\src\main\java\com\keplerslicer\app\','\core\src\main\java\com\keplerslicer\app\'),$p.Replace('\app\src\main\java\com\keplerslicer\engine\','\engine\java\com\keplerslicer\engine\'))){ if(Test-Path -LiteralPath $alt){$p=$alt;break} } }; $p }) # Resolve-KeplerSource
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $schemaClasses @schemaSources
 if($LASTEXITCODE -ne 0){throw 'Schema tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') -cp ($schemaClasses+';'+$JsonJar) SettingsSchemaTest (Join-Path $schemaProjectRoot 'app\src\main\assets\kepler_settings_runtime.json')

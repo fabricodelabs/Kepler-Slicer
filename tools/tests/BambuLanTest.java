@@ -81,6 +81,19 @@ public final class BambuLanTest {
         check(trays[1].active && "PETG".equals(trays[1].type), "tray_now marks the active tray");
         check(!trays[2].loaded && !trays[3].loaded, "empty trays stay empty");
         server.close();
+        check(BambuLan.pins.get("01P00A123456789") != null, "the first connection remembers the printer certificate");
+        // A different certificate for the same printer is refused before the access code is sent.
+        BambuLan.pins.put("01P00A123456789", "00");
+        SSLServerSocket impostor = (SSLServerSocket) tls.getServerSocketFactory().createServerSocket(0, 1, InetAddress.getLoopbackAddress());
+        BambuLan.mqttPort = impostor.getLocalPort();
+        AtomicReference<String> leaked = new AtomicReference<>();
+        Thread fake = new Thread(() -> { try (SSLSocket s = (SSLSocket) impostor.accept()) { s.setSoTimeout(3000); byte[] connect = packet(new DataInputStream(s.getInputStream())); leaked.set(new String(connect, StandardCharsets.UTF_8)); } catch (Exception ignored) { } });
+        fake.start();
+        boolean pinRefused = false;
+        try { BambuLan.report(endpoint, new NetworkHttp.Cancellation()); } catch (java.io.IOException e) { pinRefused = true; }
+        fake.join(5000); impostor.close();
+        check(pinRefused && (leaked.get() == null || !leaked.get().contains("12345678")), "a changed printer certificate is refused and the access code is not sent");
+        BambuLan.pins.forget("01P00A123456789");
 
         boolean refusedRemote = false;
         try { BambuLan.report(new PrinterEndpoint(PrinterEndpoint.Type.BAMBU, "http://8.8.8.8", PrinterEndpoint.Auth.PASSWORD, "01P00A123456789", "12345678", ""), new NetworkHttp.Cancellation()); }

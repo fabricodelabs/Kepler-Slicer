@@ -152,6 +152,7 @@ public final class DeviceActivity extends Activity {
 
     /** Read-only status of the selected saved printer (no commands are sent). Offline/stealth modes are respected. */
     private void refreshStatus() {
+        if (cancellation != null) cancellation.cancel(); // never two polls at once: the newer one wins
         final NetworkHttp.Cancellation cancel = new NetworkHttp.Cancellation(); cancellation = cancel;
         new Thread(() -> {
             NetworkStore.Connection c = null; String text; boolean online = false; org.json.JSONObject raw = null; String state = null;
@@ -168,7 +169,7 @@ public final class DeviceActivity extends Activity {
                 }
             } catch (Exception e) { text = getString(R.string.kv3_device_unreachable, c == null ? "" : label(c.endpoint.type), e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
             final String value = text; final boolean ok = online; final org.json.JSONObject json = raw; final PrinterEndpoint.Type type = c == null ? null : c.endpoint.type; final String st = state;
-            runOnUiThread(() -> { if (isDestroyed()) return; status.setText(value); statusDot.setBackground(ui.shape(ok ? KeplerUi.MINT : 0x99FFFFFF, 0, 4)); activeType = ok ? type : null; jobState = ok ? phase(st) : Phase.UNKNOWN; if (json != null && type != null) applyTelemetry(type, json, st); updateControls(); });
+            runOnUiThread(() -> { if (isDestroyed() || cancellation != cancel) return; status.setText(value); statusDot.setBackground(ui.shape(ok ? KeplerUi.MINT : 0x99FFFFFF, 0, 4)); activeType = ok ? type : null; jobState = ok ? phase(st) : Phase.UNKNOWN; if (json != null && type != null) applyTelemetry(type, json, st); updateControls(); });
         }, "device-status").start();
     }
     private static String label(PrinterEndpoint.Type type) { String n = type.name().replace('_', ' '); return n.charAt(0) + n.substring(1).toLowerCase(java.util.Locale.ROOT); }
