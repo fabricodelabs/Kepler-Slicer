@@ -74,6 +74,22 @@ public final class KeplerUi {
         host.requestApplyInsets();
     }
 
+    /**
+     * A Spinner that opens the glass bottom sheet instead of the platform drop-down (whose translucent popup
+     * overlapped the form). Selection, listeners and getSelectedItemPosition() keep working as before.
+     */
+    public static void sheetSpinner(android.widget.Spinner spinner, String title) {
+        spinner.setOnTouchListener((v, e) -> {
+            if (e.getActionMasked() != android.view.MotionEvent.ACTION_UP) return true;
+            android.widget.SpinnerAdapter a = spinner.getAdapter(); if (a == null) return true;
+            String[] values = new String[a.getCount()];
+            for (int i = 0; i < values.length; i++) values[i] = String.valueOf(a.getItem(i));
+            GlassBottomSheet.choose(spinner.getContext(), spinner, false, title, values, spinner.getSelectedItemPosition(), spinner::setSelection);
+            return true;
+        });
+        spinner.setPopupBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2E323A)); // opaque fallback (keyboard/TalkBack)
+    }
+
     /** Switches between the four top-level tabs in place, like a tab bar: no slide between the screens. */
     public static void tab(android.app.Activity from, android.content.Intent intent, boolean finish) {
         from.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION));

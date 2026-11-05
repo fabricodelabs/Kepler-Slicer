@@ -97,6 +97,6 @@ final class MdUi {
         }); holder[0]=nav;
         int width=(int)(context.getResources().getDisplayMetrics().widthPixels/context.getResources().getDisplayMetrics().density);
         FrameLayout.LayoutParams n=new FrameLayout.LayoutParams(width>640?dp(600):-1,-2,Gravity.CENTER);n.setMargins(dp(16),dp(8),dp(16),dp(24));shell.addView(nav,n);parent.addView(shell,lp(-1,-2));
-        if(parent==pageRoot&&pageHost!=null){parent.removeView(shell);shell.removeView(nav);KeplerUi.floatNavigation(pageHost,parent,nav,dp(16),dp(24));}
+        if(parent==pageRoot&&pageHost!=null){parent.removeView(shell);shell.removeView(nav);KeplerUi.floatNavigation(pageHost,parent,nav,dp(16),dp(24));KeplerUi.edgeToEdge(pageHost,dp(24));}
     }
 }
