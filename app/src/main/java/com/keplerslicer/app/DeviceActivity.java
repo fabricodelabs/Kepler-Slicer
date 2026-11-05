@@ -176,6 +176,13 @@ public final class DeviceActivity extends Activity {
     /** OctoPrint /api/printer and PrusaLink /api/v1/status carry temperatures; PrusaLink and Moonraker carry job progress. */
     private void applyTelemetry(PrinterEndpoint.Type type, org.json.JSONObject json, String state) {
         double[][] t = new double[3][];
+        org.json.JSONObject k = json.optJSONObject("kepler"); // Duet, Repetier, Creality, Elegoo: normalised by LegacyPrinterControl
+        if (k != null) {
+            String[] keys = {"nozzle", "bed", "chamber"};
+            for (int i = 0; i < 3; i++) { org.json.JSONArray a = k.optJSONArray(keys[i]); if (a != null && a.length() == 2) t[i] = new double[]{a.optDouble(0, Double.NaN), a.optDouble(1, Double.NaN)}; }
+            if (k.has("progress")) showProgress(k.optDouble("progress", Double.NaN), state, k.optLong("seconds_left", -1));
+            if (!k.optString("file", "").isEmpty() && jobDetail != null && !k.has("progress")) jobDetail.setText(k.optString("file"));
+        }
         if (type == PrinterEndpoint.Type.OCTOPRINT) {
             org.json.JSONObject temps = json.optJSONObject("temperature");
             if (temps != null) { String[] keys = {"tool0", "bed", "chamber"}; for (int i = 0; i < 3; i++) { org.json.JSONObject o = temps.optJSONObject(keys[i]); if (o != null) t[i] = new double[]{o.optDouble("actual", Double.NaN), o.optDouble("target", Double.NaN)}; } }
@@ -288,7 +295,7 @@ public final class DeviceActivity extends Activity {
     private void toggle(boolean light) {
         if (selectedOrExplain() == null) return;
         final String title = getString(light ? R.string.kv3_chamber_light : R.string.kv3_aux_fan);
-        if (!PrinterHostClient.supportsChamber(activeType)) { screen.info(title, getString(R.string.kv3_cmd_unsupported, label(activeType))); return; }
+        if (light ? !PrinterHostClient.supportsLight(activeType) : !PrinterHostClient.supportsChamber(activeType)) { screen.info(title, getString(R.string.kv3_cmd_unsupported, label(activeType))); return; }
         final boolean next = !(light ? lightOn : fanOn);
         command(title, (client, cancel) -> {
             if (light) client.chamberLight(next, cancel); else client.auxFan(next, cancel);

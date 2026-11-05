@@ -58,7 +58,7 @@ public final class PrinterHostClient {
 
     /** Reads server status only; legacy backends without a status API report unknown. */
     public Status status(NetworkHttp.Cancellation cancel) throws IOException {
-        if(LegacyPrinterHosts.supports(endpoint.type)) return new Status("unknown",LegacyPrinterHosts.test(endpoint,cancel));
+        if(LegacyPrinterHosts.supports(endpoint.type)) { if(LegacyPrinterControl.supportsStatus(endpoint)) return LegacyPrinterControl.status(endpoint,cancel); return new Status("unknown",LegacyPrinterHosts.test(endpoint,cancel)); }
         if(CloudPrinterHosts.supports(endpoint.type)) return CloudPrinterHosts.status(endpoint,cancel);
         NetworkHttp.Response response;
         switch(endpoint.type) {
@@ -148,6 +148,7 @@ public final class PrinterHostClient {
      */
     public void startUploaded(String remotePath, NetworkHttp.Cancellation cancel) throws IOException {
         String path=encodeRemotePath(remotePath);
+        if(endpoint.type==PrinterEndpoint.Type.DUET) { if(remotePath.contains("/"))throw new IOException("Недопустимый путь файла на принтере."); LegacyPrinterControl.startDuet(endpoint,remotePath,cancel); return; }
         if(endpoint.type==PrinterEndpoint.Type.BAMBU) { if(remotePath.contains("/"))throw new IOException("Недопустимый путь файла на принтере."); BambuLan.startFile(endpoint,remotePath,cancel); return; }
         if(endpoint.type!=PrinterEndpoint.Type.OCTOPRINT && endpoint.type!=PrinterEndpoint.Type.MOONRAKER)
             throw new IOException("Запуск уже загруженного файла для этого сервера пока не поддерживается.");
@@ -167,8 +168,9 @@ public final class PrinterHostClient {
     }
     // ---- Job control: explicit actions only, each confirmed by the user in the UI; never retried. ----
     public enum Job { PAUSE, RESUME, CANCEL }
-    public static boolean supportsJobs(PrinterEndpoint.Type t) { return t==PrinterEndpoint.Type.OCTOPRINT||t==PrinterEndpoint.Type.MOONRAKER||t==PrinterEndpoint.Type.PRUSALINK||t==PrinterEndpoint.Type.BAMBU; }
-    public static boolean supportsMotion(PrinterEndpoint.Type t) { return t==PrinterEndpoint.Type.OCTOPRINT||t==PrinterEndpoint.Type.MOONRAKER||t==PrinterEndpoint.Type.BAMBU; }
+    public static boolean supportsJobs(PrinterEndpoint.Type t) { return t==PrinterEndpoint.Type.OCTOPRINT||t==PrinterEndpoint.Type.MOONRAKER||t==PrinterEndpoint.Type.PRUSALINK||t==PrinterEndpoint.Type.BAMBU||t==PrinterEndpoint.Type.DUET||t==PrinterEndpoint.Type.REPETIER||t==PrinterEndpoint.Type.CREALITYPRINT||t==PrinterEndpoint.Type.ELEGOOLINK; }
+    public static boolean supportsMotion(PrinterEndpoint.Type t) { return t==PrinterEndpoint.Type.OCTOPRINT||t==PrinterEndpoint.Type.MOONRAKER||t==PrinterEndpoint.Type.BAMBU||t==PrinterEndpoint.Type.DUET||t==PrinterEndpoint.Type.REPETIER; }
+    public static boolean supportsLight(PrinterEndpoint.Type t) { return t==PrinterEndpoint.Type.BAMBU||t==PrinterEndpoint.Type.CREALITYPRINT||t==PrinterEndpoint.Type.ELEGOOLINK; }
     public static boolean supportsChamber(PrinterEndpoint.Type t) { return t==PrinterEndpoint.Type.BAMBU; }
 
     /** Pause, resume or cancel the running job (OctoPrint api/job, Moonraker printer/print, PrusaLink api/v1/job, Bambu MQTT). */
@@ -193,6 +195,7 @@ public final class PrinterHostClient {
                 String path="api/v1/job/"+id+(job==Job.CANCEL?"":job==Job.PAUSE?"/pause":"/resume");
                 NetworkHttp.Response r=send(job==Job.CANCEL?"DELETE":"PUT",endpoint.url(path),new LinkedHashMap<>(),null,cancel,false); r.requireSuccess(); return;
             }
+            case DUET: case REPETIER: case CREALITYPRINT: case ELEGOOLINK: LegacyPrinterControl.job(endpoint,job,cancel); return;
             default: throw new IOException("Управление печатью для этого сервера пока не поддерживается.");
         }
     }
@@ -203,7 +206,8 @@ public final class PrinterHostClient {
         gcode("M220 S"+new int[]{50,100,124,166}[level-1]+"\n",cancel);
     }
     public void chamberLight(boolean on, NetworkHttp.Cancellation cancel) throws IOException {
-        if(endpoint.type!=PrinterEndpoint.Type.BAMBU)throw new IOException("Подсветка камеры доступна только на Bambu Lab.");
+        if(endpoint.type==PrinterEndpoint.Type.CREALITYPRINT||endpoint.type==PrinterEndpoint.Type.ELEGOOLINK){LegacyPrinterControl.light(endpoint,on,cancel);return;}
+        if(endpoint.type!=PrinterEndpoint.Type.BAMBU)throw new IOException("Подсветка доступна не на всех принтерах.");
         BambuLan.chamberLight(endpoint,on,cancel);
     }
     public void auxFan(boolean on, NetworkHttp.Cancellation cancel) throws IOException {
@@ -224,6 +228,7 @@ public final class PrinterHostClient {
             case BAMBU: BambuLan.gcode(endpoint,lines,cancel); return;
             case OCTOPRINT: { test(cancel); org.json.JSONArray list=new org.json.JSONArray(); for(String l:lines.split("\n"))if(!l.isEmpty())list.put(l); postJson("api/printer/command","{\"commands\":"+list+"}",cancel); return; }
             case MOONRAKER: { test(cancel); NetworkHttp.Response r=send("POST",endpoint.url("printer/gcode/script?script="+java.net.URLEncoder.encode(lines.trim(),"UTF-8").replace("+","%20")),new LinkedHashMap<>(),null,cancel,false); r.requireSuccess(); return; }
+            case DUET: case REPETIER: LegacyPrinterControl.gcode(endpoint,lines,cancel); return;
             default: throw new IOException("Команды G-code для этого сервера не поддерживаются.");
         }
     }
