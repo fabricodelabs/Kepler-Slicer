@@ -708,11 +708,13 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_cloneModelWithPreferences(JNIEnv
 namespace {
 // Loads the current model for an editing tool and applies the Tools transform. A 3MF is read as geometry only;
 // a model with several objects or copies keeps its own placement, so its transform must be the identity.
-Slic3r::Model load_editable_model(const std::string &path,const kepler::ModelTransform &t,const Slic3r::DynamicPrintConfig &config) {
+Slic3r::Model load_editable_model(const std::string &path,const kepler::ModelTransform &t,const Slic3r::DynamicPrintConfig &config,int plate=-1) {
     const auto ext=std::filesystem::path(path).extension().string();
     if(ext!=".stl"&&ext!=".obj"&&ext!=".3mf")throw std::invalid_argument("Editing tools need an STL, OBJ or 3MF model");
     if(ext==".stl")validate_stl_before_import(path);
-    Slic3r::Model model=ext==".3mf"
+    const bool plates=ext==".3mf"&&kepler::project_plate_count(path)>1;
+    Slic3r::Model model=plates ? kepler::load_project_plate(path,plate<0?0:plate,config)
+        : ext==".3mf"
         ? Slic3r::Model::read_from_file(path,nullptr,nullptr,Slic3r::LoadStrategy::LoadModel|Slic3r::LoadStrategy::AddDefaultInstances|Slic3r::LoadStrategy::Silence)
         : Slic3r::Model::read_from_file(path);
     if(model.objects.empty())throw std::invalid_argument("The model has no objects");
@@ -738,13 +740,13 @@ Slic3r::Model load_editable_model(const std::string &path,const kepler::ModelTra
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_keplerslicer_engine_ExperimentalSlicer_editModel(JNIEnv *env,jclass,
     jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
-    jstring job_path,jdoubleArray params,jstring settings_json,jint op,jdouble a,jdouble b,jstring text,jstring font_path) {
+    jstring job_path,jdoubleArray params,jstring settings_json,jint op,jdouble a,jdouble b,jstring text,jstring font_path,jint plate) {
     try {
         const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),job_name=standard_utf8(env,job_path),settings=standard_utf8(env,settings_json);
         auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
         std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
         auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
-        Slic3r::Model source=load_editable_model(path,transform,config);
+        Slic3r::Model source=load_editable_model(path,transform,config,plate);
         Slic3r::Model edited;
         if(op==1){const int keep=static_cast<int>(b);edited=kepler::cut_model_at_z(source,config,a,(keep&1)!=0,(keep&2)!=0);}
         else if(op==2){if(!text||!font_path)throw std::invalid_argument("Text and font are required");edited=kepler::add_text_object(source,config,standard_utf8(env,text),standard_utf8(env,font_path),a,b);}
@@ -803,13 +805,13 @@ std::vector<kepler::MaterialSlot> read_material_slots(const nlohmann::json &requ
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_keplerslicer_engine_ExperimentalSlicer_materialLayout(JNIEnv *env,jclass,
     jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
-    jdoubleArray params,jstring settings_json) {
+    jdoubleArray params,jstring settings_json,jint plate) {
     try {
         const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),settings=standard_utf8(env,settings_json);
         auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
         std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
         auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
-        Slic3r::Model model=load_editable_model(path,transform,config);
+        Slic3r::Model model=load_editable_model(path,transform,config,plate);
         nlohmann::json objects=nlohmann::json::array();
         for(const auto *object:model.objects){
             nlohmann::json parts=nlohmann::json::array();
@@ -828,7 +830,7 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_materialLayout(JNIEnv *env,jclas
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_keplerslicer_engine_ExperimentalSlicer_assignMaterials(JNIEnv *env,jclass,
     jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
-    jstring job_path,jdoubleArray params,jstring settings_json,jstring request_json) {
+    jstring job_path,jdoubleArray params,jstring settings_json,jstring request_json,jint plate) {
     try {
         const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),job_name=standard_utf8(env,job_path),settings=standard_utf8(env,settings_json);
         const auto request=nlohmann::json::parse(standard_utf8(env,request_json));
@@ -844,7 +846,7 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_assignMaterials(JNIEnv *env,jcla
             auto *colours=config.option<Slic3r::ConfigOptionStrings>("filament_colour");if(!colours||colours->values.empty())throw std::runtime_error("Missing filament colours");colours->values[0]=first;
         }
         if(slots>1)config=kepler::recalculate_flushing(config,-1);
-        Slic3r::Model model=load_editable_model(path,transform,config);
+        Slic3r::Model model=load_editable_model(path,transform,config,plate);
         if(request.contains("assign")){
             const auto &assign=request.at("assign");if(!assign.is_array())throw std::invalid_argument("assign must be an array");
             for(const auto &item:assign){
@@ -871,13 +873,34 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_assignMaterials(JNIEnv *env,jcla
                 for(auto *v:model.objects[o]->volumes)if(v->is_model_part()){if(seen==p){volume=v;break;}++seen;}
                 if(!volume)throw std::invalid_argument("Part index is outside the object");
                 Slic3r::FacetsAnnotation &facets=kind=="support"?volume->supported_facets:kind=="seam"?volume->seam_facets:kind=="colour"?volume->mmu_segmentation_facets:
-                    throw std::invalid_argument("Unknown paint kind");
+                    kind=="fuzzy"?volume->fuzzy_skin_facets:throw std::invalid_argument("Unknown paint kind");
                 if(item.value("clear",false)){facets.reset();continue;}
-                const int state=item.at("state").get<int>(),top=kind=="colour"?slots:2;
+                const int state=item.at("state").get<int>(),top=kind=="colour"?slots:kind=="fuzzy"?1:2;
                 if(state<0||state>top)throw std::invalid_argument("Paint state is outside the allowed range");
                 Slic3r::TriangleSelector selector(volume->mesh());if(!facets.empty())selector.deserialize(facets.get_data(),false);
                 const int n=static_cast<int>(volume->mesh().its.indices.size());
-                for(const auto &t:item.at("triangles")){const int index=t.get<int>();if(index<0||index>=n)throw std::invalid_argument("Painted triangle is outside the part");selector.set_facet(index,static_cast<Slic3r::EnforcerBlockerType>(state));}
+                if(item.contains("triangles"))for(const auto &t:item.at("triangles")){const int index=t.get<int>();if(index<0||index>=n)throw std::invalid_argument("Painted triangle is outside the part");selector.set_facet(index,static_cast<Slic3r::EnforcerBlockerType>(state));}
+                // Sphere strokes, as the desktop painter: world hit point, the hit source triangle, the camera; the
+                // selector splits triangles along the sphere so the painted edge follows the brush.
+                if(item.contains("strokes")){
+                    const int instance_index=item.value("instance",0);auto *object=model.objects[o];
+                    if(instance_index<0||instance_index>=static_cast<int>(object->instances.size()))throw std::invalid_argument("Instance index is outside the object");
+                    const Slic3r::Transform3d trafo=object->instances[instance_index]->get_matrix()*volume->get_matrix();
+                    const Slic3r::Transform3d inverse=trafo.inverse();
+                    Slic3r::Transform3d no_translate=trafo;no_translate.translation()=Slic3r::Vec3d::Zero();
+                    const float radius=static_cast<float>(item.value("radius",3.0));
+                    if(!(radius>0.05f&&radius<=50.f))throw std::invalid_argument("Brush radius is outside 0.05-50 mm");
+                    const auto &strokes=item.at("strokes");if(!strokes.is_array()||strokes.size()>20000)throw std::invalid_argument("Too many brush strokes");
+                    for(const auto &st:strokes){
+                        const int facet=st.at("facet").get<int>();if(facet<0||facet>=n)throw std::invalid_argument("Stroke facet is outside the part");
+                        const auto &pt=st.at("point");const auto &cam=st.at("camera");
+                        const Slic3r::Vec3d world(pt.at(0).get<double>(),pt.at(1).get<double>(),pt.at(2).get<double>()),eye(cam.at(0).get<double>(),cam.at(1).get<double>(),cam.at(2).get<double>());
+                        if(!world.allFinite()||!eye.allFinite())throw std::invalid_argument("Invalid stroke point");
+                        const Slic3r::Vec3f hit=(inverse*world).cast<float>(),camera=(inverse*eye).cast<float>();
+                        selector.select_patch(facet,Slic3r::TriangleSelector::SinglePointCursor::cursor_factory(hit,camera,radius,Slic3r::TriangleSelector::CursorType::SPHERE,trafo,Slic3r::TriangleSelector::ClippingPlane()),
+                            static_cast<Slic3r::EnforcerBlockerType>(state),no_translate,true);
+                    }
+                }
                 facets.set(selector);
             }
         }

@@ -22,5 +22,8 @@ Slic3r::Model load_plate_model(const std::string &path, int plate_index, const S
 // spaced by 1.2 x the whole-millimetre width/depth of the printable area. Returns {x, y} of that origin.
 std::pair<double,double> plate_grid_origin(int plate_index, int plate_count, const Slic3r::DynamicPrintConfig &bed);
 // Moves the kept instances of a plate back onto the bed (subtracts the plate origin).
+// Editing tools on a multi-plate project work on one plate: its objects (with their settings and paint) on the bed.
+Slic3r::Model load_project_plate(const std::string &path, int plate_index, const Slic3r::DynamicPrintConfig &bed);
+int project_plate_count(const std::string &path);
 void move_plate_to_origin(Slic3r::Model &model, int plate_index, int plate_count, const Slic3r::DynamicPrintConfig &bed);
 }

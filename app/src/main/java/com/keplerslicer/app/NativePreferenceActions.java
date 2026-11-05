@@ -229,6 +229,17 @@ final class NativePreferenceActions {
 
     static final int EDIT_CUT = 1, EDIT_TEXT = 2, EDIT_ASSEMBLY = 3, EDIT_MATERIALS = 4;
 
+    /** Model name without the marks of earlier edits, in either language and anywhere in the name. */
+    static String baseName(Context app, String name) {
+        String base = name == null ? "Model" : name;
+        java.util.LinkedHashSet<String> tails = new java.util.LinkedHashSet<>(java.util.Arrays.asList(" (cut)", " + text", " (assembly)", " (materials)", " (разрез)", " + текст", " (сборка)", " (материалы)"));
+        for (int nameId : new int[]{R.string.kv3_cut_name, R.string.kv3_text_name, R.string.kv3_assembly_name, R.string.kv3_materials_name}) {
+            String tail = app.getString(nameId, "").replaceAll("(?i)\\.3mf$", ""); if (!tail.isEmpty()) tails.add(tail);
+        }
+        for (String tail : tails) { String cleaned = base.replace(tail, ""); if (!cleaned.trim().isEmpty()) base = cleaned; }
+        return base.trim().isEmpty() ? "Model" : base.trim();
+    }
+
     /** Objects and parts of the current model with their stored material slot (engine, read-only). */
     static org.json.JSONObject materialLayout(Context context) throws IOException {
         requireWorker();
@@ -241,7 +252,7 @@ final class NativePreferenceActions {
             final ProcessOverridesStore.Identity id = session.id;
             final byte[] bytes = ExperimentalSlicer.materialLayout(id.printer.vendor, id.process.vendor, id.filament.vendor,
                 id.printerName, id.processName, id.filamentName, source.file.getAbsolutePath(),
-                session.resources.getAbsolutePath(), session.data.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides);
+                session.resources.getAbsolutePath(), session.data.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides, source.plateIndex);
             org.json.JSONObject layout = new org.json.JSONObject(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
             if (!"kepler-material-layout-v1".equals(layout.optString("format"))) throw new IOException(app.getString(R.string.native_actions_invalid_result));
             return layout;
@@ -279,25 +290,19 @@ final class NativePreferenceActions {
                     id.printer.vendor, id.process.vendor, id.filament.vendor,
                     id.printerName, id.processName, id.filamentName,
                     source.file.getAbsolutePath(), session.resources.getAbsolutePath(), session.data.getAbsolutePath(),
-                    job.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides, text)
+                    job.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides, text, source.plateIndex)
                 : ExperimentalSlicer.editModel(
                     id.printer.vendor, id.process.vendor, id.filament.vendor,
                     id.printerName, id.processName, id.filamentName,
                     source.file.getAbsolutePath(), session.resources.getAbsolutePath(), session.data.getAbsolutePath(),
                     job.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides,
-                    op, a, b, op == EDIT_TEXT ? text : null, font);
+                    op, a, b, op == EDIT_TEXT ? text : null, font, source.plateIndex);
             interrupted(app);
             final File derived = derivedResult(app, job, result);
             requireUnchanged(app, source, session);
             String base = source.name == null ? "Model" : source.name; int dot = base.lastIndexOf('.'); if (dot > 0) base = base.substring(0, dot);
             // Drop suffixes left by earlier edits, so repeated edits do not grow the name.
-            for (boolean stripped = true; stripped; ) {
-                stripped = false;
-                for (int nameId : new int[]{R.string.kv3_cut_name, R.string.kv3_text_name, R.string.kv3_assembly_name, R.string.kv3_materials_name}) {
-                    String tail = app.getString(nameId, "").replaceAll("(?i)\\.3mf$", "");
-                    if (!tail.isEmpty() && base.endsWith(tail) && base.length() > tail.length()) { base = base.substring(0, base.length() - tail.length()); stripped = true; }
-                }
-            }
+            base = baseName(app, base);
             final String name = app.getString(op == EDIT_CUT ? R.string.kv3_cut_name : op == EDIT_TEXT ? R.string.kv3_text_name : op == EDIT_MATERIALS ? R.string.kv3_materials_name : R.string.kv3_assembly_name, base);
             // The multi-material project is loaded with its own settings, checked like a project import.
             org.json.JSONObject projectSnapshot = null;
