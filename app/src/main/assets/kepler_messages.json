@@ -489,6 +489,7 @@
 "Сервис вернул запись без имени или идентификатора.": "The service returned an entry without a name or id.",
 "Сервис не подтвердил получение списка.": "The service did not confirm the list.",
 "Серийный номер (SN)": "Serial number (SN)",
+"Сертификат принтера изменился. Если меняли плату или прошивку, сохраните подключение заново; иначе в сети может быть подмена принтера.": "The printer certificate has changed. If the board or firmware was replaced, save the connection again; otherwise someone on the network may be posing as the printer.",
 "Сессия 3DPrinterOS недействительна.": "The 3DPrinterOS session is invalid.",
 "Сессия изменилась во время обновления.": "The session changed during the refresh.",
 "Сессия изменилась во время синхронизации.": "The session changed during sync.",
