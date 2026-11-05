@@ -174,6 +174,36 @@ public final class KeplerUi {
         anim.start();
     }
 
+    /**
+     * Buttons never sit flush against text: when a button is placed right below (or above) a plain text line in a
+     * vertical list, it gets 12 dp of air on that side. Applied by every shared button builder, so all screens follow.
+     */
+    public static <T extends View> T breathe(T button) {
+        button.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View v) {
+                if (!(v.getParent() instanceof LinearLayout) || ((LinearLayout) v.getParent()).getOrientation() != LinearLayout.VERTICAL) return;
+                LinearLayout parent = (LinearLayout) v.getParent(); int i = parent.indexOfChild(v);
+                if (!(v.getLayoutParams() instanceof LinearLayout.LayoutParams)) return;
+                LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams();
+                int air = Math.round(12 * v.getResources().getDisplayMetrics().density); boolean changed = false;
+                // Look past empty placeholders (e.g. a results list that has nothing yet) to the real neighbour above.
+                int above = i - 1;
+                while (above >= 0 && (parent.getChildAt(above).getVisibility() == View.GONE || parent.getChildAt(above) instanceof android.view.ViewGroup && ((android.view.ViewGroup) parent.getChildAt(above)).getChildCount() == 0 && parent.getChildAt(above).getBackground() == null)) above--;
+                if (above >= 0 && plainText(parent.getChildAt(above)) && lp.topMargin < air) { lp.topMargin = air; changed = true; }
+                if (i + 1 < parent.getChildCount() && plainText(parent.getChildAt(i + 1)) && lp.bottomMargin < air) { lp.bottomMargin = air; changed = true; }
+                if (changed) v.setLayoutParams(lp);
+            }
+            @Override public void onViewDetachedFromWindow(View v) {}
+        });
+        return button;
+    }
+    private static boolean plainText(View v) {
+        if (v == null || v.getVisibility() == View.GONE) return false;
+        if (!(v instanceof TextView) || v.isClickable()) return false;
+        android.view.ViewGroup.LayoutParams p = v.getLayoutParams();
+        return !(p instanceof android.view.ViewGroup.MarginLayoutParams) || ((android.view.ViewGroup.MarginLayoutParams) p).bottomMargin < Math.round(8 * v.getResources().getDisplayMetrics().density);
+    }
+
     /** Switches between the four top-level tabs in place, like a tab bar: no slide between the screens. */
     public static void tab(android.app.Activity from, android.content.Intent intent, boolean finish) {
         // Tabs dissolve into each other (iOS 26 tab bar): the new screen fades in over the old one, no slide.
@@ -341,7 +371,7 @@ public final class KeplerUi {
         pressable(b, shape(WHITE, 0, 26), 26);
         if (iconRes != 0) b.addView(image(iconRes, 18, ON_ACTIVE));
         TextView t = line(label, 16, 700, ON_ACTIVE); LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2); if (iconRes != 0) tp.leftMargin = dp(8); b.addView(t, tp);
-        b.setContentDescription(label); if (action != null) b.setOnClickListener(v -> action.run()); return b;
+        b.setContentDescription(label); if (action != null) b.setOnClickListener(v -> action.run()); return breathe(b);
     }
     /** Secondary glass action with the same geometry (node 3:436 style). */
     public LinearLayout secondaryButton(int iconRes, String label, float heightDp, float radiusDp, Runnable action) {
@@ -349,7 +379,7 @@ public final class KeplerUi {
         pressable(b, glass(radiusDp), radiusDp);
         if (iconRes != 0) b.addView(image(iconRes, 18, WHITE));
         TextView t = line(label, 15, 700, WHITE); LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2); if (iconRes != 0) tp.leftMargin = dp(8); b.addView(t, tp);
-        b.setContentDescription(label); if (action != null) b.setOnClickListener(v -> action.run()); return b;
+        b.setContentDescription(label); if (action != null) b.setOnClickListener(v -> action.run()); return breathe(b);
     }
     public void setEnabled(View v, boolean enabled) { v.setEnabled(enabled); v.setAlpha(enabled ? 1f : .42f); }
 

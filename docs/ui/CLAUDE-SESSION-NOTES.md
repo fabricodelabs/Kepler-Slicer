@@ -162,6 +162,19 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 - `glass/LiquidPress`: glow from the touch point plus a springy swell, used by every pressable/clickable.
 - Spinners open the glass bottom sheet (`KeplerUi.sheetSpinner`).
 
+## Tester feedback (2026-11-05, Bambu P1S, Chinese version)
+
+- Bambu LAN form: only IP, serial and access code with a where-to-find guide (NetworkActivity.adaptForm/checkBambuLan).
+- Discovery: Bambu SSDP (UDP 2021 + 239.255.255.250:1990, BambuSsdp + PrinterDiscovery.startSsdp); office printers on
+  _http._tcp are filtered. Covered by tools/test_bambu_lan.ps1 (parse only; real printer not available).
+- Rotate tool rings (StlView.setRotateGizmo). Dimmed slice button explains why; no filament -> material picker.
+- KeplerUi.breathe: shared buttons get 12 dp from plain text above/below.
+- The Bambu desktop network plugin is closed and desktop-only; it cannot be bundled on Android.
+- Paused read-only QA audit (no MCP for ADB/Mobile/Maestro/Sonar/Sentry in this session): open findings: app always dark
+  (ignores system light theme), 200% font breaks words in Preferences and truncates nav labels, stats card
+  truncation in layer preview, Device screen shows Pause enabled without connection, back from layer preview exits
+  the app, SliceActivity still in the old style, ~273 MB native heap after start.
+
 ## Known defects to fix next
 
 - Hard-coded Russian text remains only in protocol/model helper classes (error messages; they are compiled by host tests without Android context). Screens are localised.
