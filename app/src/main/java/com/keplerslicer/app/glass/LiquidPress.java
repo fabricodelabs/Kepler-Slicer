@@ -28,18 +28,49 @@ public final class LiquidPress {
 
     /** Background with the inner glow over {@code resting}; also installs the flex animation on {@code v}. */
     public static Drawable apply(View v, Drawable resting, float radiusPx) {
-        Glow glow = new Glow(radiusPx);
+        Glow glow = new Glow(radiusPx, v.getResources().getDisplayMetrics().density);
         v.addOnLayoutChangeListener((view, l, t, r, b, ol, ot, orr, ob) -> {
             if (r - l != orr - ol || b - t != ob - ot) view.setStateListAnimator(flex(view, r - l));
         });
         v.setStateListAnimator(flex(v, v.getWidth()));
+        // Coming back to a screen must never show a press that was in flight when it was left.
+        v.getViewTreeObserver().addOnWindowFocusChangeListener(focus -> { if (focus && !v.isPressed()) { glow.settle(); v.setScaleX(1f); v.setScaleY(1f); } });
+        v.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View view) { glow.settle(); unclip(view); }
+            @Override public void onViewDetachedFromWindow(View view) { glow.settle(); view.setScaleX(1f); view.setScaleY(1f); }
+        });
         return resting == null ? glow : new LayerDrawable(new Drawable[]{resting, glow});
     }
 
-    /** Small controls swell more, wide rows barely (a full-width row growing 6% would look like a jump). */
+    /** The swelling control must not be cut by its row or card: lift clipping on the two nearest non-scrolling parents. */
+    private static void unclip(View v) {
+        android.view.ViewParent p = v.getParent();
+        for (int i = 0; i < 2 && p instanceof android.view.ViewGroup; i++, p = p.getParent()) {
+            if (p instanceof android.widget.ScrollView || p instanceof android.widget.HorizontalScrollView || p instanceof android.widget.AbsListView) break;
+            ((android.view.ViewGroup) p).setClipChildren(false);
+            ((android.view.ViewGroup) p).setClipToPadding(false);
+        }
+    }
+
+    /** Inside a container that clips to its rounded outline (cards, segmented controls) a swell would be cut. */
+    private static boolean insideOutlineClip(View v) {
+        android.view.ViewParent p = v.getParent();
+        for (int i = 0; i < 4 && p instanceof View; i++, p = p.getParent()) if (((View) p).getClipToOutline()) return true;
+        // A segment or a button that fills its own capsule track (segmented control, toolbar) would grow over its
+        // neighbours and the track edge: it only lights up.
+        if (v.getParent() instanceof View) {
+            View parent = (View) v.getParent();
+            int inner = parent.getHeight() - parent.getPaddingTop() - parent.getPaddingBottom();
+            if (parent.getBackground() != null && v.getHeight() > 0 && v.getHeight() >= inner - 2) return true;
+        }
+        return false;
+    }
+
+    /** Buttons and chips swell; wide rows and cards only light up (scaling them would push past the screen edge). */
     private static StateListAnimator flex(View v, int widthPx) {
         float density = v.getResources().getDisplayMetrics().density;
-        float grow = widthPx <= 0 ? 1.04f : 1f + Math.max(0.012f, Math.min(0.07f, 6f * density / widthPx * 2f));
+        if (widthPx > 140 * density || insideOutlineClip(v)) return null;
+        float grow = widthPx <= 0 ? 1.05f : 1f + Math.max(0.03f, Math.min(0.08f, 8f * density / widthPx));
         StateListAnimator s = new StateListAnimator();
         ObjectAnimator down = ObjectAnimator.ofPropertyValuesHolder(v, PropertyValuesHolder.ofFloat(View.SCALE_X, grow), PropertyValuesHolder.ofFloat(View.SCALE_Y, grow));
         Spring press = Spring.smooth(0.22f), release = Spring.bouncy(0.45f);
@@ -57,7 +88,8 @@ public final class LiquidPress {
         private final Path clip = new Path(); private final RectF r = new RectF();
         private float hx = -1, hy = -1, level; private boolean pressed; private ValueAnimator anim;
 
-        Glow(float radius) { this.radius = radius; rim.setStyle(Paint.Style.STROKE); }
+        private final float density;
+        Glow(float radius, float density) { this.radius = radius; this.density = density; rim.setStyle(Paint.Style.STROKE); }
 
         @Override public boolean isStateful() { return true; }
         @Override protected boolean onStateChange(int[] state) {
@@ -66,6 +98,8 @@ public final class LiquidPress {
             pressed = p; fade(p ? 1f : 0f, p ? Spring.smooth(0.18f) : Spring.smooth(0.4f)); return true;
         }
         @Override public void setHotspot(float x, float y) { hx = x; hy = y; invalidateSelf(); }
+        @Override public void jumpToCurrentState() { settle(); }
+        void settle() { if (anim != null) anim.cancel(); level = pressed ? 1f : 0f; invalidateSelf(); }
 
         private void fade(float to, Spring spring) {
             if (anim != null) anim.cancel();
@@ -79,15 +113,21 @@ public final class LiquidPress {
             android.graphics.Rect b = getBounds(); if (b.isEmpty()) return;
             float x = hx < 0 ? b.exactCenterX() : hx, y = hy < 0 ? b.exactCenterY() : hy;
             float reach = Math.max(b.width(), b.height()) * 0.9f;
-            paint.setShader(new RadialGradient(x, y, reach, new int[]{alpha(0x55, level), alpha(0x1A, level), 0}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            float rr = Math.min(radius, Math.min(b.width(), b.height()) / 2f);
+            // Liquid Glass shapes are continuous: short controls and rows light up as a capsule, tall cards keep their radius.
+            float half = Math.min(b.width(), b.height()) / 2f;
+            float rr = b.height() <= 72 * density ? half : Math.min(Math.max(radius, 20 * density), half);
             r.set(b); clip.reset(); clip.addRoundRect(r, rr, rr, Path.Direction.CW);
-            int save = c.save(); c.clipPath(clip); c.drawRect(b, paint); c.restoreToCount(save);
-            float sw = Math.max(1f, b.height() / 40f); rim.setStrokeWidth(sw); rim.setColor(alpha(0x66, level));
-            r.inset(sw / 2f, sw / 2f); c.drawRoundRect(r, rr, rr, rim);
+            int save = c.save(); c.clipPath(clip);
+            paint.setShader(null); paint.setColor(alpha(0x14, level)); c.drawRect(b, paint);
+            paint.setShader(new RadialGradient(x, y, reach, new int[]{alpha(0x40, level), alpha(0x12, level), 0}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(b, paint);
+            c.restoreToCount(save);
+            float sw = Math.max(1f, b.height() / 48f); rim.setStrokeWidth(sw);
+            rim.setShader(new android.graphics.LinearGradient(b.left, b.top, b.right, b.bottom, alpha(0x8C, level), alpha(0x1F, level), Shader.TileMode.CLAMP));
+            r.inset(sw / 2f, sw / 2f); c.drawRoundRect(r, rr - sw / 2f, rr - sw / 2f, rim);
         }
         private static int alpha(int a, float k) { return (Math.round(a * k) << 24) | 0xFFFFFF; }
-        @Override public void getOutline(Outline o) { o.setRoundRect(getBounds(), radius); }
+        @Override public void getOutline(Outline o) { android.graphics.Rect b = getBounds(); float half = Math.min(b.width(), b.height()) / 2f; o.setRoundRect(b, b.height() <= 72 * density ? half : Math.min(Math.max(radius, 20 * density), half)); }
         @Override public void setAlpha(int a) {}
         @Override public void setColorFilter(ColorFilter cf) {}
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
