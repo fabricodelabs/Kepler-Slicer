@@ -176,7 +176,7 @@ def parse_definitions(src,tokens,pairs):
                 elif field=='enum_keys_map':row['enums']['keys_map']=value['expression']
                 else:add_field(field,value,j)
                 j=e+1;continue
-            if field in ('enum_values','enum_labels') and j+5<end and tokens[j+3].value=='.' and tokens[j+4].value=='push_back' and tokens[j+5].value=='(':
+            if field in ('enum_values','enum_labels') and j+5<end and tokens[j+3].value=='.' and tokens[j+4].value in ('push_back','emplace_back') and tokens[j+5].value=='(':
                 q=pairs.get(j+5);a=call_args(tokens,j+5,q) if q is not None else []
                 if a:
                     target='values' if field=='enum_values' else 'labels';v=literal_string(tokens,*a[0]);row['enums'][target].append(v)
@@ -418,10 +418,36 @@ def build(checkout):
             'Definitions outside PrintConfig.cpp, helper pages not in the declared method list, runtime option generation and desktop fields without literal option keys need independent review.',
             'Schema entries do not mean the current mobile UI can edit them or that changing them is supported by JNI.']}}
 
+def resolve_enum_copies(doc,upstream):
+    """def->enum_values = def_x->enum_values: copy the literal lists of the option that def_x names (auto def_x = def = this->add("key"))."""
+    import re
+    src=(upstream/'src'/'libslic3r'/'PrintConfig.cpp').read_text(encoding='utf-8',errors='replace')
+    names=dict(re.findall(r'auto\s+(\w+)\s*=\s*def\s*=\s*this->add\(\s*"(\w+)"',src))
+    rows={}
+    def walk(x):
+        if isinstance(x,dict):
+            if 'key' in x and 'type' in x:rows.setdefault(x['key'],[]).append(x)
+            for v in x.values():walk(v)
+        elif isinstance(x,list):
+            for v in x:walk(v)
+    walk(doc['sections'])
+    for group in rows.values():
+        for row in group:
+            enums=row.get('enums') or {}
+            for a in enums.get('source_assignments',[]):
+                m=re.fullmatch(r'(\w+)->(enum_values|enum_labels)',a.get('expression','').strip())
+                if not m or m.group(1) not in names or a.get('field')!=m.group(2):continue
+                source=rows.get(names[m.group(1)],[None])[0]
+                if not source:continue
+                target='values' if m.group(2)=='enum_values' else 'labels'
+                vals=(source.get('enums') or {}).get(target) or []
+                if vals and not enums.get(target):
+                    enums[target]=list(vals);enums[target+'_complete']=bool((source.get('enums') or {}).get(target+'_complete'))
+                    a['resolved_from']=names[m.group(1)]
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--upstream',type=Path,default=WORKSPACE/'work'/'OrcaSlicer');p.add_argument('--output',type=Path,default=ROOT/'app'/'src'/'main'/'assets'/'kepler_settings_schema.json');p.add_argument('--runtime-output',type=Path,default=ROOT/'app'/'src'/'main'/'assets'/'kepler_settings_runtime.json');p.add_argument('--dynamic-report',type=Path,default=ROOT/'tools'/'SETTINGS_DYNAMIC_EXTRACTED.md');args=p.parse_args()
     try:
-        doc=build(args.upstream);payload=json.dumps(doc,ensure_ascii=False,separators=(',',':'))+'\n';args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(payload,encoding='utf-8',newline='\n')
+        doc=build(args.upstream);resolve_enum_copies(doc,args.upstream);payload=json.dumps(doc,ensure_ascii=False,separators=(',',':'))+'\n';args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(payload,encoding='utf-8',newline='\n')
         runtime={'schema_version':doc['schema_version'],'upstream_revision':doc['upstream_revision'],'source_hashes':{name:source['sha256'] for name,source in doc['sources'].items()},'sections':{}}
         for section,rows in doc['sections'].items():
             compact=[]

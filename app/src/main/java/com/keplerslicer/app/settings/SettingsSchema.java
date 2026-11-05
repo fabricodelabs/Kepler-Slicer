@@ -153,7 +153,7 @@ public final class SettingsSchema {
             key = row.getString("key"); baseKey = string(row,"base_key");
             index = row.isNull("index") ? null : row.getInt("index");
             label = tr(tr, string(row,"label")); tooltip = tr(tr, string(row,"tooltip"));
-            type = string(row,"type"); units = string(row,"units");
+            type = string(row,"type"); units = string(row,"units"); unitTable = tr;
             min = number(row,"min"); max = number(row,"max");
             String originalMode = string(row,"mode"); modeKnown = originalMode != null;
             mode = modeKnown ? originalMode : "comExpert";
@@ -194,6 +194,9 @@ public final class SettingsSchema {
             String file = string(source, "file");
             if (file != null) result.add(file + (source.optInt("line", 0) > 0 ? ":" + source.optInt("line") : ""));
         }
+        private final JSONObject unitTable;
+        /** Unit text in the app language ("layers" reads "слой(-ёв)" in Russian). */
+        public String unitLabel(String english) { return english == null || english.isEmpty() ? "" : tr(unitTable, english); }
         public String displayValue(Object value) {
             if (value == null || value == JSONObject.NULL) return "";
             // Per-extruder vectors are shown as plain values ("ABS", "200, 210"), not as JSON.

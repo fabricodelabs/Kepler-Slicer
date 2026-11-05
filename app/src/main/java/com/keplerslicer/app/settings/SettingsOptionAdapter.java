@@ -96,7 +96,8 @@ public final class SettingsOptionAdapter extends BaseAdapter {
             if(choice>=0)units=units.substring(0,choice).trim();
             if(units.isEmpty()||units.equals("%"))units=context.getString(R.string.phase2_option_unit_mm);
         }
-        return units;
+        if(!units.isEmpty()&&value.trim().endsWith(units.trim()))return ""; // "90%" already carries its unit
+        return option.unitLabel(units);
     }
     private String withUnits(SettingsSchema.Option option,String value){
         String units=option.units==null?"":option.units.trim();
@@ -106,6 +107,8 @@ public final class SettingsOptionAdapter extends BaseAdapter {
             if(choice>=0)units=units.substring(0,choice).trim();
             if(units.isEmpty()||units.equals("%"))units=context.getString(R.string.phase2_option_unit_mm);
         }
+        if(!units.isEmpty()&&value.trim().endsWith(units.trim()))return value;
+        units=option.unitLabel(units);
         return units.isEmpty()?value:value+" "+units;
     }
 
