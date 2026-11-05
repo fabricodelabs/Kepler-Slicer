@@ -113,10 +113,14 @@ public final class LiquidPress {
             android.graphics.Rect b = getBounds(); if (b.isEmpty()) return;
             float x = hx < 0 ? b.exactCenterX() : hx, y = hy < 0 ? b.exactCenterY() : hy;
             float reach = Math.max(b.width(), b.height()) * 0.9f;
-            // Liquid Glass shapes are continuous: short controls and rows light up as a capsule, tall cards keep their radius.
-            float half = Math.min(b.width(), b.height()) / 2f;
-            float rr = b.height() <= 72 * density ? half : Math.min(Math.max(radius, 20 * density), half);
-            r.set(b); clip.reset(); clip.addRoundRect(r, rr, rr, Path.Direction.CW);
+            // Buttons light up as a capsule. Wide rows (list cells inside a card) light up as a rounded rect inset
+            // from the cell, with corners concentric to the card, so the highlight never bulges past the card corners.
+            boolean row = b.width() > 140 * density;
+            float inset = row ? 4 * density : 0;
+            r.set(b); r.inset(inset, inset);
+            float half = Math.min(r.width(), r.height()) / 2f;
+            float rr = row ? Math.min(14 * density, half) : (b.height() <= 72 * density ? half : Math.min(Math.max(radius, 20 * density), half));
+            clip.reset(); clip.addRoundRect(r, rr, rr, Path.Direction.CW);
             int save = c.save(); c.clipPath(clip);
             paint.setShader(null); paint.setColor(alpha(0x14, level)); c.drawRect(b, paint);
             paint.setShader(new RadialGradient(x, y, reach, new int[]{alpha(0x40, level), alpha(0x12, level), 0}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
@@ -124,7 +128,7 @@ public final class LiquidPress {
             c.restoreToCount(save);
             float sw = Math.max(1f, b.height() / 48f); rim.setStrokeWidth(sw);
             rim.setShader(new android.graphics.LinearGradient(b.left, b.top, b.right, b.bottom, alpha(0x8C, level), alpha(0x1F, level), Shader.TileMode.CLAMP));
-            r.inset(sw / 2f, sw / 2f); c.drawRoundRect(r, rr - sw / 2f, rr - sw / 2f, rim);
+            r.inset(sw / 2f, sw / 2f); c.drawRoundRect(r, Math.max(0f, rr - sw / 2f), Math.max(0f, rr - sw / 2f), rim);
         }
         private static int alpha(int a, float k) { return (Math.round(a * k) << 24) | 0xFFFFFF; }
         @Override public void getOutline(Outline o) { android.graphics.Rect b = getBounds(); float half = Math.min(b.width(), b.height()) / 2f; o.setRoundRect(b, b.height() <= 72 * density ? half : Math.min(Math.max(radius, 20 * density), half)); }
