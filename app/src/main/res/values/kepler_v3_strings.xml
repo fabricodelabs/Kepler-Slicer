@@ -391,7 +391,7 @@
     <string name="l10n_md_all_objects">All project objects are shown: they could not be matched to the selected plate. Slicing is unavailable.</string>
     <string name="l10n_md_transform_unavailable">Transform unavailable.</string>
     <string name="l10n_md_instance_transform">Instance transform</string>
-    <string name="l10n_md_coords_note">With the bed loaded the preview uses the original project coordinates. Bed compatibility is checked when slicing; moving the project is not available yet.</string>
+    <string name="l10n_md_coords_note">The project keeps its layout. Move, Rotate and Scale act on the whole plate as one group; other plates are placed on the bed when chosen. Bed compatibility is checked when slicing.</string>
     <string name="l10n_md_contains">The project contains:</string>
     <string name="l10n_md_placement">Placement and slicing</string>
     <string name="l10n_md_title">Model details</string>
@@ -726,4 +726,5 @@
     <string name="kv3_paint_too_detailed">The model has more than 200,000 triangles; the preview is simplified and cannot be painted exactly.</string>
     <string name="kv3_paint_reopen">Open the model again to paint it (it was loaded by an older version).</string>
     <string name="kv3_paint_support_note">Painted supports are built when supports are on in the process settings (the blocker works always).</string>
+    <string name="kv3_plate_n">Plate %1$d</string>
 </resources>

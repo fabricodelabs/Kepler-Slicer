@@ -73,7 +73,7 @@ Selection selected_instances(const Slic3r::Model &model,const std::vector<Slic3r
     }
     return selected;
 }
-ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Slic3r::PlateData *> &plates,int plate,size_t max,json metadata) {
+ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Slic3r::PlateData *> &plates,int plate,size_t max,json metadata,const Slic3r::DynamicPrintConfig *bed=nullptr) {
     if(!max || max>200000)throw std::invalid_argument("Preview triangle limit must be 1..200000");
     bool unresolved=false;Selection selected=selected_instances(model,plates,plate,&unresolved);std::uint64_t total=0;std::size_t non_printable=0;
     for(const auto &p:selected){const auto *object=model.objects[p.first];const auto *instance=object->instances[p.second];if(!instance||!object->printable||!instance->printable)++non_printable;}
@@ -85,6 +85,10 @@ ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Sli
         metadata["selected_plate"]=plate;metadata["bounds_min"]={0,0,0};metadata["bounds_max"]={0,0,0};metadata["triangle_count"]=0;metadata["preview_triangle_count"]=0;
         metadata["non_printable_instances"]=non_printable;metadata["printable_instances"]=selected.size()-non_printable;metadata["mapping_unresolved"]=unresolved;metadata["units"]="mm";empty.metadata_json=metadata.dump();return empty;
     }
+    // A later plate of a multi-plate project is shown on the bed, as it is sliced (desktop plate grid).
+    Slic3r::Vec3d shift(0,0,0);
+    if(bed&&plates.size()>1){int chosen=plate<0?0:plate;for(size_t i=0;i<plates.size();++i)if(plates[i]&&plates[i]->plate_index==chosen&&i>0){try{auto o=plate_grid_origin(static_cast<int>(i),static_cast<int>(plates.size()),*bed);shift=Slic3r::Vec3d(o.first,o.second,0);}catch(const std::exception&){}break;}}
+    metadata["plate_origin"]={shift.x(),shift.y()};
     std::uint64_t stride=total/max+(total%max?1:0), index=0;
     // Material slot of each kept preview triangle as runs [first_triangle, slot]; slot = part extruder, else object extruder, else 1.
     json runs=json::array();int last_slot=-1;std::uint64_t kept=0;
@@ -116,7 +120,7 @@ ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Sli
                     if(slot!=last_slot){runs.push_back({kept,slot});last_slot=slot;}++kept;}
                 for(int k=0;k<3;k++) {
                     const auto vi=triangle[k];if(vi<0 || static_cast<size_t>(vi)>=mesh.vertices.size())throw std::runtime_error("Invalid triangle index");
-                    const Slic3r::Vec3d xyz=transform*mesh.vertices[vi].cast<double>();
+                    const Slic3r::Vec3d xyz=transform*mesh.vertices[vi].cast<double>()-shift;
                     for(int a=0;a<3;a++){double v=xyz[a];if(!std::isfinite(v)||std::abs(v)>std::numeric_limits<float>::max())throw std::runtime_error("Invalid model coordinate");low[a]=std::min(low[a],v);high[a]=std::max(high[a],v);if(keep)result.preview_xyz.push_back(static_cast<float>(v));}
                 }
             }
@@ -136,7 +140,8 @@ ImportedModelInfo inspect_model(const std::string &path,int plate,size_t max_tri
         auto &json_plates=metadata["project_data"]["plates"];
         for(size_t i=0;i<project.plates().size();++i){const auto *p=project.plates()[i];if(!p)throw std::runtime_error("Invalid 3MF plate");int index=p->plate_index;bool unresolved=false;auto selection=selected_instances(project.model(),project.plates(),index,&unresolved);
             json_plates[i]["mapping_unresolved"]=unresolved;json_plates[i]["object_instances"]=json::array();for(const auto &pair:selection)json_plates[i]["object_instances"].push_back({pair.first,pair.second});}
-        return build_preview(project.model(),project.plates(),plate,max_triangles,std::move(metadata));
+        const Slic3r::DynamicPrintConfig *bed=project.project_config().has("printable_area")?&project.project_config():nullptr;
+        return build_preview(project.model(),project.plates(),plate,max_triangles,std::move(metadata),bed);
     }
     if(ext==".obj") {
         Slic3r::Model model=Slic3r::Model::read_from_file(path);json metadata={{"format","obj"},{"requires_project_semantics",false},{"objects",model_index(model)}};
@@ -144,7 +149,22 @@ ImportedModelInfo inspect_model(const std::string &path,int plate,size_t max_tri
     }
     throw std::invalid_argument("Only OBJ and 3MF are handled by this importer");
 }
-Slic3r::Model load_plate_model(const std::string &path,int plate) {
+std::pair<double,double> plate_grid_origin(int plate_index,int plate_count,const Slic3r::DynamicPrintConfig &bed) {
+    if(plate_index<0||plate_count<=0||plate_index>=plate_count)throw std::invalid_argument("Plate index is outside the project");
+    const auto *area=bed.opt<Slic3r::ConfigOptionPoints>("printable_area");
+    if(!area||area->values.size()<3)throw std::runtime_error("The printer has no printable area for the plate grid");
+    double x0=INFINITY,x1=-INFINITY,y0=INFINITY,y1=-INFINITY;for(const auto &p:area->values){x0=std::min(x0,p.x());x1=std::max(x1,p.x());y0=std::min(y0,p.y());y1=std::max(y1,p.y());}
+    const int width=static_cast<int>(x1-x0),depth=static_cast<int>(y1-y0); // PartPlateList keeps whole millimetres
+    const float value=std::sqrt(static_cast<float>(plate_count)),rounded=std::round(value);const int cols=value>rounded?static_cast<int>(rounded)+1:static_cast<int>(rounded);
+    const int row=plate_index/cols,col=plate_index%cols;
+    return {col*width*1.2,-row*depth*1.2};
+}
+void move_plate_to_origin(Slic3r::Model &model,int plate_index,int plate_count,const Slic3r::DynamicPrintConfig &bed) {
+    if(plate_count<=1||plate_index<=0)return;
+    const auto origin=plate_grid_origin(plate_index,plate_count,bed);
+    for(auto *object:model.objects)if(object){for(auto *instance:object->instances)if(instance)instance->set_offset(instance->get_offset()-Slic3r::Vec3d(origin.first,origin.second,0));object->invalidate_bounding_box();}
+}
+Slic3r::Model load_plate_model(const std::string &path,int plate,const Slic3r::DynamicPrintConfig *bed) {
     const auto ext=extension(path);
     if(ext==".obj") {
         if(plate!=-1)throw std::runtime_error("OBJ has no embedded plate list");
@@ -154,8 +174,7 @@ Slic3r::Model load_plate_model(const std::string &path,int plate) {
     auto project=inspect_project_3mf(path);
     const json description=json::parse(project.describe_json());
     if(description.value("unknown_unit_requires_validation",false) || description.value("non_mm_transform_requires_validation",false))throw std::runtime_error("3MF unit/transform combination requires validation before slicing");
-    if(project.plates().size()>1)throw std::runtime_error("Multi-plate 3MF slicing requires plate-origin support; original project has been preserved");
-    if(!project.plates().empty() && project.plates().front() && project.plates().front()->plate_index!=0)throw std::runtime_error("This 3MF plate origin is not yet supported for slicing");
+    if(project.plates().size()>1&&!bed)throw std::runtime_error("Multi-plate 3MF slicing needs the printer bed");
     if(!project.project_config().keys().empty() || !project.embedded_presets().empty() || !description.at("embedded_files").empty())throw std::runtime_error("Embedded project profiles are not yet supported for slicing; original project has been preserved");
     if(!project.substitutions().unrecogized_keys.empty() || !project.substitutions().substitutions.empty())throw std::runtime_error("Unrecognized or substituted project settings are not supported for slicing");
     for(const auto *p:project.plates())if(!p || !p->config.keys().empty())throw std::runtime_error("Plate settings are not yet supported for slicing");
@@ -171,6 +190,7 @@ Slic3r::Model load_plate_model(const std::string &path,int plate) {
         if(object->instances.empty())model.delete_object(oi);
     }
     if(model.objects.empty())throw std::runtime_error("Selected plate has no printable instances");
+    if(bed&&project.plates().size()>1){int index=plate<0?0:plate;for(size_t i=0;i<project.plates().size();++i)if(project.plates()[i]&&project.plates()[i]->plate_index==index){move_plate_to_origin(model,static_cast<int>(i),static_cast<int>(project.plates().size()),*bed);break;}}
     return model;
 }
 }

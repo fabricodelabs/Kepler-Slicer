@@ -153,9 +153,16 @@ final class StlView extends GLSurfaceView {
         if(sourceMesh==null||sourceMesh.vertices.length==0)return new float[0];
         if(projectBounds==null)return transform.previewVertices(sourceMesh.vertices,sourceMesh.size);
         if(projectBounds.length!=6)throw new IllegalArgumentException(L.t("Не удалось определить координаты проекта 3MF."));
-        if(transform.rx!=0||transform.ry!=0||transform.rz!=0||transform.sx!=1||transform.sy!=1||transform.sz!=1||transform.offsetX!=0||transform.offsetY!=0)throw new IllegalArgumentException(L.t("Преобразование проекта 3MF пока не поддерживается."));
         for(double value:projectBounds)if(!Double.isFinite(value))throw new IllegalArgumentException(L.t("Некорректные координаты проекта 3MF."));
-        return sourceMesh.vertices;
+        boolean identity=transform.rx==0&&transform.ry==0&&transform.rz==0&&transform.sx==1&&transform.sy==1&&transform.sz==1&&transform.offsetX==0&&transform.offsetY==0;
+        if(identity)return sourceMesh.vertices;
+        // The project moves as one group (engine: apply_group_transform): rotate/scale around its centre, move by the
+        // offset from where it was, then stand on the bed again.
+        float[] moved=transform.previewVertices(sourceMesh.vertices,sourceMesh.size);
+        double unit=Math.max(sourceMesh.size[0],Math.max(sourceMesh.size[1],sourceMesh.size[2]))/1.6,cz=(projectBounds[2]+projectBounds[5])/2;float minZ=Float.MAX_VALUE;
+        for(int i=2;i<moved.length;i+=3)minZ=Math.min(minZ,moved[i]);
+        float dz=(float)((projectBounds[2]-cz)/unit-minZ);for(int i=2;i<moved.length;i+=3)moved[i]+=dz;
+        return moved;
     }
     /** Converts normalized native-preview points to the bed-centred scene, retaining world Z. */
     static float[] projectVertices(float[] vertices,double[] size,double[] bounds,double bedCenterX,double bedCenterY,double scale) {

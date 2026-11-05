@@ -279,6 +279,16 @@ final class CurrentModelStore {
       }
     }
 
+    /** Stores a project settings snapshot for the current file (see ProjectPlates). */
+    static void saveProjectSnapshot(Context context,String expectedFile,org.json.JSONObject snapshot)throws IOException{
+      synchronized(LOCK){
+        SharedPreferences p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE);String filename=p.getString(FILE,"");
+        if(!validName(filename)||!filename.equals(expectedFile))throw new IOException(L.t("Проект изменился или выбран недопустимый стол."));
+        File file=new File(directory(context),filename);
+        try(FileOutputStream output=new FileOutputStream(file.getPath()+".project-snapshot.json")){output.write(snapshot.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));output.getFD().sync();}
+      }
+    }
+    static int storedProjectMode(Context context)throws IOException{return readProjectMode(context.getSharedPreferences(PREFS,Context.MODE_PRIVATE));}
     private static ModelTransform readTransform(SharedPreferences prefs) throws IOException {
         try { return ModelTransform.decode(prefs.getString(TRANSFORM, "")); }
         catch (IllegalArgumentException e) { throw new IOException(L.t("Не удалось прочитать сохранённые настройки модели."), e); }

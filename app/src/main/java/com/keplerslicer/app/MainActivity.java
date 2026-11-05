@@ -396,7 +396,7 @@ public class MainActivity extends Activity {
         view.setBackdrop(kui.backdrop(), shellView);
         viewport.addView(view, new FrameLayout.LayoutParams(-1,-1));
 
-        TextView chip = ui.chip(plateCaption(), false, null); plateChip = chip; viewportMode = chip;
+        TextView chip = ui.chip(plateCaption(), false, this::choosePlate); plateChip = chip; viewportMode = chip;
         FrameLayout.LayoutParams chipPos = new FrameLayout.LayoutParams(-2,-2,Gravity.START|Gravity.TOP); chipPos.setMargins(dp(20), dp(18), dp(96), 0); viewport.addView(chip, chipPos);
 
         boolean hasModel = mesh != null && !loadingMesh; final boolean editable = hasModel && mesh.vertices.length>0 && transformSupported();
@@ -872,6 +872,23 @@ public class MainActivity extends Activity {
             endPaint(); runEdit(getString(R.string.kv3_paint_title), NativePreferenceActions.EDIT_MATERIALS, 0, 0, request.toString());
         } catch (org.json.JSONException e) { dialog(getString(R.string.kv3_edit_failed), String.valueOf(e.getMessage())); }
     }
+    /** Plate chip: pick another plate of a multi-plate project (same engine path as Model details). */
+    private void choosePlate() {
+        org.json.JSONObject project = modelMetadata == null ? null : modelMetadata.optJSONObject("project_data");
+        org.json.JSONArray plates = project == null ? null : project.optJSONArray("plates");
+        if (plates == null || plates.length() < 2 || loadingMesh || meshFileName == null) return;
+        final int[] indexes = new int[plates.length()]; String[] labels = new String[plates.length()]; int selected = modelMetadata.optInt("selected_plate", 0), current = -1;
+        for (int i = 0; i < plates.length(); i++) { org.json.JSONObject plate = plates.optJSONObject(i); indexes[i] = plate == null ? i : plate.optInt("index", i);
+            String name = plate == null ? "" : plate.optString("name", "").trim(); labels[i] = getString(R.string.kv3_plate_n, indexes[i] + 1) + (name.isEmpty() ? "" : " · " + name); if (indexes[i] == selected) current = i; }
+        final String expected = meshFileName;
+        com.keplerslicer.app.glass.GlassBottomSheet.choose(this, root, false, getString(R.string.l10n_md_plates), labels, current, which -> {
+            loadingMesh = true; render();
+            new Thread(() -> {
+                try { ProjectPlates.select(getApplicationContext(), expected, indexes[which]); runOnUiThread(() -> { if (isDestroyed()) return; loadingMesh = false; restoreModel(); ControlPreferences.scheduleAutoSlice(this); }); }
+                catch (Exception e) { final String m = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); runOnUiThread(() -> { if (isDestroyed()) return; loadingMesh = false; render(); dialog(getString(R.string.l10n_md_plates), m); }); }
+            }, "choose-plate").start();
+        });
+    }
     private static String fmt(double mm) { return String.format(java.util.Locale.getDefault(), "%.2f", mm); }
 
     // ---- Cut / Text / Assembly: edited by the engine into a derived 3MF that replaces the current model ----
@@ -1220,14 +1237,14 @@ public class MainActivity extends Activity {
     private static double[] projectBounds(org.json.JSONObject metadata){
         if(!isProject(metadata))return null;try{org.json.JSONArray lo=metadata.getJSONArray("bounds_min"),hi=metadata.getJSONArray("bounds_max");if(lo.length()!=3||hi.length()!=3)throw new org.json.JSONException("bounds");double[] v=new double[6];for(int i=0;i<3;i++){v[i]=lo.getDouble(i);v[i+3]=hi.getDouble(i);if(!Double.isFinite(v[i])||!Double.isFinite(v[i+3])||v[i+3]<v[i])throw new org.json.JSONException("bounds");}return v;}catch(Exception e){return new double[0];}
     }
-    private boolean canSliceModel(){if(mesh==null||mesh.vertices.length==0||modelMetadata!=null&&(modelMetadata.optBoolean("mapping_unresolved",false)||modelMetadata.has("printable_instances")&&modelMetadata.optInt("printable_instances",0)==0))return false;if(modelMetadata!=null&&"3mf".equals(modelMetadata.optString("format"))){if(modelProjectMode<0&&GeneralProjectPolicy.inspect(modelMetadata).settingsPresent)return false;if(modelProjectMode>0){org.json.JSONObject snapshot=modelMetadata.optJSONObject("project_settings_snapshot"),validation=snapshot==null?null:snapshot.optJSONObject("validation"),mode=validation==null?null:validation.optJSONObject(modelProjectMode==2?"embedded_printer":"selected_printer");if(mode==null||!mode.optBoolean("can_load",false))return false;}org.json.JSONObject project=modelMetadata.optJSONObject("project_data");if(project!=null&&(project.optBoolean("unknown_unit_requires_validation",false)||project.optBoolean("non_mm_transform_requires_validation",false)||project.optJSONArray("plates")!=null&&project.optJSONArray("plates").length()>1))return false;}return true;}
+    private boolean canSliceModel(){if(mesh==null||mesh.vertices.length==0||modelMetadata!=null&&(modelMetadata.optBoolean("mapping_unresolved",false)||modelMetadata.has("printable_instances")&&modelMetadata.optInt("printable_instances",0)==0))return false;if(modelMetadata!=null&&"3mf".equals(modelMetadata.optString("format"))){if(modelProjectMode<0&&GeneralProjectPolicy.inspect(modelMetadata).settingsPresent)return false;if(modelProjectMode>0){org.json.JSONObject snapshot=modelMetadata.optJSONObject("project_settings_snapshot"),validation=snapshot==null?null:snapshot.optJSONObject("validation"),mode=validation==null?null:validation.optJSONObject(modelProjectMode==2?"embedded_printer":"selected_printer");if(mode==null||!mode.optBoolean("can_load",false))return false;}org.json.JSONObject project=modelMetadata.optJSONObject("project_data");if(project!=null&&(project.optBoolean("unknown_unit_requires_validation",false)||project.optBoolean("non_mm_transform_requires_validation",false)))return false;}return true;}
     private boolean needsProjectModeReview(){return modelMetadata!=null&&"3mf".equals(modelMetadata.optString("format"))&&modelProjectMode<0&&GeneralProjectPolicy.inspect(modelMetadata).settingsPresent;}
     private String bedDescription(BedGeometry bed){if(mesh!=null&&mesh.vertices.length==0)return getString(R.string.l10n_ws_plate_empty);if(modelMetadata!=null&&modelMetadata.optBoolean("mapping_unresolved",false))return getString(R.string.l10n_ws_plate_unknown_all);if(modelMetadata!=null&&modelMetadata.has("printable_instances")&&modelMetadata.optInt("printable_instances",0)==0)return getString(R.string.l10n_ws_no_objects);
         double[] b=projectBounds(modelMetadata);if(b!=null&&b.length==6&&bed!=null){double eps=.001;if(b[0]<bed.centerX-bed.width/2-eps||b[3]>bed.centerX+bed.width/2+eps||b[1]<bed.centerY-bed.depth/2-eps||b[4]>bed.centerY+bed.depth/2+eps||b[2]<-eps||b[5]>bed.height+eps)return getString(R.string.l10n_ws_3mf_outside);return getString(R.string.l10n_ws_3mf_hint);}return getString(R.string.l10n_ws_bed_profile);
     }
     private boolean transformSupported() {
         if(modelMetadata==null)return true;
-        String format=modelMetadata.optString("format");if("3mf".equals(format))return false;
+        String format=modelMetadata.optString("format");if("3mf".equals(format))return !modelMetadata.optBoolean("mapping_unresolved",false);
         if("step".equals(format)){org.json.JSONObject provenance=modelMetadata.optJSONObject("step_import");return provenance!=null&&provenance.optInt("object_count",0)==1&&provenance.optInt("instance_count",0)==1;}
         if("obj".equals(format)){org.json.JSONArray objects=modelMetadata.optJSONArray("objects");if(objects==null||objects.length()!=1)return false;org.json.JSONObject object=objects.optJSONObject(0);org.json.JSONArray instances=object==null?null:object.optJSONArray("instances");return instances!=null&&instances.length()==1;}
         return false;

@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
-namespace Slic3r { class Model; }
+namespace Slic3r { class Model; class DynamicPrintConfig; }
 
 namespace kepler {
 struct ImportedModelInfo {
@@ -17,5 +17,10 @@ ImportedModelInfo inspect_model(const std::string &path, int plate_index, std::s
 // Reopens the original snapshot and returns all printable instances of one
 // plate. Rejects projects with embedded global/plate configs, custom plate
 // G-code, or multiple plate origins until these semantics are implemented.
-Slic3r::Model load_plate_model(const std::string &path, int plate_index);
+Slic3r::Model load_plate_model(const std::string &path, int plate_index, const Slic3r::DynamicPrintConfig *bed = nullptr);
+// Desktop plate grid (PartPlateList): plate i sits at column i % cols, row i / cols, cols = ceil(sqrt(count)),
+// spaced by 1.2 x the whole-millimetre width/depth of the printable area. Returns {x, y} of that origin.
+std::pair<double,double> plate_grid_origin(int plate_index, int plate_count, const Slic3r::DynamicPrintConfig &bed);
+// Moves the kept instances of a plate back onto the bed (subtracts the plate origin).
+void move_plate_to_origin(Slic3r::Model &model, int plate_index, int plate_count, const Slic3r::DynamicPrintConfig &bed);
 }

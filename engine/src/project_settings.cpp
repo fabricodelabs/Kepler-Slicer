@@ -1,4 +1,5 @@
 #include "project_settings.hpp"
+#include "model_io.hpp"
 #include "project_inspector.hpp"
 #include "native_preferences.hpp"
 
@@ -261,8 +262,6 @@ void validate_project(const ProjectInspection &project,const json &description,c
         throw std::runtime_error("3MF units/transforms require validation before applying project settings");
     // Upstream's GUI places plates in a grid whose origin is not stored in PlateData.
     // Do not guess its layout from object bounds and silently relocate the model.
-    if(project.plates().size()>1 || (plate && plate_index!=0))
-        throw std::runtime_error("Multi-plate project origins are not yet supported; original project has been retained");
     if(!project.substitutions().unrecogized_keys.empty() || !project.substitutions().substitutions.empty())
         throw std::runtime_error("Project has unknown or substituted configuration values");
     for(const auto *preset:project.embedded_presets()) {
@@ -368,6 +367,10 @@ std::string project_settings_snapshot_json(const std::string &path,int plate_ind
     return out.dump();
 }
 
+// Grid position of the chosen plate (its order in the plate list).
+int plate_position(const ProjectInspection &project,const PlateData *plate) {
+    if(!plate)return 0;for(size_t i=0;i<project.plates().size();++i)if(project.plates()[i]==plate)return static_cast<int>(i);return 0;
+}
 PreparedProject prepare_project_settings(const std::string &path,int plate_index,const Slic3r::DynamicPrintConfig &selected,bool use_embedded_printer) {
     auto project=inspect_project_3mf(path);const auto description=json::parse(project.describe_json());
     const auto *plate=choose_plate(project,plate_index);
@@ -385,6 +388,7 @@ PreparedProject prepare_project_settings(const std::string &path,int plate_index
         if(object->instances.empty())result.model.delete_object(oi);
     }
     if(result.model.objects.empty())throw std::runtime_error("Selected plate has no printable instances");
+    move_plate_to_origin(result.model,plate_position(project,plate),static_cast<int>(project.plates().size()),result.config);
     result.selected_plate=plate_index;result.snapshot_json=snapshot(project,description,plate_index,plate,selected).dump();
     return result;
 }
@@ -394,8 +398,6 @@ PreparedProject prepare_project_geometry(const std::string &path,int plate_index
     const auto *plate=choose_plate(project,plate_index);
     if(description.value("unknown_unit_requires_validation",false) || description.value("non_mm_transform_requires_validation",false))
         throw std::runtime_error("3MF units/transforms require validation before geometry-only import");
-    if(project.plates().size()>1 || (plate && plate_index!=0))
-        throw std::runtime_error("Multi-plate project origins are not yet supported; original project has been retained");
     validate_config(selected);
     const auto chosen=selected_instances(project.model(),plate);
     PreparedProject result;result.model=project.model();result.config=selected;result.selected_plate=plate_index;
@@ -417,6 +419,7 @@ PreparedProject prepare_project_geometry(const std::string &path,int plate_index
         }
     }
     if(result.model.objects.empty())throw std::runtime_error("Selected plate has no printable geometry");
+    move_plate_to_origin(result.model,plate_position(project,plate),static_cast<int>(project.plates().size()),selected);
     result.snapshot_json=json{{"schema",1},{"kind","kepler.project_geometry"},{"archive_sha256",description.at("archive_sha256")},
         {"selected_plate",plate_index},{"source_bytes_retained",true},
         {"discarded_working_copy_scopes",json::array({"global_config","plate_config","object_config","volume_config","material_config","layer_ranges","layer_height_profile","paint","custom_plate_gcode"})}}.dump();
