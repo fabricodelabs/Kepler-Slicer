@@ -227,3 +227,6 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
 - History rewritten locally (all commits by Rodion, backup `outputs/Kepler-history-backup-2026-11-05.bundle`), but
   NOT pushed: force push is blocked by the auto-mode classifier. The owner runs:
   `git push --force origin master && git push --force --tags origin && git push origin --delete claude/ui codex/core`
+- Release v1.0.2 (versionCode 142, signed with the upload key) published with notes in English and Russian.
+- AGENTS.md and CLAUDE.md are no longer tracked: they stay on disk and are ignored through `.git/info/exclude`.
+  Older commits still contain them until the history is rewritten again.
