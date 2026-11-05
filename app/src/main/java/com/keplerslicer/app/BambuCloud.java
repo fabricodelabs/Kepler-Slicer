@@ -177,6 +177,12 @@ final class BambuCloud {
             if (r.status == 400 || r.status == 401 || r.status == 403) throw new IOException(L.t("Bambu отклонил вход: проверьте почту, пароль или код и войдите снова.") + (why.isEmpty() ? "" : "\n" + why));
             throw new IOException(L.t("Bambu: ошибка сервера (HTTP ") + r.status + ")." + (why.isEmpty() ? "" : "\n" + why));
         }
-        try { return new JSONObject(r.text()); } catch (JSONException e) { throw new IOException(L.t("Bambu вернул некорректный ответ."), e); }
+        // Some calls (sending the e-mail code) succeed with an empty body: that is not an error.
+        if (text.isEmpty()) return new JSONObject();
+        try { return new JSONObject(text); }
+        catch (JSONException e) {
+            String type = r.header("Content-Type");
+            throw new IOException(L.t("Bambu вернул некорректный ответ.") + " (HTTP " + r.status + (type.isEmpty() ? "" : ", " + type) + ")", e);
+        }
     }
 }

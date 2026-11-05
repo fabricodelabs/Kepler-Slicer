@@ -50,7 +50,7 @@ public final class LegacyControlTest {
             String path = x.getRequestURI().getPath(); String body = new String(x.getRequestBody().readAllBytes(), StandardCharsets.UTF_8); bodies.add(path + " " + body);
             String auth = x.getRequestHeaders().getFirst("Authorization"); String reply;
             if (path.endsWith("/user/login")) reply = body.contains("\"code\":\"123456\"") ? "{\"accessToken\":\"tok\",\"refreshToken\":\"ref\"}" : "{\"accessToken\":\"\",\"loginType\":\"verifyCode\"}";
-            else if (path.endsWith("/sendemail/code")) reply = "{}";
+            else if (path.endsWith("/sendemail/code")) reply = ""; // the real API answers an empty body
             else if (path.endsWith("/user/refreshtoken")) reply = body.contains("\"refreshToken\":\"ref\"") ? "{\"accessToken\":\"tok2\",\"refreshToken\":\"ref2\",\"expiresIn\":7776000}" : null;
             else if (path.endsWith("/my/profile")) reply = "Bearer tok".equals(auth) ? "{\"uid\":4242}" : null;
             else if (path.endsWith("/user/bind")) reply = "Bearer tok".equals(auth) ? "{\"devices\":[{\"dev_id\":\"01P00A123456789\",\"name\":\"P1S\",\"online\":true,\"dev_product_name\":\"P1S\"},{\"dev_id\":\"bad id\"}]}" : null;
