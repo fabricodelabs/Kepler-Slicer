@@ -57,6 +57,13 @@ final class ObjectSettingsStore {
      * Worker-thread UI entry: obtains the native object's count for the current model.
      * A file/plate change during loading retries instead of associating metadata with another file.
      */
+    /** Number of objects in the open model (1 for STL); worker thread only. */
+    static int currentObjectCount(Context context)throws IOException {
+        Scope s=scope(context);if(s.file.isEmpty())throw new IOException(L.t("Сначала откройте модель."));
+        if(s.file.toLowerCase(Locale.ROOT).endsWith(".stl"))return 1;
+        CurrentModelStore model=CurrentModelStore.load(context);if(model==null||!s.file.equals(model.file.getName()))throw new IOException(L.t("Модель ещё загружается. Повторите через секунду."));
+        return objectCount(model.metadata);
+    }
     static Snapshot current(Context context)throws IOException {
         for(int attempt=0;attempt<3;attempt++){Scope before=scope(context);if(before.file.isEmpty())throw new IOException("Open a model before editing object settings");int count;
             if(before.file.toLowerCase(Locale.ROOT).endsWith(".stl"))count=1;

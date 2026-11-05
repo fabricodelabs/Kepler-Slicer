@@ -747,54 +747,74 @@ public class MainActivity extends Activity {
                 com.keplerslicer.app.settings.SettingsSchema.Option option = null, enable = null;
                 for (com.keplerslicer.app.settings.SettingsSchema.Option o : schema.options("process")) { if (key.equals(o.key)) option = o; if ("enable_support".equals(o.key)) enable = o; }
                 if (option == null || option.enumValues.isEmpty() || support && enable == null) throw new java.io.IOException(getString(R.string.kv3_tool_option_missing, key));
-                ObjectSettingsStore.Snapshot scope = ObjectSettingsStore.current(app); org.json.JSONObject changes = scope.changes();
+                org.json.JSONObject changes = toolScopeValues(app);
                 final java.util.List<String> values = new java.util.ArrayList<>(option.enumValues), labels = new java.util.ArrayList<>();
                 for (int i = 0; i < values.size(); i++) labels.add(i < option.enumLabels.size() && !option.enumLabels.get(i).isEmpty() ? option.enumLabels.get(i) : values.get(i));
                 if (support) { values.add(0, null); labels.add(0, getString(R.string.kv3_support_off)); }
                 String current = changes.has(key) ? String.valueOf(changes.opt(key)) : null; int selected = -1;
                 Object enabled = changes.opt("enable_support"); if (support && enabled != null && ("false".equals(String.valueOf(enabled)) || "0".equals(String.valueOf(enabled)))) selected = 0;
                 else if (current != null) selected = values.indexOf(current);
-                final int sel = selected; final com.keplerslicer.app.settings.SettingsSchema.Option opt = option, en = enable;
+                final int sel = selected; final com.keplerslicer.app.settings.SettingsSchema.Option opt = option, en = support ? enable : null; // only the support tool switches supports
                 runOnUiThread(() -> { if (isDestroyed()) return;
                     com.keplerslicer.app.glass.GlassBottomSheet.choose(this, root, false, title, labels.toArray(new String[0]), sel, index -> applyObjectTool(title, key, opt, en, values.get(index)));
                 });
             } catch (Exception e) { String m = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); runOnUiThread(() -> { if (!isDestroyed()) dialog(title, m); }); }
         }, "object-tool").start();
     }
+    /**
+     * Object tools edit the object's own settings when the model is one object; a project with several objects
+     * gets the value for the whole plate (process overrides), since per-object values are not supported there yet.
+     */
+    private org.json.JSONObject toolScopeValues(android.content.Context app) throws Exception {
+        org.json.JSONObject values;
+        if (ObjectSettingsStore.currentObjectCount(app) == 1) values = ObjectSettingsStore.current(app).changes();
+        else { String json = ProcessOverridesStore.load(app, ProcessOverridesStore.Identity.capture(app)); values = new org.json.JSONObject(json == null || json.isEmpty() ? "{}" : json); }
+        // Earlier builds stored enable_support as text; the engine rejects that, so turn it back into a boolean.
+        Object support = values.opt("enable_support");
+        if (support instanceof String) values.put("enable_support", "true".equals(support) || "1".equals(support));
+        return values;
+    }
     private void applyObjectTool(String title, String key, com.keplerslicer.app.settings.SettingsSchema.Option option, com.keplerslicer.app.settings.SettingsSchema.Option enable, String value) {
         final android.content.Context app = getApplicationContext();
         new Thread(() -> {
             try {
-                ObjectSettingsStore.Snapshot scope = ObjectSettingsStore.current(app); org.json.JSONObject changes = scope.changes();
-                if (enable != null) changes.put("enable_support", enable.parseInput(value == null ? "false" : "true", changes.opt("enable_support")));
+                boolean single = ObjectSettingsStore.currentObjectCount(app) == 1;
+                org.json.JSONObject changes = toolScopeValues(app);
+                if (enable != null) changes.put("enable_support", value != null); // the engine takes a real boolean
                 if (value != null) changes.put(key, option.parseInput(value, changes.opt(key)));
-                ObjectSettingsStore.save(app, scope.modelFileName, scope.plateIndex, scope.nativeObjectCount, changes);
-                runOnUiThread(() -> { if (isDestroyed()) return; ControlPreferences.scheduleAutoSlice(this); com.keplerslicer.app.glass.GlassBottomSheet.info(this, root, false, title, getString(R.string.kv3_tool_applied)); });
+                if (single) { ObjectSettingsStore.Snapshot scope = ObjectSettingsStore.current(app); ObjectSettingsStore.save(app, scope.modelFileName, scope.plateIndex, scope.nativeObjectCount, changes); }
+                else { ProcessOverridesStore.Identity id = ProcessOverridesStore.Identity.capture(app); ProcessOverridesStore.save(app, id, changes.toString()); }
+                final String done = single ? getString(R.string.kv3_tool_applied) : L.t("В проекте несколько объектов — настройка применена ко всей пластине (параметры процесса).");
+                runOnUiThread(() -> { if (isDestroyed()) return; ControlPreferences.scheduleAutoSlice(this); com.keplerslicer.app.glass.GlassBottomSheet.info(this, root, false, title, done); });
             } catch (Exception e) { String m = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); runOnUiThread(() -> { if (!isDestroyed()) dialog(title, m); }); }
         }, "object-tool-save").start();
     }
 
     /** Lay on face: orient the largest planar face of the mesh downwards (keeps Z rotation, scale and offset). */
+    /**
+     * Lay on face, as on desktop: the user taps a face of the model and that face is turned down onto the plate.
+     * The tapped preview triangle has the same index in the source mesh; its normal (with the current scale) gives
+     * the X/Y rotation that points it straight down. Z rotation, scale and position are kept.
+     */
     private void layOnFace() {
-        if (mesh == null || mesh.vertices.length < 9 || !previewReady || !transformSupported()) { dialog(getString(R.string.kv3_tool_lay_on_face), getString(R.string.kv3_tools_unavailable)); return; }
-        final float[] v = mesh.vertices; final ModelTransform t = modelTransform;
-        new Thread(() -> {
-            java.util.HashMap<Long, double[]> clusters = new java.util.HashMap<>(); double[] best = null; double bestArea = 0;
-            for (int i = 0; i + 8 < v.length; i += 9) {
-                double ax = (v[i+3]-v[i])*t.sx, ay = (v[i+4]-v[i+1])*t.sy, az = (v[i+5]-v[i+2])*t.sz, bx = (v[i+6]-v[i])*t.sx, by = (v[i+7]-v[i+1])*t.sy, bz = (v[i+8]-v[i+2])*t.sz;
-                double nx = ay*bz-az*by, ny = az*bx-ax*bz, nz = ax*by-ay*bx, area = Math.sqrt(nx*nx+ny*ny+nz*nz); if (area < 1e-12) continue;
-                nx /= area; ny /= area; nz /= area;
-                long k = ((Math.round(nx*40)+64) << 16) | ((Math.round(ny*40)+64) << 8) | (Math.round(nz*40)+64);
-                double[] c = clusters.get(k); if (c == null) clusters.put(k, c = new double[4]);
-                c[0] += nx*area; c[1] += ny*area; c[2] += nz*area; c[3] += area;
-                if (c[3] > bestArea) { bestArea = c[3]; best = c; }
-            }
-            if (best == null) return;
-            double len = Math.sqrt(best[0]*best[0]+best[1]*best[1]+best[2]*best[2]), nx = best[0]/len, ny = best[1]/len, nz = best[2]/len;
-            double a = Math.atan2(ny, nz), r = Math.sqrt(ny*ny+nz*nz), b = Math.atan2(nx, -r);
-            final ModelTransform next = new ModelTransform(Math.toDegrees(a), Math.toDegrees(b), t.rz, t.sx, t.sy, t.sz, t.offsetX, t.offsetY);
-            runOnUiThread(() -> { if (!isDestroyed() && modelTransform == t) applyTransform(next); });
-        }, "lay-on-face").start();
+        if (mesh == null || mesh.vertices.length < 9 || !previewReady || !transformSupported() || stlView == null) { dialog(getString(R.string.kv3_tool_lay_on_face), getString(R.string.kv3_tools_unavailable)); return; }
+        final StlView view = stlView;
+        view.setMoveMode(false, viewportMoveCallback); view.setRotateGizmo(false);
+        if (toolTitle != null) toolTitle.setText(L.t("Нажмите на грань модели"));
+        view.setFacePick(triangle -> {
+            view.setFacePick(null);
+            final float[] v = mesh == null ? null : mesh.vertices; final ModelTransform t = modelTransform;
+            if (v == null || triangle < 0 || triangle * 9 + 8 >= v.length) { selectTool(activeTool); return; }
+            int i = triangle * 9;
+            double ax = (v[i+3]-v[i])*t.sx, ay = (v[i+4]-v[i+1])*t.sy, az = (v[i+5]-v[i+2])*t.sz, bx = (v[i+6]-v[i])*t.sx, by = (v[i+7]-v[i+1])*t.sy, bz = (v[i+8]-v[i+2])*t.sz;
+            double nx = ay*bz-az*by, ny = az*bx-ax*bz, nz = ax*by-ay*bx, len = Math.sqrt(nx*nx+ny*ny+nz*nz);
+            if (!(len > 1e-12)) { selectTool(activeTool); return; }
+            nx /= len; ny /= len; nz /= len;
+            double rx = Math.atan2(ny, nz), r = Math.sqrt(ny*ny+nz*nz), ry = Math.atan2(nx, -r);
+            selectTool(activeTool);
+            applyTransform(new ModelTransform(Math.toDegrees(rx), Math.toDegrees(ry), t.rz, t.sx, t.sy, t.sz, t.offsetX, t.offsetY));
+        });
+        com.keplerslicer.app.glass.GlassBottomSheet.info(this, root, false, getString(R.string.kv3_tool_lay_on_face), L.t("Нажмите на грань модели, которой она должна лечь на стол."));
     }
     /** Measure: size of the transformed model in millimetres (bounding box, as placed on the plate). */
     private void measure() {
@@ -1089,15 +1109,15 @@ public class MainActivity extends Activity {
         setToolsMode(true);
     }
     private void setToolsMode(boolean on) {
-        toolsMode = on;
+        toolsMode = on; if (!on && stlView != null) stlView.setFacePick(null);
         if (modeBar != null) modeBar.select(on ? 2 : layersMode ? 1 : 0);
         syncPanels();
         if (bedHint != null && on) bedHint.setVisibility(View.GONE); else if (bedHint != null && !layersMode) bedHint.setVisibility(View.VISIBLE);
-        if (stlView != null) { stlView.setMoveMode(on && activeTool == 0 && previewReady && moveMode, viewportMoveCallback); stlView.setRotateGizmo(on && activeTool == 1 && previewReady); }
+        if (stlView != null) { stlView.setMoveMode(on && activeTool == 0 && previewReady && moveMode, viewportMoveCallback); stlView.setRotateGizmo(on && activeTool == 1 && previewReady, viewportMoveCallback); }
         if (on) refreshToolFields();
     }
     private void selectTool(int index) {
-        activeTool = index; if (index == 0) moveMode = true;
+        activeTool = index; if (index == 0) moveMode = true; if (stlView != null) stlView.setFacePick(null);
         int[] labels = {R.string.kv3_tool_move, R.string.kv3_tool_rotate, R.string.kv3_tool_scale};
         if (toolTitle != null) toolTitle.setText(labels[index]);
         if (toolTiles != null) for (int i = 0; i < toolTiles.length; i++) {
@@ -1106,7 +1126,7 @@ public class MainActivity extends Activity {
             ((ImageView) t.getChildAt(0)).setImageDrawable(kui.icon(new int[]{R.drawable.kv3_move, R.drawable.kv3_refresh, R.drawable.kv3_scale, R.drawable.kv3_lay_on_face, R.drawable.kv3_cut, R.drawable.kv3_support_paint, R.drawable.kv3_seam_paint, R.drawable.kv3_fuzzy_skin, R.drawable.kv3_text, R.drawable.kv3_measure, R.drawable.kv3_assembly, R.drawable.kv3_brim_ears}[i], on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : com.keplerslicer.app.glass.KeplerUi.WHITE));
             ((TextView) t.getChildAt(1)).setTextColor(on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : com.keplerslicer.app.glass.KeplerUi.WHITE);
         }
-        if (stlView != null) { stlView.setMoveMode(toolsMode && index == 0 && previewReady, viewportMoveCallback); stlView.setRotateGizmo(toolsMode && index == 1 && previewReady); }
+        if (stlView != null) { stlView.setMoveMode(toolsMode && index == 0 && previewReady, viewportMoveCallback); stlView.setRotateGizmo(toolsMode && index == 1 && previewReady, viewportMoveCallback); }
         refreshToolFields();
     }
     /** Values shown in the X/Y/Z fields for the active tool, from the stored model transform. */

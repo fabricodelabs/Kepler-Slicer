@@ -34,6 +34,9 @@ final class StlView extends GLSurfaceView {
     private MoveCallback moveCallback;
     interface MoveCallback { void completed(ModelTransform transform); }
     /** Rotate tool: three axis rings around the model (X red, Y green, Z blue), as in the desktop rotate gizmo. */
+    private MoveCallback rotateCallback; private boolean rotating; private float rotateStartX; private ModelTransform rotateBase;
+    /** Rotate tool: rings around the model; one finger left/right turns the model around the vertical axis. */
+    void setRotateGizmo(boolean on, MoveCallback callback) { rotateCallback = on ? callback : null; setRotateGizmo(on); }
     void setRotateGizmo(boolean on) { boolean want = on && !toolpathMode; if (renderer.rotateRings == want) return; renderer.rotateRings = want; queueEvent(() -> { if (renderer.lastScene != null) renderer.buildGizmo(renderer.lastScene); }); requestRender(); }
     void setMoveMode(boolean enabled, MoveCallback callback) { cancelDrag(); moveMode=enabled&&!toolpathMode; moveCallback=callback; setContentDescription(cameraDescription(moveMode,toolpathMode)); renderer.gizmo=moveMode; requestRender(); }
     void discardPendingMove() { cancelDrag(); renderer.dragX=renderer.dragY=0; requestRender(); }
@@ -155,7 +158,7 @@ final class StlView extends GLSurfaceView {
                 float[] vertices = previewGeometry(transform);
                 if (revision != transformRevision.get()) return;
                 renderer.setGeometry(vertices, bed, sourceMesh.size,projectBounds);
-                renderer.dragX = renderer.dragY = 0;
+                renderer.dragX = renderer.dragY = 0; renderer.dragRotZ = 0;
                 currentTransform = transform;
                 volumeReady=bed!=null;
                 requestRender();
@@ -189,6 +192,31 @@ final class StlView extends GLSurfaceView {
     }
     // ---- Paint brush: one finger paints the triangles under a sphere brush, two fingers keep moving the camera ----
     /** triangles: preview triangles under the brush (or the filled region); hit: the hit triangle; point/camera in world mm (null for a fill). */
+    /** Lay on face: the next tap on the model reports the triangle under the finger (preview triangle index). */
+    interface FacePick { void picked(int triangle); }
+    private volatile FacePick facePick; private float pickDownX, pickDownY;
+    void setFacePick(FacePick callback) { facePick = callback; }
+    private void pickAt(float x, float y) {
+        final int w = getWidth(), h = getHeight(); final FacePick cb = facePick; if (cb == null || w <= 0 || h <= 0) return;
+        float[] p = new float[16], camera = new float[16], mvp = new float[16], inverse = new float[16];
+        project(p, (float) w / h); cameraMatrix(camera); Matrix.multiplyMM(mvp, 0, p, 0, camera, 0);
+        if (!Matrix.invertM(inverse, 0, mvp, 0)) return;
+        float nx = 2f * x / w - 1, ny = 1 - 2f * y / h; float[] a = new float[4], b = new float[4];
+        Matrix.multiplyMV(a, 0, inverse, 0, new float[]{nx, ny, -1, 1}, 0); Matrix.multiplyMV(b, 0, inverse, 0, new float[]{nx, ny, 1, 1}, 0);
+        if (a[3] == 0 || b[3] == 0) return;
+        final float ox = a[0] / a[3], oy = a[1] / a[3], oz = a[2] / a[3], dx = b[0] / b[3] - ox, dy = b[1] / b[3] - oy, dz = b[2] / b[3] - oz;
+        queueEvent(() -> {
+            float[] v = renderer.sceneVertices; int best = -1; float bestT = Float.MAX_VALUE;
+            for (int i = 0; v != null && i + 8 < v.length; i += 9) {
+                float e1x = v[i+3]-v[i], e1y = v[i+4]-v[i+1], e1z = v[i+5]-v[i+2], e2x = v[i+6]-v[i], e2y = v[i+7]-v[i+1], e2z = v[i+8]-v[i+2];
+                float px = dy*e2z-dz*e2y, py = dz*e2x-dx*e2z, pz = dx*e2y-dy*e2x, det = e1x*px+e1y*py+e1z*pz; if (Math.abs(det) < 1e-12f) continue;
+                float inv = 1/det, tx = ox-v[i], ty = oy-v[i+1], tz = oz-v[i+2], u = (tx*px+ty*py+tz*pz)*inv; if (u < 0 || u > 1) continue;
+                float qx = ty*e1z-tz*e1y, qy = tz*e1x-tx*e1z, qz = tx*e1y-ty*e1x, vv = (dx*qx+dy*qy+dz*qz)*inv; if (vv < 0 || u+vv > 1) continue;
+                float t = (e2x*qx+e2y*qy+e2z*qz)*inv; if (t > 0 && t < bestT) { bestT = t; best = i / 9; }
+            }
+            final int hit = best; if (hit >= 0) post(() -> { FacePick current = facePick; if (current != null) current.picked(hit); });
+        });
+    }
     interface PaintCallback { void painted(int[] previewTriangles, int hit, double[] point, double[] camera); }
     private volatile PaintCallback paintCallback; private volatile float paintRadiusMm = 3f; private volatile boolean paintFill;
     void setPaintMode(PaintCallback callback, float radiusMm) { paintCallback = callback; paintRadiusMm = Math.max(0.2f, radiusMm); }
@@ -255,21 +283,29 @@ final class StlView extends GLSurfaceView {
             if (action == MotionEvent.ACTION_DOWN) { getParent().requestDisallowInterceptTouchEvent(true); lastX = e.getX(); lastY = e.getY(); pinchGesture = false; lastDistance = 0; }
             paintAt(e.getX(), e.getY()); return true;
         }
-        if(action==MotionEvent.ACTION_DOWN) { getParent().requestDisallowInterceptTouchEvent(true);lastX=e.getX();lastY=e.getY();lastDistance=0;pinchGesture=false;mouseAction=mouseAction(e);
+        if(action==MotionEvent.ACTION_DOWN) { pickDownX=e.getX();pickDownY=e.getY();getParent().requestDisallowInterceptTouchEvent(true);lastX=e.getX();lastY=e.getY();lastDistance=0;pinchGesture=false;mouseAction=mouseAction(e);
+            if(renderer.rotateRings&&rotateCallback!=null&&mouseAction==0&&sourceMesh!=null&&volumeReady&&currentTransform!=null){rotating=true;rotateStartX=lastX;rotateBase=currentTransform;renderer.dragRotZ=0;return true;}
             if(moveMode&&mouseAction==0&&sourceMesh!=null&&volumeReady&&renderer.sceneScale>0&&moveCallback!=null){double[] p=bedPoint(lastX,lastY);if(p!=null){dragging=true;dragStartX=p[0];dragStartY=p[1];dragBase=currentTransform;}} return true; }
-        if(action==MotionEvent.ACTION_POINTER_DOWN&&e.getPointerCount()>=2){cancelDrag();pinchGesture=true;lastDistance=distance(e);lastMidX=(e.getX(0)+e.getX(1))/2;lastMidY=(e.getY(0)+e.getY(1))/2;return true;}
+        if(action==MotionEvent.ACTION_POINTER_DOWN&&e.getPointerCount()>=2){cancelDrag();if(rotating){rotating=false;renderer.dragRotZ=0;}pinchGesture=true;lastDistance=distance(e);lastMidX=(e.getX(0)+e.getX(1))/2;lastMidY=(e.getY(0)+e.getY(1))/2;return true;}
         if(action==MotionEvent.ACTION_MOVE){
             if(e.getPointerCount()>=2){float d=distance(e),mx=(e.getX(0)+e.getX(1))/2,my=(e.getY(0)+e.getY(1))/2;
                 if(lastDistance>0&&d>0)zoomAt(mx,my,reverseZoom?lastDistance/d:d/lastDistance);
                 if(swapGestures)orbit(mx-lastMidX,my-lastMidY);else pan(mx-lastMidX,my-lastMidY);
                 lastDistance=d;lastMidX=mx;lastMidY=my;}
+            else if(rotating){float deg=(e.getX()-rotateStartX)/Math.max(1,getWidth())*360f;deg=Math.round(deg/5f)*5f; // 5° steps, a full turn across the screen
+                if(deg!=renderer.dragRotZ){renderer.dragRotZ=deg;performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);}}
             else if(dragging){double[] p=bedPoint(e.getX(),e.getY());if(p!=null){double dx=(p[0]-dragStartX)*moveSpeed,dy=(p[1]-dragStartY)*moveSpeed,scale=renderer.sceneScale,ox=dragBase.offsetX+dx/scale,oy=dragBase.offsetY+dy/scale;if(Double.isFinite(ox)&&Double.isFinite(oy)&&Math.abs(ox)<=10000&&Math.abs(oy)<=10000){renderer.dragX=(float)dx;renderer.dragY=(float)dy;}}}
             else if(mouseAction!=0&&!pinchGesture){if(mouseAction==2)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
             else if(!moveMode&&!pinchGesture&&!isMouse(e)){if(swapGestures)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
             lastX=e.getX();lastY=e.getY();requestRender();return true; }
         if(action==MotionEvent.ACTION_POINTER_UP){lastDistance=0;int n=e.getActionIndex()==0?1:0;lastX=e.getX(n);lastY=e.getY(n);return true;}
-        if(action==MotionEvent.ACTION_CANCEL){cancelDrag();getParent().requestDisallowInterceptTouchEvent(false);return true;}
-        if(action==MotionEvent.ACTION_UP){getParent().requestDisallowInterceptTouchEvent(false);if(dragging){dragging=false;double scale=renderer.sceneScale;float dx=renderer.dragX,dy=renderer.dragY;if(dx==0&&dy==0){renderer.dragX=renderer.dragY=0;}else try{moveCallback.completed(new ModelTransform(dragBase.rx,dragBase.ry,dragBase.rz,dragBase.sx,dragBase.sy,dragBase.sz,dragBase.offsetX+dx/scale,dragBase.offsetY+dy/scale));}catch(RuntimeException ex){renderer.dragX=renderer.dragY=0;requestRender();}}return true;}
+        if(action==MotionEvent.ACTION_CANCEL){cancelDrag();if(rotating){rotating=false;renderer.dragRotZ=0;requestRender();}getParent().requestDisallowInterceptTouchEvent(false);return true;}
+        if(action==MotionEvent.ACTION_UP&&facePick!=null&&!pinchGesture&&Math.hypot(e.getX()-pickDownX,e.getY()-pickDownY)<android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop()){getParent().requestDisallowInterceptTouchEvent(false);pickAt(e.getX(),e.getY());return true;}
+        if(action==MotionEvent.ACTION_UP){getParent().requestDisallowInterceptTouchEvent(false);
+            if(rotating){rotating=false;float deg=renderer.dragRotZ;if(deg==0){requestRender();return true;}
+                double rz=((rotateBase.rz+deg)%360+540)%360-180;
+                try{rotateCallback.completed(new ModelTransform(rotateBase.rx,rotateBase.ry,rz,rotateBase.sx,rotateBase.sy,rotateBase.sz,rotateBase.offsetX,rotateBase.offsetY));}catch(RuntimeException ex){renderer.dragRotZ=0;requestRender();}
+                return true;}if(dragging){dragging=false;double scale=renderer.sceneScale;float dx=renderer.dragX,dy=renderer.dragY;if(dx==0&&dy==0){renderer.dragX=renderer.dragY=0;}else try{moveCallback.completed(new ModelTransform(dragBase.rx,dragBase.ry,dragBase.rz,dragBase.sx,dragBase.sy,dragBase.sz,dragBase.offsetX+dx/scale,dragBase.offsetY+dy/scale));}catch(RuntimeException ex){renderer.dragX=renderer.dragY=0;requestRender();}}return true;}
         return true;
     }
     private static boolean isMouse(MotionEvent e){return (e.getSource()&android.view.InputDevice.SOURCE_MOUSE)==android.view.InputDevice.SOURCE_MOUSE;}
@@ -352,7 +388,7 @@ final class StlView extends GLSurfaceView {
         }
         ToolpathGeometry pathGeometry; FloatBuffer pathPositions; int visiblePathLayers; double bedCenterX,bedCenterY;
         volatile float yaw = -35, pitch = 25, zoom = 1,panX,panY;
-        volatile float dragX, dragY; volatile double sceneScale;
+        volatile float dragX, dragY, dragRotZ, rotateCX, rotateCY; volatile double sceneScale;
         volatile boolean dark = true;
         final float[] projection = new float[16], model = new float[16], mvp = new float[16];
         int program, pos, norm, matrix, modelMatrix, gridProgram, gridPos, gridMatrix, gridColor;
@@ -382,7 +418,7 @@ final class StlView extends GLSurfaceView {
             float[][] c = {{x0,y0,z0},{x1,y0,z0},{x1,y1,z0},{x0,y1,z0},{x0,y0,z1},{x1,y0,z1},{x1,y1,z1},{x0,y1,z1}}; int[][] e = {{0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}};
             float[] box = {1f, .706f, .329f};
             for (int[] edge : e) { float[] a = c[edge[0]], b = c[edge[1]]; int dashes = 8; for (int d = 0; d < dashes; d++) { float t0 = d / (float) dashes, t1 = (d + .55f) / dashes; lines.add(new float[]{a[0]+(b[0]-a[0])*t0, a[1]+(b[1]-a[1])*t0, a[2]+(b[2]-a[2])*t0, a[0]+(b[0]-a[0])*t1, a[1]+(b[1]-a[1])*t1, a[2]+(b[2]-a[2])*t1, box[0], box[1], box[2]}); } }
-            float cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, len = .55f * Math.max(.4f, Math.max(x1 - x0, y1 - y0)), up = .7f * Math.max(.4f, z1 - z0) + (z1 - z0);
+            float cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; rotateCX = cx; rotateCY = cy; float len = .55f * Math.max(.4f, Math.max(x1 - x0, y1 - y0)), up = .7f * Math.max(.4f, z1 - z0) + (z1 - z0);
             if (rotateRings) {
                 float cz = (z0 + z1) / 2, r = .62f * Math.max(.4f, Math.max(x1 - x0, Math.max(y1 - y0, z1 - z0)));
                 int seg = 72;
@@ -547,7 +583,7 @@ final class StlView extends GLSurfaceView {
                 return;
             }
             if (count == 0) return;
-            float[] objectModel=model.clone(),objectMvp=new float[16];Matrix.translateM(objectModel,0,dragX,dragY,0);Matrix.multiplyMM(objectMvp,0,projection,0,objectModel,0);
+            float[] objectModel=model.clone(),objectMvp=new float[16];Matrix.translateM(objectModel,0,dragX,dragY,0);if(dragRotZ!=0){Matrix.translateM(objectModel,0,rotateCX,rotateCY,0);Matrix.rotateM(objectModel,0,dragRotZ,0,0,1);Matrix.translateM(objectModel,0,-rotateCX,-rotateCY,0);}Matrix.multiplyMM(objectMvp,0,projection,0,objectModel,0);
             GLES20.glUseProgram(program); GLES20.glUniformMatrix4fv(matrix,1,false,objectMvp,0); GLES20.glUniformMatrix4fv(modelMatrix,1,false,objectModel,0);
             positions.position(0); normals.position(0); GLES20.glEnableVertexAttribArray(pos); GLES20.glEnableVertexAttribArray(norm);
             GLES20.glVertexAttribPointer(pos,3,GLES20.GL_FLOAT,false,0,positions); GLES20.glVertexAttribPointer(norm,3,GLES20.GL_FLOAT,false,0,normals);
