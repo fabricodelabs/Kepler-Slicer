@@ -230,3 +230,6 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
 - Release v1.0.2 (versionCode 142, signed with the upload key) published with notes in English and Russian.
 - AGENTS.md and CLAUDE.md are no longer tracked: they stay on disk and are ignored through `.git/info/exclude`.
   Older commits still contain them until the history is rewritten again.
+- History rewritten again (not pushed): AGENTS.md/CLAUDE.md removed from every commit, agent names removed from
+  messages; 187 commits, all by Rodion. Backup: `outputs/Kepler-history-backup-2026-11-05b.bundle`.
+  Rule: no agent names or co-author lines in commits; merge with `git merge --no-edit -m "Merge branch 'ui'" claude/ui`.
