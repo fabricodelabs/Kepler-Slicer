@@ -15,7 +15,7 @@ android {
     defaultConfig {
         // Fixed for Google Play: never change applicationId after the first release.
         applicationId 'com.keplerslicer.app'
-        minSdk 26
+        minSdk 33
         targetSdk 36
         versionCode 1
         versionName '1.0.0'

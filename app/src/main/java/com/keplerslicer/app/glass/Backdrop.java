@@ -65,12 +65,15 @@ public final class Backdrop {
     private static final class BlurDrawable extends Drawable {
         private final View glass, source; private final float corner; private final RenderNode node = new RenderNode("kepler-backdrop");
         private final int[] g = new int[2], s = new int[2]; private final Path clip = new Path(); private final RectF r = new RectF();
-        private boolean drawing;
+        private boolean drawing; private final float blurRadius;
 
         BlurDrawable(View glass, View source, float radius, float corner) {
-            this.glass = glass; this.source = source; this.corner = corner;
-            node.setRenderEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP));
+            this.glass = glass; this.source = source; this.corner = corner; this.blurRadius = radius;
+            RenderEffect blur = RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP);
+            lens = LiquidLens.create(glass.getResources().getDisplayMetrics().density, corner);
+            node.setRenderEffect(lens == null ? blur : RenderEffect.createChainEffect(lens.effect(), blur));
         }
+        private final LiquidLens lens;
 
         @Override public void draw(Canvas canvas) {
             int w = glass.getWidth(), h = glass.getHeight();
@@ -79,6 +82,7 @@ public final class Backdrop {
             try {
                 glass.getLocationInWindow(g); source.getLocationInWindow(s);
                 node.setPosition(0, 0, w, h);
+                if (lens != null && lens.resize(w, h)) node.setRenderEffect(RenderEffect.createChainEffect(lens.effect(), RenderEffect.createBlurEffect(blurRadius, blurRadius, Shader.TileMode.CLAMP)));
                 Canvas rec = node.beginRecording(w, h);
                 try { record(rec); } finally { node.endRecording(); }
                 r.set(0, 0, w, h); clip.reset(); clip.addRoundRect(r, corner, corner, Path.Direction.CW);

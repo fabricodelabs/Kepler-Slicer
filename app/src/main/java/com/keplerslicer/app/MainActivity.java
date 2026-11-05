@@ -97,6 +97,7 @@ public class MainActivity extends Activity {
         super.onSaveInstanceState(out);
     }
 
+    private float[] savedCamera; private String cameraModel;
     @Override protected void onPause() { cancelLayerWork(); visibleWorkspace = false; refreshAfterResume = true; if (stlView != null) stlView.onPause(); super.onPause(); }
     @Override protected void onResume() {
         super.onResume();
@@ -326,7 +327,7 @@ public class MainActivity extends Activity {
 
     private void render() {
         refreshAfterResume = false; cancelLayerWork(); layersMode=false; layerAnalysis=null;
-        if (stlView != null) { stlView.onPause(); stlView = null; }
+        if (stlView != null) { if (java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = stlView.camera(); stlView.onPause(); stlView = null; }
         updatePalette(); selected = 0; toolsMode = false;
         android.content.res.Configuration config = getResources().getConfiguration();
         compactLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && config.screenWidthDp >= 500;
@@ -394,7 +395,10 @@ public class MainActivity extends Activity {
         } else root.addView(head.view, hp);
 
         FrameLayout viewport = new FrameLayout(this);
-        StlView view = new StlView(this, mesh, projectBounds(modelMetadata)); stlView = view; view.setDarkMode(true); int[] slotColours = triangleSlotColours(mesh, modelMetadata); if (slotColours != null) view.setTriangleColors(slotColours);
+        // Returning to the workspace rebuilds the 3D view: keep the camera where the user left it (same model only).
+        if (stlView != null && java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = stlView.camera();
+        else if (!java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = null;
+        StlView view = new StlView(this, mesh, projectBounds(modelMetadata)); if (savedCamera != null) view.setCamera(savedCamera); cameraModel = meshFileName; stlView = view; view.setDarkMode(true); int[] slotColours = triangleSlotColours(mesh, modelMetadata); if (slotColours != null) view.setTriangleColors(slotColours);
         view.setBackdrop(kui.backdrop(), shellView);
         viewport.addView(view, new FrameLayout.LayoutParams(-1,-1));
 

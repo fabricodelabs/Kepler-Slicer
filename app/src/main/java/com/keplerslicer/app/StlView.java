@@ -52,6 +52,9 @@ final class StlView extends GLSurfaceView {
         renderer = new MeshRenderer(mesh); setRenderer(renderer); setRenderMode(RENDERMODE_WHEN_DIRTY);
         setContentDescription(cameraDescription(false,false));
     }
+    /** Camera as yaw, pitch, zoom, panX, panY: kept when the workspace is rebuilt. */
+    float[] camera() { return new float[]{renderer.yaw, renderer.pitch, renderer.zoom, renderer.panX, renderer.panY}; }
+    void setCamera(float[] c) { if (c == null || c.length != 5) return; renderer.yaw = c[0]; renderer.pitch = c[1]; renderer.zoom = c[2]; renderer.panX = c[3]; renderer.panY = c[4]; requestRender(); }
     void resetCamera() { renderer.yaw = -35; renderer.pitch = 25; renderer.zoom = 1;renderer.panX=renderer.panY=0; requestRender(); }
     void setDarkMode(boolean dark) { renderer.dark = dark; requestRender(); }
     /** Plate name drawn on the bed (upper case, 10sp/600 at 60% white like the Figma Workspace). */
