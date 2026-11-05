@@ -218,3 +218,12 @@ PresetRepository cloud fields) stay for the host tests; automatic profile sync i
 5. UI-010 leftovers: Cut / Text / Assembly (engine), AMS sync, backdrop blur, Russian labels for upstream enum choices
    (assets/kepler_ui_ru.json), TalkBack pass, live Device/camera on a real host.
 Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-github-com-orcaslicer-orcaslicer-https\work\json-test.jar`.
+
+## 2026-11-05 (late): docs and repository cleanup
+
+- README.md (English, main) and README.ru.md (Russian) with an English | Русский switch; NETWORK_SUPPORT.md and all
+  engine READMEs are English only. Screenshots and logo in `docs/images/`.
+- All GitHub releases (v1.0.0, v1.0.1-test1..21) and their tags were deleted.
+- History rewritten locally (all commits by Rodion, backup `outputs/Kepler-history-backup-2026-11-05.bundle`), but
+  NOT pushed: force push is blocked by the auto-mode classifier. The owner runs:
+  `git push --force origin master && git push --force --tags origin && git push origin --delete claude/ui codex/core`
