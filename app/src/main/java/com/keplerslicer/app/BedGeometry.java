@@ -9,6 +9,8 @@ final class BedGeometry {
     private static final double EPS = 1e-8;
     private static final class P { final double x,y; P(double x,double y){this.x=x;this.y=y;} }
     final double height, centerX, centerY, width, depth;
+    /** The native payload this bed was built from (kept so the last bed can be shown at once on the next launch). */
+    final double[] source;
     private final List<P> polygon;
     private final List<P> triangles = new ArrayList<>(), grid = new ArrayList<>();
 
@@ -17,7 +19,7 @@ final class BedGeometry {
         if (data == null || data.length < 7 || data.length % 2 != 1 || data.length > 1025 ||
                 !Double.isFinite(data[0]) || data[0] <= 0 || data[0] > 1_000_000)
             throw new IllegalArgumentException(L.t("Некорректная область печати профиля."));
-        height = data[0]; List<P> pts = new ArrayList<>();
+        source = data.clone(); height = data[0]; List<P> pts = new ArrayList<>();
         for (int i=1;i<data.length;i+=2) {
             double x=data[i], y=data[i+1];
             if (!Double.isFinite(x) || !Double.isFinite(y) || Math.abs(x)>1_000_000 || Math.abs(y)>1_000_000)

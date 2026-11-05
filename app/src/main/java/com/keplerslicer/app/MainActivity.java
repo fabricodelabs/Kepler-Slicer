@@ -101,7 +101,24 @@ public class MainActivity extends Activity {
     }
 
     private float[] savedCamera; private String cameraModel;
-    @Override protected void onPause() { cancelLayerWork(); visibleWorkspace = false; refreshAfterResume = true; if (stlView != null) stlView.onPause(); super.onPause(); }
+    /** Camera and bed survive app restarts, so the workspace opens exactly as the user left it. */
+    private static String joinNumbers(double[] v) { StringBuilder b = new StringBuilder(); for (int i = 0; i < v.length; i++) { if (i > 0) b.append(','); b.append(v[i]); } return b.toString(); }
+    private static double[] splitNumbers(String s) { if (s == null || s.isEmpty()) return null; try { String[] p = s.split(","); double[] v = new double[p.length]; for (int i = 0; i < p.length; i++) v[i] = Double.parseDouble(p[i]); return v; } catch (NumberFormatException e) { return null; } }
+    private float[] persistedCamera() {
+        // While the model is still being read, the stored model name tells which camera to keep.
+        String model = meshFileName != null ? meshFileName : getSharedPreferences("current_model", 0).getString("file", null);
+        if (model == null) return null;
+        android.content.SharedPreferences ui = getSharedPreferences("kepler_v3_ui", MODE_PRIVATE);
+        if (!model.equals(ui.getString("camera_model", null))) return null;
+        double[] v = splitNumbers(ui.getString("camera", null)); if (v == null || v.length != 5) return null;
+        float[] c = new float[5]; for (int i = 0; i < 5; i++) { if (!Double.isFinite(v[i])) return null; c[i] = (float) v[i]; } return c;
+    }
+    private void persistCamera() {
+        if (stlView == null || meshFileName == null) return;
+        float[] c = stlView.camera(); double[] d = new double[c.length]; for (int i = 0; i < c.length; i++) d[i] = c[i];
+        getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).edit().putString("camera_model", meshFileName).putString("camera", joinNumbers(d)).apply();
+    }
+    @Override protected void onPause() { persistCamera(); cancelLayerWork(); visibleWorkspace = false; refreshAfterResume = true; if (stlView != null) stlView.onPause(); super.onPause(); }
     @Override protected void onResume() {
         super.onResume();
         visibleWorkspace = true;
@@ -339,8 +356,9 @@ public class MainActivity extends Activity {
         root = vertical(); shell.addView(root, new FrameLayout.LayoutParams(-1,-1));
         if (android.os.Build.VERSION.SDK_INT >= 35) shell.setOnApplyWindowInsetsListener((view, insets) -> {
             android.graphics.Insets safe = insets.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
-            root.setPadding(safe.left, safe.top, safe.right, safe.bottom); return insets;
+            root.setPadding(safe.left, safe.top, safe.right, compactLandscape ? safe.bottom : 0); navBottomInset = safe.bottom; layoutFloatingNav(); return insets;
         });
+        floatingNav = null;
         setContentView(shell);
         workspace();
         navBar = new com.keplerslicer.app.glass.GlassNavigation(this, 0, false, index -> {
@@ -356,7 +374,28 @@ public class MainActivity extends Activity {
             }
         };
         navShell.addView(navBar, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
-        LinearLayout.LayoutParams np = lp(-1, -2); np.bottomMargin = dp(compactLandscape ? 8 : 24); root.addView(navShell, np);
+        if (compactLandscape) { LinearLayout.LayoutParams np = lp(-1, -2); np.bottomMargin = dp(8); root.addView(navShell, np); }
+        else {
+            // Portrait: the tab bar floats over the 3D view as clear glass, like on the other tabs.
+            floatingNav = navShell; navBar.setClearGlass(true);
+            shell.addView(navShell, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
+            navShell.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> { if (b - t != ob - ot) layoutFloatingNav(); });
+            layoutFloatingNav();
+        }
+    }
+
+    private View floatingNav; private int navBottomInset; private float sceneLift;
+    /** Keeps the floating tab bar above the gesture bar and the bottom panels above the tab bar. */
+    private void layoutFloatingNav() {
+        if (floatingNav == null || !(floatingNav.getLayoutParams() instanceof FrameLayout.LayoutParams)) return;
+        FrameLayout.LayoutParams p = (FrameLayout.LayoutParams) floatingNav.getLayoutParams();
+        int lift = dp(24) + navBottomInset;
+        if (p.bottomMargin != lift) { p.bottomMargin = lift; floatingNav.setLayoutParams(p); }
+        int reserve = (floatingNav.getHeight() > 0 ? floatingNav.getHeight() : dp(72)) + lift + dp(10);
+        if (panelHost != null && panelHost.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+            FrameLayout.LayoutParams hp = (FrameLayout.LayoutParams) panelHost.getLayoutParams();
+            if (hp.bottomMargin != reserve) { hp.bottomMargin = reserve; panelHost.setLayoutParams(hp); }
+        }
     }
 
     private String plateCaption() {
@@ -401,7 +440,8 @@ public class MainActivity extends Activity {
         // Returning to the workspace rebuilds the 3D view: keep the camera where the user left it (same model only).
         if (stlView != null && java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = stlView.camera();
         else if (!java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = null;
-        StlView view = new StlView(this, mesh, projectBounds(modelMetadata)); if (savedCamera != null) view.setCamera(savedCamera); cameraModel = meshFileName; stlView = view; view.setDarkMode(true); int[] slotColours = triangleSlotColours(mesh, modelMetadata); if (slotColours != null) view.setTriangleColors(slotColours);
+        if (savedCamera == null || loadingMesh || mesh == null) { float[] stored = persistedCamera(); if (stored != null) savedCamera = stored; }
+        StlView view = new StlView(this, mesh, projectBounds(modelMetadata)); sceneLift = 0; if (savedCamera != null) view.setCamera(savedCamera); cameraModel = meshFileName; stlView = view; view.setDarkMode(true); int[] slotColours = triangleSlotColours(mesh, modelMetadata); if (slotColours != null) view.setTriangleColors(slotColours);
         view.setBackdrop(kui.backdrop(), shellView);
         viewport.addView(view, new FrameLayout.LayoutParams(-1,-1));
 
@@ -434,7 +474,27 @@ public class MainActivity extends Activity {
 
         LinearLayout host = vertical(); panelHost = host;
         if (compactLandscape) { side.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1)); LinearLayout.LayoutParams hostLp = lp(-1,-2); hostLp.setMargins(dp(4), 0, dp(4), dp(8)); side.addView(host, hostLp); }
-        else root.addView(host, lp(-1, -2));
+        else {
+            FrameLayout.LayoutParams hostLp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM); hostLp.bottomMargin = dp(96) + navBottomInset;
+            viewport.addView(host, hostLp);
+            final FrameLayout.LayoutParams plusLp = plus, hintLp = hintPosition; final View addView = add, hintView = hint;
+            host.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> {
+                int above = (b - t) + ((FrameLayout.LayoutParams) v.getLayoutParams()).bottomMargin;
+                if (plusLp.bottomMargin != above + dp(12)) { plusLp.bottomMargin = above + dp(12); addView.setLayoutParams(plusLp); }
+                if (hintLp.bottomMargin != above + dp(18)) { hintLp.bottomMargin = above + dp(18); hintView.setLayoutParams(hintLp); }
+                // A tall panel (tools, layer preview) covers the lower scene: lift the 3D view so the model stays in
+                // the free area above it, without resizing its surface (resizing made the view flash black).
+                StlView scene = stlView; if (scene != null) {
+                    float lift = -Math.max(0, (b - t) - dp(150)) / 2f;
+                    if (Math.abs(sceneLift - lift) > 1) {
+                        com.keplerslicer.app.glass.Spring sp = com.keplerslicer.app.glass.Spring.smooth(0.4f);
+                        android.animation.ValueAnimator va = android.animation.ValueAnimator.ofFloat(sceneLift, lift); sceneLift = lift;
+                        va.setDuration(sp.duration()); va.setInterpolator(sp); va.addUpdateListener(x -> { if (stlView == scene) scene.setSceneShift(-(float) x.getAnimatedValue()); }); va.start();
+                    }
+                }
+            });
+            layoutFloatingNav();
+        }
 
         LinearLayout prepare = vertical(); prepareGroup = prepare;
         if (mesh != null && !loadingMesh) {
@@ -1159,6 +1219,11 @@ public class MainActivity extends Activity {
             });
             return;
         }
+        if (staleBed == null && loadedBed == null) {
+            android.content.SharedPreferences ui = getSharedPreferences("kepler_v3_ui", MODE_PRIVATE);
+            double[] raw = key.equals(ui.getString("bed_key", null)) ? splitNumbers(ui.getString("bed_raw", null)) : null;
+            if (raw != null) try { staleBed = new BedGeometry(raw); staleBedKey = key; } catch (IllegalArgumentException ignored) { }
+        }
         if (staleBed != null && key.equals(staleBedKey)) view.setBuildVolume(staleBed, error -> { });
         if (bedPending || SliceActivity.isSlicing()) return;
         bedPending = true; final int generation = bedGeneration;
@@ -1199,7 +1264,7 @@ public class MainActivity extends Activity {
                 }
                 runOnUiThread(() -> {
                     if (isDestroyed() || generation != bedGeneration) return;
-                    loadedBed = result; bedPending = false; getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).edit().putFloat("bed_center_x", (float) result.centerX).putFloat("bed_center_y", (float) result.centerY).apply();
+                    loadedBed = result; bedPending = false; getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).edit().putFloat("bed_center_x", (float) result.centerX).putFloat("bed_center_y", (float) result.centerY).putString("bed_key", key).putString("bed_raw", joinNumbers(result.source)).apply();
                     if (stlView != null && bedHint != null) loadSelectedBed(printer, stlView, bedHint);
                 });
             } catch (Exception | LinkageError error) {
