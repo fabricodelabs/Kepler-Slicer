@@ -7,8 +7,14 @@ package com.keplerslicer.app;
 final class ModelTransform {
     private static final double MAX_OFFSET_MM = 10_000.0;
     final double rx, ry, rz, sx, sy, sz, offsetX, offsetY;
+    /** Sinking below the plate in mm (0 or negative); the part below the plate is not printed. */
+    final double offsetZ;
 
     ModelTransform(double rx, double ry, double rz, double sx, double sy, double sz, double offsetX, double offsetY) {
+        this(rx, ry, rz, sx, sy, sz, offsetX, offsetY, 0);
+    }
+    ModelTransform(double rx, double ry, double rz, double sx, double sy, double sz, double offsetX, double offsetY, double offsetZ) {
+        if (!Double.isFinite(offsetZ) || offsetZ > 0 || offsetZ < -MAX_OFFSET_MM) throw new IllegalArgumentException(L.t("Модель можно только утопить ниже стола (Z от 0 и ниже)."));
         double[] values = { rx, ry, rz, sx, sy, sz, offsetX, offsetY };
         for (double v : values) if (!Double.isFinite(v)) throw new IllegalArgumentException(L.t("Параметры преобразования должны быть конечными."));
         if (sx < .001 || sy < .001 || sz < .001 || sx > 100 || sy > 100 || sz > 100)
@@ -16,27 +22,28 @@ final class ModelTransform {
         if (Math.abs(offsetX) > MAX_OFFSET_MM || Math.abs(offsetY) > MAX_OFFSET_MM)
             throw new IllegalArgumentException(L.t("Смещение не должно превышать 10 000 мм."));
         this.rx = Math.IEEEremainder(rx, 360); this.ry = Math.IEEEremainder(ry, 360); this.rz = Math.IEEEremainder(rz, 360);
-        this.sx = sx; this.sy = sy; this.sz = sz; this.offsetX = offsetX; this.offsetY = offsetY;
+        this.sx = sx; this.sy = sy; this.sz = sz; this.offsetX = offsetX; this.offsetY = offsetY; this.offsetZ = offsetZ == 0 ? 0 : offsetZ;
     }
     static ModelTransform identity() { return new ModelTransform(0, 0, 0, 1, 1, 1, 0, 0); }
 
     String encode() {
-        return rx + "," + ry + "," + rz + "," + sx + "," + sy + "," + sz + "," + offsetX + "," + offsetY;
+        return rx + "," + ry + "," + rz + "," + sx + "," + sy + "," + sz + "," + offsetX + "," + offsetY + (offsetZ == 0 ? "" : "," + offsetZ);
     }
     static ModelTransform decode(String value) {
         if (value == null || value.isEmpty()) return identity();
         String[] fields = value.split(",", -1);
-        if (fields.length != 8) throw new IllegalArgumentException(L.t("Не удалось прочитать преобразование модели."));
+        if (fields.length != 8 && fields.length != 9) throw new IllegalArgumentException(L.t("Не удалось прочитать преобразование модели."));
         try {
-            double[] v = new double[8];
-            for (int i = 0; i < 8; i++) v[i] = Double.parseDouble(fields[i]);
-            return new ModelTransform(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+            double[] v = new double[9];
+            for (int i = 0; i < fields.length; i++) v[i] = Double.parseDouble(fields[i]);
+            return new ModelTransform(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8]);
         } catch (NumberFormatException e) { throw new IllegalArgumentException(L.t("Не удалось прочитать преобразование модели."), e); }
     }
 
     /** Stable JNI payload: radians XYZ, positive scales XYZ, XY offset in mm. */
     double[] toNativeArguments() {
-        return new double[] {Math.toRadians(rx), Math.toRadians(ry), Math.toRadians(rz), sx, sy, sz, offsetX, offsetY};
+        if (offsetZ == 0) return new double[] {Math.toRadians(rx), Math.toRadians(ry), Math.toRadians(rz), sx, sy, sz, offsetX, offsetY};
+        return new double[] {Math.toRadians(rx), Math.toRadians(ry), Math.toRadians(rz), sx, sy, sz, offsetX, offsetY, offsetZ};
     }
 
     /**

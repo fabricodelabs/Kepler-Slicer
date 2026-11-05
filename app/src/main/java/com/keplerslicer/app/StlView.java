@@ -54,12 +54,13 @@ final class StlView extends GLSurfaceView {
         float cx = renderer.rotateCX, cy = renderer.rotateCY, z0 = renderer.moveZ0;
         float[] s = toScreen(mvp, cx, cy, z0); if (s == null) return false;
         int best = -1; double bestD = 40 * getResources().getDisplayMetrics().density;
-        for (int axis = 0; axis < 2; axis++) {
-            float[] e = toScreen(mvp, cx + (axis == 0 ? len : 0), cy + (axis == 1 ? len : 0), z0); if (e == null) continue;
+        z0 += (float) (renderer.liftMm * renderer.sceneScale); s = toScreen(mvp, cx, cy, z0); if (s == null) return false;
+        for (int axis = 0; axis < 3; axis++) {
+            float[] e = toScreen(mvp, cx + (axis == 0 ? len : 0), cy + (axis == 1 ? len : 0), z0 + (axis == 2 ? renderer.moveUp : 0)); if (e == null) continue;
             double vx = e[0] - s[0], vy = e[1] - s[1], l2 = vx * vx + vy * vy; if (l2 < 1) continue;
             double t = Math.max(0, Math.min(1.15, ((x - s[0]) * vx + (y - s[1]) * vy) / l2)); // a little past the tip counts too
             double d = Math.hypot(x - (s[0] + t * vx), y - (s[1] + t * vy));
-            if (t > 0.15 && d < bestD) { bestD = d; best = axis; double l = Math.sqrt(l2); arrowDirX = (float) (vx / l); arrowDirY = (float) (vy / l); arrowPx = (float) (l / len); }
+            if (t > 0.15 && d < bestD) { bestD = d; best = axis; double l = Math.sqrt(l2); arrowDirX = (float) (vx / l); arrowDirY = (float) (vy / l); arrowPx = (float) (l / (axis == 2 ? renderer.moveUp : len)); }
         }
         if (best < 0) return false;
         arrowAxis = best; return true;
@@ -68,7 +69,7 @@ final class StlView extends GLSurfaceView {
     private boolean grabRing(float x, float y) {
         int w = getWidth(), h = getHeight(); float r = renderer.rotateR; if (w <= 0 || h <= 0 || r <= 0) return false;
         float[] p = new float[16], camera = new float[16], mvp = new float[16]; project(p, (float) w / h); cameraMatrix(camera); Matrix.multiplyMM(mvp, 0, p, 0, camera, 0);
-        float cx = renderer.rotateCX, cy = renderer.rotateCY, cz = renderer.rotateCZ;
+        float cx = renderer.rotateCX, cy = renderer.rotateCY, cz = renderer.rotateCZ + (float) (renderer.liftMm * renderer.sceneScale);
         int best = -1; double bestD = 40 * getResources().getDisplayMetrics().density;
         for (int axis = 0; axis < 3; axis++) for (int i = 0; i < 72; i++) {
             float[] q = ringPoint(axis, cx, cy, cz, r, 2 * Math.PI * i / 72), s = toScreen(mvp, q[0], q[1], q[2]);
@@ -92,7 +93,7 @@ final class StlView extends GLSurfaceView {
     void setMoveMode(boolean enabled, MoveCallback callback) { cancelDrag(); moveMode=enabled&&!toolpathMode; moveCallback=callback; setContentDescription(cameraDescription(moveMode,toolpathMode)); renderer.gizmo=moveMode; requestRender(); }
     void discardPendingMove() { cancelDrag(); renderer.dragX=renderer.dragY=0; requestRender(); }
     @Override public void onPause() { cancelDrag(); super.onPause(); }
-    private void cancelDrag() { if(dragging) { dragging=false; renderer.dragX=renderer.dragY=0; requestRender(); } }
+    private void cancelDrag() { if(dragging) { dragging=false; renderer.dragX=renderer.dragY=renderer.dragZ=0; requestRender(); } }
 
     StlView(Context context, StlMesh mesh) { this(context,mesh,null); }
     /** 3MF bounds are world-space minXYZ/maxXYZ in millimetres; null retains STL/OBJ behavior. */
@@ -209,7 +210,7 @@ final class StlView extends GLSurfaceView {
                 float[] vertices = previewGeometry(transform);
                 if (revision != transformRevision.get()) return;
                 renderer.setGeometry(vertices, bed, sourceMesh.size,projectBounds);
-                renderer.dragX = renderer.dragY = 0; renderer.dragRotZ = 0;
+                renderer.dragX = renderer.dragY = 0; renderer.dragRotZ = 0; renderer.dragZ = 0; renderer.liftMm = (float) transform.offsetZ;
                 currentTransform = transform;
                 volumeReady=bed!=null;
                 requestRender();
@@ -347,7 +348,9 @@ final class StlView extends GLSurfaceView {
                 float deg=renderer.dragRotZ+(float)Math.toDegrees(turn)*ringSign;ringStart=(float)now;deg=Math.round(deg);
                 float snapped=Math.round(deg/5f)*5f;
                 if(snapped!=Math.round(renderer.dragRotZ/5f)*5f)performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);renderer.dragRotZ=deg;}
-            else if(dragging){double along=((e.getX()-dragStartX)*arrowDirX+(e.getY()-dragStartY)*arrowDirY)/arrowPx*moveSpeed;double dx=arrowAxis==0?along:0,dy=arrowAxis==1?along:0,scale=renderer.sceneScale,ox=dragBase.offsetX+dx/scale,oy=dragBase.offsetY+dy/scale;if(Double.isFinite(ox)&&Double.isFinite(oy)&&Math.abs(ox)<=10000&&Math.abs(oy)<=10000){renderer.dragX=(float)dx;renderer.dragY=(float)dy;}}
+            else if(dragging){double along=((e.getX()-dragStartX)*arrowDirX+(e.getY()-dragStartY)*arrowDirY)/arrowPx*moveSpeed;double dx=arrowAxis==0?along:0,dy=arrowAxis==1?along:0,scale=renderer.sceneScale,ox=dragBase.offsetX+dx/scale,oy=dragBase.offsetY+dy/scale;
+                if(arrowAxis==2){double heightMm=renderer.moveH/scale,z=Math.max(-(heightMm-0.2),Math.min(0,dragBase.offsetZ+along/scale));renderer.dragZ=(float)((z-dragBase.offsetZ)*scale);}
+                else if(Double.isFinite(ox)&&Double.isFinite(oy)&&Math.abs(ox)<=10000&&Math.abs(oy)<=10000){renderer.dragX=(float)dx;renderer.dragY=(float)dy;}}
             else if(mouseAction!=0&&!pinchGesture){if(mouseAction==2)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
             else if(!pinchGesture&&!isMouse(e)){if(swapGestures)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
             lastX=e.getX();lastY=e.getY();requestRender();return true; }
@@ -358,8 +361,8 @@ final class StlView extends GLSurfaceView {
             if(rotating){rotating=false;float deg=Math.round(renderer.dragRotZ/5f)*5f;if(deg==0){renderer.dragRotZ=0;requestRender();return true;}
                 double rx=rotateBase.rx,ry=rotateBase.ry,rz=rotateBase.rz;
                 if(ringAxis==0)rx=((rx+deg)%360+540)%360-180;else if(ringAxis==1)ry=((ry+deg)%360+540)%360-180;else rz=((rz+deg)%360+540)%360-180;
-                try{rotateCallback.completed(new ModelTransform(rx,ry,rz,rotateBase.sx,rotateBase.sy,rotateBase.sz,rotateBase.offsetX,rotateBase.offsetY));}catch(RuntimeException ex){renderer.dragRotZ=0;requestRender();}
-                return true;}if(dragging){dragging=false;double scale=renderer.sceneScale;float dx=renderer.dragX,dy=renderer.dragY;if(dx==0&&dy==0){renderer.dragX=renderer.dragY=0;}else try{moveCallback.completed(new ModelTransform(dragBase.rx,dragBase.ry,dragBase.rz,dragBase.sx,dragBase.sy,dragBase.sz,dragBase.offsetX+dx/scale,dragBase.offsetY+dy/scale));}catch(RuntimeException ex){renderer.dragX=renderer.dragY=0;requestRender();}}return true;}
+                try{rotateCallback.completed(new ModelTransform(rx,ry,rz,rotateBase.sx,rotateBase.sy,rotateBase.sz,rotateBase.offsetX,rotateBase.offsetY,rotateBase.offsetZ));}catch(RuntimeException ex){renderer.dragRotZ=0;requestRender();}
+                return true;}if(dragging){dragging=false;double scale=renderer.sceneScale;float dx=renderer.dragX,dy=renderer.dragY,dz=renderer.dragZ;if(dx==0&&dy==0&&dz==0){renderer.dragX=renderer.dragY=0;}else try{moveCallback.completed(new ModelTransform(dragBase.rx,dragBase.ry,dragBase.rz,dragBase.sx,dragBase.sy,dragBase.sz,dragBase.offsetX+dx/scale,dragBase.offsetY+dy/scale,Math.min(0,Math.round((dragBase.offsetZ+dz/scale)*100)/100.0)));}catch(RuntimeException ex){renderer.dragX=renderer.dragY=renderer.dragZ=0;requestRender();}}return true;}
         return true;
     }
     private static boolean isMouse(MotionEvent e){return (e.getSource()&android.view.InputDevice.SOURCE_MOUSE)==android.view.InputDevice.SOURCE_MOUSE;}
@@ -442,7 +445,7 @@ final class StlView extends GLSurfaceView {
         }
         ToolpathGeometry pathGeometry; FloatBuffer pathPositions; int visiblePathLayers; double bedCenterX,bedCenterY;
         volatile float yaw = -35, pitch = 25, zoom = 1,panX,panY;
-        volatile float moveZ0, moveLen;
+        volatile float moveZ0, moveLen, moveUp, moveH, dragZ, liftMm;
         volatile float dragX, dragY, dragRotZ, rotateCX, rotateCY, rotateCZ, rotateR; volatile int dragRotAxis = 2; volatile double sceneScale;
         volatile boolean dark = true;
         final float[] projection = new float[16], model = new float[16], mvp = new float[16];
@@ -492,7 +495,8 @@ final class StlView extends GLSurfaceView {
             }
             // Arrows reach well past the model so a finger can take them (Orca draws them outside the box too).
             len = Math.max(len * 1.6f, .55f * Math.max(.4f, Math.max(x1 - x0, y1 - y0)) + .18f); moveLen = len;
-            float[][] axes = {{len,0,0, 1f,.541f,.502f},{0,len,0, .545f,.886f,.545f}};
+            moveUp = up; moveH = z1 - z0;
+            float[][] axes = {{len,0,0, 1f,.541f,.502f},{0,len,0, .545f,.886f,.545f},{0,0,up, .541f,.706f,1f}};
             for (float[] a : axes) { float ex = cx + a[0], ey = cy + a[1], ez = z0 + a[2]; lines.add(new float[]{cx, cy, z0, ex, ey, ez, a[3], a[4], a[5]});
                 float hx = a[0] * .15f, hy = a[1] * .15f, hz = a[2] * .15f, sx = a[2] != 0 ? .08f * up : 0, sy = a[0] != 0 ? .08f * len : a[1] != 0 ? 0 : 0, sz = a[2] == 0 ? .08f * len : 0;
                 lines.add(new float[]{ex, ey, ez, ex - hx + sx, ey - hy + sy, ez - hz + sz, a[3], a[4], a[5]}); lines.add(new float[]{ex, ey, ez, ex - hx - sx, ey - hy - sy, ez - hz - sz, a[3], a[4], a[5]}); }
@@ -640,7 +644,7 @@ final class StlView extends GLSurfaceView {
                 return;
             }
             if (count == 0) return;
-            float[] objectModel=model.clone(),objectMvp=new float[16];Matrix.translateM(objectModel,0,dragX,dragY,0);if(dragRotZ!=0){Matrix.translateM(objectModel,0,rotateCX,rotateCY,rotateCZ);Matrix.rotateM(objectModel,0,dragRotZ,dragRotAxis==0?1:0,dragRotAxis==1?1:0,dragRotAxis==2?1:0);Matrix.translateM(objectModel,0,-rotateCX,-rotateCY,-rotateCZ);}Matrix.multiplyMM(objectMvp,0,projection,0,objectModel,0);
+            float[] objectModel=model.clone(),objectMvp=new float[16];Matrix.translateM(objectModel,0,dragX,dragY,(float)(liftMm*sceneScale)+dragZ);if(dragRotZ!=0){Matrix.translateM(objectModel,0,rotateCX,rotateCY,rotateCZ);Matrix.rotateM(objectModel,0,dragRotZ,dragRotAxis==0?1:0,dragRotAxis==1?1:0,dragRotAxis==2?1:0);Matrix.translateM(objectModel,0,-rotateCX,-rotateCY,-rotateCZ);}Matrix.multiplyMM(objectMvp,0,projection,0,objectModel,0);
             GLES20.glUseProgram(program); GLES20.glUniformMatrix4fv(matrix,1,false,objectMvp,0); GLES20.glUniformMatrix4fv(modelMatrix,1,false,objectModel,0);
             positions.position(0); normals.position(0); GLES20.glEnableVertexAttribArray(pos); GLES20.glEnableVertexAttribArray(norm);
             GLES20.glVertexAttribPointer(pos,3,GLES20.GL_FLOAT,false,0,positions); GLES20.glVertexAttribPointer(norm,3,GLES20.GL_FLOAT,false,0,normals);
