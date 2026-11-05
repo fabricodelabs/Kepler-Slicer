@@ -725,4 +725,5 @@
     <string name="kv3_paint_apply">Apply</string>
     <string name="kv3_paint_too_detailed">The model has more than 200,000 triangles; the preview is simplified and cannot be painted exactly.</string>
     <string name="kv3_paint_reopen">Open the model again to paint it (it was loaded by an older version).</string>
+    <string name="kv3_paint_support_note">Painted supports are built when supports are on in the process settings (the blocker works always).</string>
 </resources>
