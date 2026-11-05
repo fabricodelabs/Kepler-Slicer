@@ -3,7 +3,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <application
         android:name=".KeplerApplication"
         android:enableOnBackInvokedCallback="true"
@@ -17,15 +16,6 @@
         <activity android:name=".NetworkActivity" android:exported="false" />
         <activity android:name=".DeviceActivity" android:exported="false" />
         <provider android:name=".ShareProvider" android:authorities="${applicationId}.share" android:exported="false" android:grantUriPermissions="true" />
-        <!-- Exported only so the sign-in page can bring the user back; the link carries no data. -->
-        <activity android:name=".CloudSyncActivity" android:exported="true" android:launchMode="singleTop">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="keplerslicer" android:host="cloud-login" />
-            </intent-filter>
-        </activity>
         <activity android:name=".CloudPrintLoginActivity" android:exported="false" />
         <activity android:name=".ModelDetailsActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
         <activity android:name=".PrinterPickerActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
@@ -91,6 +81,5 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
-        <service android:name=".LoginKeepAlive" android:exported="false" android:foregroundServiceType="shortService" />
     </application>
 </manifest>

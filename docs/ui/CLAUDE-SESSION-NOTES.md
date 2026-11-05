@@ -175,6 +175,13 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   truncation in layer preview, Device screen shows Pause enabled without connection, back from layer preview exits
   the app, SliceActivity still in the old style, ~273 MB native heap after start.
 
+## Removed: profile cloud (2026-11-05, owner)
+
+The OrcaCloud profile sync screen (CloudSyncActivity, LoginKeepAlive) and its entry points (Network screen,
+Preferences: cloud, auto-sync, sync now) were removed at the owner's request: sign-in via the browser's
+localhost return did not work on the owner's phone. Backend classes (CloudProfileOAuth/Sync/Store,
+PresetRepository cloud fields) stay for the host tests; automatic profile sync is forced off.
+
 ## Known defects to fix next
 
 - Hard-coded Russian text remains only in protocol/model helper classes (error messages; they are compiled by host tests without Android context). Screens are localised.
