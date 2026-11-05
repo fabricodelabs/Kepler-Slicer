@@ -84,7 +84,9 @@ final class MaterialAssignment {
             list.addView(row, new LinearLayout.LayoutParams(-1, -2));
         }
         ScrollView scroll = new ScrollView(activity); scroll.addView(list);
-        MdUi.alert(activity).setTitle(title).setView(scroll).setNegativeButton(R.string.general_project_cancel, null)
+        android.app.AlertDialog.Builder builder = MdUi.alert(activity).setTitle(title).setView(scroll).setNegativeButton(R.string.general_project_cancel, null);
+        if (activity instanceof ModelDetailsActivity) builder.setNeutralButton(R.string.kv3_paint_colour_brush, (d, w) -> { activity.setResult(Activity.RESULT_OK, new Intent().putExtra("paint_colour", true)); activity.finish(); });
+        builder
             .setPositiveButton(R.string.kv3_materials_apply, (d, w) -> apply(activity, slots, filled, targets, changed)).show();
     }
 

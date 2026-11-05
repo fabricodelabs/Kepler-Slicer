@@ -122,7 +122,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
-        if(request==REQUEST_MODEL_DETAILS){restoreModel();return;}
+        if(request==REQUEST_MODEL_DETAILS){if(data!=null&&data.getBooleanExtra("paint_colour",false))pendingPaint="colour";restoreModel();return;}
         if (request == PICK_PRINTER || request == PICK_PROCESS || request == PICK_FILAMENT) { if (result == RESULT_OK) {render();ControlPreferences.scheduleAutoSlice(this);} return; }
         if ((request != OPEN_STL && request != REQUEST_IMPORT) || result != RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
@@ -457,6 +457,7 @@ public class MainActivity extends Activity {
         if (hasModel) view.setModelTransform(modelTransform, error -> {
             if (isDestroyed() || stlView != view) return;
             previewReady = error == null; transform.setEnabled(previewReady&&hasModel); transform.setAlpha(previewReady&&hasModel ? 1 : .38f);
+            if (previewReady && pendingPaint != null) { String kind = pendingPaint; pendingPaint = null; setToolsMode(true); startPaint(kind); }
             view.setMoveMode(previewReady&&editable&&moveMode&&toolsMode&&activeTool==0, moved);
             boolean sliceable = previewReady&&canSliceModel(); ui.setEnabled(slice, sliceable);
             refreshToolFields();
@@ -497,8 +498,8 @@ public class MainActivity extends Activity {
             toolTiles[i] = ui.toolTile(icons[i], label, i == activeTool, () -> {
                 if (index <= 2) selectTool(index);
                 else if (index == 3) layOnFace();
-                else if (index == 5) objectTool(label, "support_type", true);
-                else if (index == 6) objectTool(label, "seam_position", false);
+                else if (index == 5) paintMenu(label, "support", "support_type", true);
+                else if (index == 6) paintMenu(label, "seam", "seam_position", false);
                 else if (index == 7) objectTool(label, "fuzzy_skin", false);
                 else if (index == 9) measure();
                 else if (index == 11) objectTool(label, "brim_type", false);
@@ -634,7 +635,8 @@ public class MainActivity extends Activity {
     private void syncPanels() {
         boolean preview = layersMode && layerPanel != null && layerPanel.getVisibility() == View.VISIBLE;
         if (prepareGroup != null) prepareGroup.setVisibility(toolsMode || preview ? View.GONE : View.VISIBLE);
-        if (toolsSheet != null) toolsSheet.setVisibility(toolsMode ? View.VISIBLE : View.GONE);
+        if (toolsSheet != null) toolsSheet.setVisibility(toolsMode && paint == null ? View.VISIBLE : View.GONE);
+        if (paintPanel != null) paintPanel.setVisibility(paint != null ? View.VISIBLE : View.GONE);
         if (addButton != null) addButton.setVisibility(toolsMode || layersMode ? View.GONE : View.VISIBLE);
         if (statusPill != null) { statusPill.setVisibility(preview ? View.VISIBLE : View.GONE); int plate = modelMetadata == null ? 0 : Math.max(0, modelMetadata.optInt("selected_plate", 0)); ((TextView) statusPill.getChildAt(1)).setText(getString(R.string.kv3_sliced_plate, plate + 1)); }
         if (plateChip != null) plateChip.setVisibility(preview ? View.GONE : View.VISIBLE);
@@ -761,6 +763,114 @@ public class MainActivity extends Activity {
             for (int t = from; t < to; t++) out[t] = argb;
         }
         return out;
+    }
+    // ---- Paint brushes (support, seam, colour): whole source triangles under a sphere brush, applied by the engine ----
+    private static final class PaintSession {
+        final String kind; int state; float radius = 3f; final java.util.HashMap<Integer, Integer> strokes = new java.util.HashMap<>();
+        final org.json.JSONArray map; PaintSession(String kind, int state, org.json.JSONArray map) { this.kind = kind; this.state = state; this.map = map; }
+    }
+    private PaintSession paint; private LinearLayout paintPanel; private String pendingPaint;
+    private static final float[] RADII = {1f, 2f, 3f, 5f, 8f, 12f};
+    private void paintMenu(String title, String kind, String key, boolean support) {
+        String[] options = {getString(support ? R.string.kv3_paint_support_brush : R.string.kv3_paint_seam_brush), getString(R.string.kv3_paint_object_setting)};
+        com.keplerslicer.app.glass.GlassBottomSheet.choose(this, root, false, title, options, -1, which -> { if (which == 0) startPaint(kind); else objectTool(title, key, support); });
+    }
+    /** Source triangle of each preview triangle: [first preview, object, part, first source] runs (stride 1 only). */
+    private org.json.JSONArray paintMap() {
+        if (mesh == null || mesh.previewSampled) return null;
+        if (modelMetadata == null) { try { return new org.json.JSONArray().put(new org.json.JSONArray().put(0).put(0).put(0).put(0)); } catch (Exception e) { return null; } }
+        if (modelMetadata.optInt("preview_stride", 0) != 1) return null;
+        return modelMetadata.optJSONArray("preview_source_map");
+    }
+    private void startPaint(String kind) {
+        if (mesh == null || loadingMesh || !previewReady) { dialog(getString(R.string.kv3_paint_title), getString(R.string.kv3_no_model_detail)); return; }
+        org.json.JSONArray map = paintMap();
+        if (map == null) { dialog(getString(R.string.kv3_paint_title), getString(mesh.previewSampled ? R.string.kv3_paint_too_detailed : R.string.kv3_paint_reopen)); return; }
+        if ("colour".equals(kind)) { MaterialSlots.Slot[] slots = MaterialSlots.load(this); int filled = 0; for (MaterialSlots.Slot s : slots) if (s.filled()) filled++; if (filled < 2) { dialog(getString(R.string.kv3_materials_title), getString(R.string.kv3_materials_need_slots)); return; } }
+        paint = new PaintSession(kind, "colour".equals(kind) ? 2 : 1, map);
+        if (stlView != null) { stlView.setMoveMode(false, viewportMoveCallback); stlView.setPaintMode(this::painted, paint.radius); }
+        showPaintPanel(); repaint();
+    }
+    private void painted(int[] triangles) { if (paint == null) return; for (int t : triangles) paint.strokes.put(t, paint.state); repaint(); }
+    private int paintColour(String kind, int state) {
+        if (state <= 0) return 0;
+        if ("support".equals(kind)) return state == 1 ? 0xFF3DDC84 : 0xFFFF5A5A;
+        if ("seam".equals(kind)) return state == 1 ? 0xFFFFD27A : 0xFF8A8F98;
+        MaterialSlots.Slot[] slots = MaterialSlots.load(this); java.util.List<Integer> filled = new java.util.ArrayList<>(); for (int i = 0; i < slots.length; i++) if (slots[i].filled()) filled.add(i);
+        return state - 1 < filled.size() ? MaterialSlots.argb(slots[filled.get(state - 1)].colour) : 0xFF3D8FE0;
+    }
+    /** Base colours (slot colours or the model colour), stored paint of the active kind, then this session's strokes. */
+    private void repaint() {
+        if (stlView == null || mesh == null) return;
+        int n = mesh.vertices.length / 9; int[] colours = triangleSlotColours(mesh, modelMetadata);
+        if (colours == null) { colours = new int[n]; java.util.Arrays.fill(colours, 0xFF3D8FE0); }
+        if (paint != null && modelMetadata != null) {
+            org.json.JSONArray runs = modelMetadata.optJSONArray("preview_paint_" + paint.kind);
+            for (int i = 0; runs != null && i < runs.length(); i++) {
+                org.json.JSONArray r = runs.optJSONArray(i), next = i + 1 < runs.length() ? runs.optJSONArray(i + 1) : null; if (r == null) continue;
+                int from = r.optInt(0), to = next == null ? n : Math.min(n, next.optInt(0)), c = paintColour(paint.kind, r.optInt(1));
+                if (c != 0) for (int t = Math.max(0, from); t < to; t++) colours[t] = c;
+            }
+        }
+        if (paint != null) for (java.util.Map.Entry<Integer, Integer> s : paint.strokes.entrySet()) { int t = s.getKey(); if (t >= 0 && t < n) { int c = paintColour(paint.kind, s.getValue()); colours[t] = c == 0 ? 0xFF3D8FE0 : c; } }
+        stlView.setTriangleColors(colours);
+    }
+    private void showPaintPanel() {
+        final com.keplerslicer.app.glass.KeplerUi ui = kui; if (paintPanel != null && paintPanel.getParent() instanceof ViewGroup) ((ViewGroup) paintPanel.getParent()).removeView(paintPanel);
+        LinearLayout sheet = ui.sheet(); paintPanel = sheet;
+        String kindTitle = getString("support".equals(paint.kind) ? R.string.kv3_paint_support : "seam".equals(paint.kind) ? R.string.kv3_paint_seam : R.string.kv3_paint_colour);
+        sheet.addView(ui.line(kindTitle, 16, 700, com.keplerslicer.app.glass.KeplerUi.WHITE));
+        TextView hint = ui.line(getString(R.string.kv3_paint_hint) + ("support".equals(paint.kind) ? " " + getString(R.string.kv3_paint_support_note) : ""), 12, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY); hint.setSingleLine(false); hint.setMaxLines(5); hint.setEllipsize(null); sheet.addView(hint, ui.below(4));
+        android.widget.HorizontalScrollView scroll = new android.widget.HorizontalScrollView(this); scroll.setHorizontalScrollBarEnabled(false); LinearLayout chips = ui.row(); scroll.addView(chips);
+        java.util.List<String> labels = new java.util.ArrayList<>(); java.util.List<Integer> states = new java.util.ArrayList<>();
+        if ("colour".equals(paint.kind)) { MaterialSlots.Slot[] slots = MaterialSlots.load(this); int k = 0; for (int i = 0; i < slots.length; i++) if (slots[i].filled()) { k++; labels.add(getString(R.string.kv3_slot, i + 1)); states.add(k); } }
+        else { labels.add(getString("support".equals(paint.kind) ? R.string.kv3_paint_enforce : R.string.kv3_paint_seam_here)); states.add(1); labels.add(getString("support".equals(paint.kind) ? R.string.kv3_paint_block : R.string.kv3_paint_seam_block)); states.add(2); }
+        labels.add(getString(R.string.kv3_paint_erase)); states.add(0);
+        final TextView[] chipViews = new TextView[labels.size()];
+        for (int i = 0; i < labels.size(); i++) { final int st = states.get(i); final int index = i;
+            chipViews[i] = ui.chip(labels.get(i), st == paint.state, () -> { paint.state = st; for (int j = 0; j < chipViews.length; j++) ui.setChipActive(chipViews[j], j == index); });
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, dp(36)); if (i > 0) p.leftMargin = dp(8); chips.addView(chipViews[i], p); }
+        sheet.addView(scroll, ui.below(10));
+        LinearLayout radiusRow = ui.row(); final TextView radiusText = ui.line("", 14, 600, com.keplerslicer.app.glass.KeplerUi.WHITE);
+        Runnable showRadius = () -> { radiusText.setText(getString(R.string.kv3_paint_radius, paint.radius == Math.round(paint.radius) ? String.valueOf(Math.round(paint.radius)) : String.valueOf(paint.radius))); if (stlView != null) stlView.setPaintMode(this::painted, paint.radius); };
+        View minus = ui.glassButton(R.drawable.kv3_minus, 40, 18, getString(R.string.kv3_paint_smaller), () -> { paint.radius = step(paint.radius, -1); showRadius.run(); });
+        View plus = ui.glassButton(R.drawable.kv3_plus, 40, 18, getString(R.string.kv3_paint_larger), () -> { paint.radius = step(paint.radius, 1); showRadius.run(); });
+        radiusRow.addView(minus, lp(40, 40)); LinearLayout.LayoutParams rt = new LinearLayout.LayoutParams(0, -2, 1); rt.leftMargin = dp(12); radiusRow.addView(radiusText, rt); radiusRow.addView(plus, lp(40, 40));
+        showRadius.run(); sheet.addView(radiusRow, ui.below(10));
+        LinearLayout actions = ui.row();
+        LinearLayout cancel = ui.secondaryButton(0, getString(R.string.general_project_cancel), 48, 24, this::endPaint); actions.addView(cancel, ui.weight());
+        LinearLayout apply = ui.primaryButton(0, getString(R.string.kv3_paint_apply), this::applyPaint); LinearLayout.LayoutParams ap = ui.weight(); ap.leftMargin = dp(8); actions.addView(apply, ap);
+        sheet.addView(actions, ui.below(12));
+        ViewGroup host = toolsSheet == null ? null : (ViewGroup) toolsSheet.getParent();
+        if (host != null) { LinearLayout.LayoutParams sp = lp(-1, -2); sp.setMargins(dp(12), 0, dp(12), dp(8)); host.addView(sheet, host.indexOfChild(toolsSheet) + 1, sp); }
+        syncPanels();
+    }
+    private static float step(float r, int dir) { int i = 0; while (i < RADII.length - 1 && RADII[i] < r) i++; return RADII[Math.max(0, Math.min(RADII.length - 1, i + dir))]; }
+    private void endPaint() {
+        paint = null; if (stlView != null) { stlView.setPaintMode(null, 3f); stlView.setTriangleColors(triangleSlotColours(mesh, modelMetadata)); stlView.setMoveMode(toolsMode && activeTool == 0 && previewReady && moveMode, viewportMoveCallback); }
+        if (paintPanel != null && paintPanel.getParent() instanceof ViewGroup) ((ViewGroup) paintPanel.getParent()).removeView(paintPanel); paintPanel = null; syncPanels();
+    }
+    private void applyPaint() {
+        final PaintSession s = paint; if (s == null) return; if (s.strokes.isEmpty()) { endPaint(); return; }
+        try {
+            // Group strokes by source part and state; preview runs map preview triangles to source triangles.
+            java.util.TreeMap<String, java.util.TreeSet<Integer>> groups = new java.util.TreeMap<>();
+            for (java.util.Map.Entry<Integer, Integer> e : s.strokes.entrySet()) {
+                int t = e.getKey(); org.json.JSONArray run = null;
+                for (int i = 0; i < s.map.length(); i++) { org.json.JSONArray r = s.map.getJSONArray(i); if (r.getInt(0) <= t) run = r; else break; }
+                if (run == null) continue;
+                int source = run.getInt(3) + (t - run.getInt(0)); String key = run.getInt(1) + "/" + run.getInt(2) + "/" + e.getValue();
+                groups.computeIfAbsent(key, k -> new java.util.TreeSet<>()).add(source);
+            }
+            MaterialSlots.Slot[] slots = MaterialSlots.load(this); int[] map = new int[slots.length];
+            org.json.JSONObject request = MaterialSlots.request(slots, map); org.json.JSONArray items = new org.json.JSONArray();
+            for (java.util.Map.Entry<String, java.util.TreeSet<Integer>> g : groups.entrySet()) {
+                String[] k = g.getKey().split("/"); org.json.JSONArray tris = new org.json.JSONArray(); for (int t : g.getValue()) tris.put(t);
+                items.put(new org.json.JSONObject().put("object", Integer.parseInt(k[0])).put("part", Integer.parseInt(k[1])).put("kind", s.kind).put("state", Integer.parseInt(k[2])).put("triangles", tris));
+            }
+            request.put("paint", items);
+            endPaint(); runEdit(getString(R.string.kv3_paint_title), NativePreferenceActions.EDIT_MATERIALS, 0, 0, request.toString());
+        } catch (org.json.JSONException e) { dialog(getString(R.string.kv3_edit_failed), String.valueOf(e.getMessage())); }
     }
     private static String fmt(double mm) { return String.format(java.util.Locale.getDefault(), "%.2f", mm); }
 

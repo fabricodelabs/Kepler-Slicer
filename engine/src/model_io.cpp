@@ -3,6 +3,8 @@
 #include "libslic3r/Model.hpp"
 #include "libslic3r/Format/bbs_3mf.hpp"
 #include "libslic3r/PrintConfig.hpp"
+#include "libslic3r/TriangleSelector.hpp"
+#include <array>
 #include <nlohmann/json.hpp>
 #include <algorithm>
 #include <cmath>
@@ -86,6 +88,9 @@ ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Sli
     std::uint64_t stride=total/max+(total%max?1:0), index=0;
     // Material slot of each kept preview triangle as runs [first_triangle, slot]; slot = part extruder, else object extruder, else 1.
     json runs=json::array();int last_slot=-1;std::uint64_t kept=0;
+    // Paint per kept preview triangle (support, seam, colour) as runs [first_triangle, state], and the source of
+    // each run of preview triangles [first_preview, object, part, first_source_triangle] for the paint tools.
+    json paint_runs[3]={json::array(),json::array(),json::array()};int last_paint[3]={0,0,0};json source_map=json::array();
     auto slot_of=[](const Slic3r::ModelConfigObject &c){const auto *o=c.option("extruder");return o?o->getInt():0;};
     ImportedModelInfo result;result.preview_xyz.reserve(static_cast<size_t>(std::min<std::uint64_t>(total,max))*9);
     double low[3]={INFINITY,INFINITY,INFINITY},high[3]={-INFINITY,-INFINITY,-INFINITY};
@@ -93,9 +98,22 @@ ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Sli
         for(const auto *volume:object->volumes)if(volume && volume->is_model_part()) {
             const Slic3r::Transform3d transform=inst->get_matrix()*volume->get_matrix();const auto &mesh=volume->mesh().its;
             int slot=slot_of(volume->config);if(slot<=0)slot=slot_of(object->config);if(slot<=0)slot=1;
+            const size_t n=mesh.indices.size();
+            std::array<std::vector<int8_t>,3> paint;
+            const Slic3r::FacetsAnnotation *annotations[3]={&volume->supported_facets,&volume->seam_facets,&volume->mmu_segmentation_facets};
+            for(int k=0;k<3;++k)if(!annotations[k]->empty()){
+                paint[k].assign(n,0);Slic3r::TriangleSelector selector(volume->mesh());selector.deserialize(annotations[k]->get_data(),false);
+                const int top=k==2?static_cast<int>(Slic3r::EnforcerBlockerType::ExtruderMax):2;
+                for(int s=1;s<=top;++s){std::vector<int> src;selector.get_facets_strict(static_cast<Slic3r::EnforcerBlockerType>(s),&src);for(int t:src)if(t>=0&&static_cast<size_t>(t)<n)paint[k][t]=static_cast<int8_t>(s);}
+            }
+            int part=0;for(const auto *other:object->volumes){if(other==volume)break;if(other->is_model_part())++part;}
+            std::uint64_t local=0;bool mapped=false;
             for(const auto &triangle:mesh.indices) {
+                const std::uint64_t source=local++;
                 bool keep=(index++%stride)==0;
-                if(keep){if(slot!=last_slot){runs.push_back({kept,slot});last_slot=slot;}++kept;}
+                if(keep){if(!mapped){source_map.push_back({kept,p.first,part,source});mapped=true;}
+                    for(int k=0;k<3;++k){int st=paint[k].empty()?0:paint[k][source];if(st!=last_paint[k]){paint_runs[k].push_back({kept,st});last_paint[k]=st;}}
+                    if(slot!=last_slot){runs.push_back({kept,slot});last_slot=slot;}++kept;}
                 for(int k=0;k<3;k++) {
                     const auto vi=triangle[k];if(vi<0 || static_cast<size_t>(vi)>=mesh.vertices.size())throw std::runtime_error("Invalid triangle index");
                     const Slic3r::Vec3d xyz=transform*mesh.vertices[vi].cast<double>();
@@ -106,7 +124,7 @@ ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Sli
     }
     for(int a=0;a<3;a++)if(!std::isfinite(high[a]-low[a]))throw std::runtime_error("Invalid model bounds");
     if(high[0]==low[0]&&high[1]==low[1]&&high[2]==low[2])throw std::runtime_error("Model has no size");
-    metadata["selected_plate"]=plate;metadata["bounds_min"]={low[0],low[1],low[2]};metadata["bounds_max"]={high[0],high[1],high[2]};metadata["triangle_count"]=total;metadata["preview_triangle_count"]=result.preview_xyz.size()/9;metadata["non_printable_instances"]=non_printable;metadata["printable_instances"]=selected.size()-non_printable;metadata["mapping_unresolved"]=unresolved;metadata["units"]="mm";metadata["preview_slot_runs"]=runs;
+    metadata["selected_plate"]=plate;metadata["bounds_min"]={low[0],low[1],low[2]};metadata["bounds_max"]={high[0],high[1],high[2]};metadata["triangle_count"]=total;metadata["preview_triangle_count"]=result.preview_xyz.size()/9;metadata["non_printable_instances"]=non_printable;metadata["printable_instances"]=selected.size()-non_printable;metadata["mapping_unresolved"]=unresolved;metadata["units"]="mm";metadata["preview_slot_runs"]=runs;metadata["preview_stride"]=stride;metadata["preview_source_map"]=source_map;metadata["preview_paint_support"]=paint_runs[0];metadata["preview_paint_seam"]=paint_runs[1];metadata["preview_paint_colour"]=paint_runs[2];
     result.metadata_json=metadata.dump();return result;
 }
 }

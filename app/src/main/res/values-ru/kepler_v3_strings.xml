@@ -705,4 +705,24 @@
     <string name="kv3_bambu_storage_abnormal">Принтер сообщает, что SD-карта недоступна. Вставьте или проверьте карту либо разрешите нестандартное хранилище в «Общие».</string>
     <string name="kv3_ams_slot_empty">Слот AMS %1$d пуст, а проект его использует. Загрузите материал или включите «Пропуск проверки AMS».</string>
     <string name="kv3_ams_slot_mismatch">В слоте AMS %1$d — %2$s, а проект ждёт %3$s. Замените материал или включите «Пропуск проверки AMS».</string>
+    <string name="kv3_paint_title">Кисть</string>
+    <string name="kv3_paint_support">Кисть · поддержки</string>
+    <string name="kv3_paint_seam">Кисть · шов</string>
+    <string name="kv3_paint_colour">Кисть · цвет</string>
+    <string name="kv3_paint_support_brush">Рисовать поддержки кистью</string>
+    <string name="kv3_paint_seam_brush">Рисовать шов кистью</string>
+    <string name="kv3_paint_object_setting">Настройка для всего объекта</string>
+    <string name="kv3_paint_colour_brush">Кисть</string>
+    <string name="kv3_paint_hint">Одним пальцем рисуйте, двумя двигайте вид.</string>
+    <string name="kv3_paint_enforce">Добавить поддержки</string>
+    <string name="kv3_paint_block">Запретить поддержки</string>
+    <string name="kv3_paint_seam_here">Шов здесь</string>
+    <string name="kv3_paint_seam_block">Без шва</string>
+    <string name="kv3_paint_erase">Стереть</string>
+    <string name="kv3_paint_radius">Радиус кисти %1$s мм</string>
+    <string name="kv3_paint_smaller">Кисть меньше</string>
+    <string name="kv3_paint_larger">Кисть больше</string>
+    <string name="kv3_paint_apply">Применить</string>
+    <string name="kv3_paint_too_detailed">В модели больше 200 000 треугольников: предпросмотр упрощён, и точно рисовать по нему нельзя.</string>
+    <string name="kv3_paint_reopen">Откройте модель заново, чтобы рисовать по ней: она загружена прежней версией.</string>
 </resources>

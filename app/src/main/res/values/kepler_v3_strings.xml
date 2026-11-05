@@ -705,4 +705,24 @@
     <string name="kv3_bambu_storage_abnormal">The printer reports no usable SD card. Insert or check the card, or allow non-standard storage in Preferences.</string>
     <string name="kv3_ams_slot_empty">AMS slot %1$d is empty, but the project uses it. Load the material or turn on \"Skip AMS check\".</string>
     <string name="kv3_ams_slot_mismatch">AMS slot %1$d holds %2$s, the project expects %3$s. Change the material or turn on \"Skip AMS check\".</string>
+    <string name="kv3_paint_title">Paint</string>
+    <string name="kv3_paint_support">Brush · supports</string>
+    <string name="kv3_paint_seam">Brush · seam</string>
+    <string name="kv3_paint_colour">Brush · colour</string>
+    <string name="kv3_paint_support_brush">Paint supports with a brush</string>
+    <string name="kv3_paint_seam_brush">Paint the seam with a brush</string>
+    <string name="kv3_paint_object_setting">Setting for the whole object</string>
+    <string name="kv3_paint_colour_brush">Brush</string>
+    <string name="kv3_paint_hint">One finger paints, two fingers move the view.</string>
+    <string name="kv3_paint_enforce">Add supports</string>
+    <string name="kv3_paint_block">Block supports</string>
+    <string name="kv3_paint_seam_here">Seam here</string>
+    <string name="kv3_paint_seam_block">No seam</string>
+    <string name="kv3_paint_erase">Erase</string>
+    <string name="kv3_paint_radius">Brush radius %1$s mm</string>
+    <string name="kv3_paint_smaller">Smaller brush</string>
+    <string name="kv3_paint_larger">Larger brush</string>
+    <string name="kv3_paint_apply">Apply</string>
+    <string name="kv3_paint_too_detailed">The model has more than 200,000 triangles; the preview is simplified and cannot be painted exactly.</string>
+    <string name="kv3_paint_reopen">Open the model again to paint it (it was loaded by an older version).</string>
 </resources>
