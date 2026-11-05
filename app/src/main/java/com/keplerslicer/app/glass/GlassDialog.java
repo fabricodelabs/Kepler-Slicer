@@ -54,14 +54,59 @@ public final class GlassDialog {
         TextView message = dialog.findViewById(android.R.id.message);
         if (message != null) { message.setTypeface(regular); message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15); message.setTextColor(0xE0FFFFFF); message.setLineSpacing(4 * d, 1f); }
         styleFields(dialog.getWindow().getDecorView(), regular, d);
+        if (message != null) { final View decorRoot = window.getDecorView(); decorRoot.post(() -> alignToText(decorRoot, message)); }
         Button positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE), negative = dialog.getButton(AlertDialog.BUTTON_NEGATIVE), neutral = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
         pill(positive, true, semibold, d); pill(negative, false, semibold, d); pill(neutral, false, semibold, d);
+        if (positive != null && positive.getParent() instanceof ViewGroup && positive.getParent().getParent() instanceof ViewGroup) {
+            rebuildButtons(dialog, (ViewGroup) positive.getParent(), positive, neutral, negative, semibold, d);
+            return;
+        }
         if (positive != null && positive.getParent() instanceof View) {
             View bar = (View) positive.getParent(); bar.setPadding(Math.round(16 * d), Math.round(8 * d), Math.round(16 * d), Math.round(16 * d));
             bar.setMinimumHeight(Math.round(68 * d));
             for (View p = bar; p != null && p.getParent() instanceof ViewGroup; p = (View) p.getParent()) { ((ViewGroup) p.getParent()).setClipChildren(false); if (p.getParent() == window.getDecorView()) break; }
             bar.requestLayout();
         }
+    }
+
+    /**
+     * The platform bar right-aligns buttons and stacks them with no gap when they do not fit. It is replaced by our
+     * own bar: two short actions sit side by side (secondary left, primary right); three, or long labels, become a
+     * full-width column with 10 dp gaps — primary first, cancel last. Each pill forwards to the original button, so
+     * listeners and getButton() keep working.
+     */
+    private static void rebuildButtons(AlertDialog dialog, ViewGroup bar, Button positive, Button neutral, Button negative, Typeface face, float d) {
+        java.util.List<Button> shown = new java.util.ArrayList<>();
+        for (Button b : new Button[]{positive, neutral, negative}) if (b != null && b.getVisibility() == View.VISIBLE && b.getText() != null && b.getText().length() > 0) shown.add(b);
+        if (shown.isEmpty()) return;
+        Context c = dialog.getContext();
+        float width = 0; android.graphics.Paint paint = new android.graphics.Paint(); paint.setTypeface(face); paint.setTextSize(15 * c.getResources().getDisplayMetrics().scaledDensity);
+        for (Button b : shown) width = Math.max(width, paint.measureText(b.getText().toString()) + 40 * d);
+        int available = c.getResources().getDisplayMetrics().widthPixels - Math.round(32 * d) - Math.round(40 * d);
+        boolean row = shown.size() <= 2 && width * shown.size() + 10 * d <= available;
+        LinearLayout box = new LinearLayout(c); box.setOrientation(row ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        box.setPadding(Math.round(20 * d), Math.round(12 * d), Math.round(20 * d), Math.round(20 * d));
+        java.util.List<Button> order = new java.util.ArrayList<>(shown);
+        if (row) java.util.Collections.reverse(order); // secondary on the left, primary on the right
+        for (int i = 0; i < order.size(); i++) {
+            Button source = order.get(i);
+            Button copy = new Button(c); copy.setText(source.getText()); copy.setContentDescription(source.getText());
+            pill(copy, source == positive, face, d); copy.setEnabled(source.isEnabled());
+            copy.setOnClickListener(v -> source.performClick());
+            LinearLayout.LayoutParams lp = row ? new LinearLayout.LayoutParams(0, Math.round(48 * d), 1) : new LinearLayout.LayoutParams(-1, Math.round(48 * d));
+            if (i > 0) { if (row) lp.leftMargin = Math.round(10 * d); else lp.topMargin = Math.round(10 * d); }
+            box.addView(copy, lp);
+        }
+        // The platform bar sits in a ScrollView (buttonPanel) that takes one child: hide that whole panel and put ours
+        // next to it in the dialog column.
+        View hide = bar; ViewGroup panel = (ViewGroup) bar.getParent();
+        while (panel instanceof android.widget.ScrollView || panel instanceof android.widget.HorizontalScrollView || panel.getId() == c.getResources().getIdentifier("buttonPanel", "id", "android")) {
+            if (!(panel.getParent() instanceof ViewGroup)) return;
+            hide = panel; panel = (ViewGroup) panel.getParent();
+        }
+        int at = panel.indexOfChild(hide);
+        hide.setVisibility(View.GONE);
+        panel.addView(box, at + 1, panel instanceof LinearLayout ? new LinearLayout.LayoutParams(-1, -2) : new ViewGroup.LayoutParams(-1, -2));
     }
 
     private static void pill(Button b, boolean primary, Typeface face, float d) {
@@ -78,6 +123,20 @@ public final class GlassDialog {
         b.setStateListAnimator(null); b.setElevation(0);
         ViewGroup.LayoutParams lp = b.getLayoutParams();
         if (lp instanceof ViewGroup.MarginLayoutParams) { ((ViewGroup.MarginLayoutParams) lp).setMargins(Math.round(4 * d), 0, Math.round(4 * d), 0); b.setLayoutParams(lp); }
+    }
+
+    /** Checkboxes of a custom view line up with the message text instead of the card edge. */
+    private static void alignToText(View root, TextView message) {
+        int[] m = new int[2]; message.getLocationInWindow(m);
+        java.util.ArrayDeque<View> q = new java.util.ArrayDeque<>(); q.add(root);
+        while (!q.isEmpty()) {
+            View v = q.poll();
+            if (v instanceof android.widget.CheckBox) {
+                int[] at = new int[2]; v.getLocationInWindow(at);
+                int shift = (m[0] + message.getPaddingLeft()) - (at[0] + v.getPaddingLeft()) - Math.round(3 * v.getResources().getDisplayMetrics().density);
+                if (shift > 0) v.setTranslationX(shift);
+            } else if (v instanceof ViewGroup) { ViewGroup g = (ViewGroup) v; for (int i = 0; i < g.getChildCount(); i++) q.add(g.getChildAt(i)); }
+        }
     }
 
     /** Text fields and checkboxes inside a custom dialog view. */

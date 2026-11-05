@@ -46,16 +46,15 @@ public final class ImportActivity extends Activity {
         content.addView(formatScroll, new LinearLayout.LayoutParams(-1, -2));
 
         screen.section(getString(R.string.kv3_open_from), null, null);
-        // "Choose file" below opens any storage (Files, Google Drive and other providers). The tiles add what it does not:
-        // the Downloads folder (browsers, Telegram, Quick Share save there), a model link and generated shapes.
-        int[] icons = {R.drawable.kv3_folder, R.drawable.kv3_link, R.drawable.kv3_cube};
-        String[] labels = {L.t("Загрузки"), getString(R.string.kv3_source_url), getString(R.string.kv3_source_shapes)};
+        // "Choose file" below opens any storage (Files, Downloads, Google Drive); the tiles add a model link and generated shapes.
+        int[] icons = {R.drawable.kv3_link, R.drawable.kv3_cube};
+        String[] labels = {getString(R.string.kv3_source_url), getString(R.string.kv3_source_shapes)};
         View[] tiles = new View[icons.length];
         for (int i = 0; i < icons.length; i++) {
             final int index = i;
-            tiles[i] = sourceTile(icons[i], labels[i], () -> { if (index == 0) chooseFile(downloadsUri()); else if (index == 1) fromUrl(); else shapes(); });
+            tiles[i] = sourceTile(icons[i], labels[i], () -> { if (index == 0) fromUrl(); else shapes(); });
         }
-        content.addView(ui.grid(tiles, 3), new LinearLayout.LayoutParams(-1, -2));
+        content.addView(ui.grid(tiles, 2), new LinearLayout.LayoutParams(-1, -2));
 
         screen.section(getString(R.string.kv3_recent_models), getString(R.string.kv3_view_all), () -> { showAll = !showAll; renderRecent(); });
         recent = ui.column(); content.addView(recent, new LinearLayout.LayoutParams(-1, -2));
@@ -198,7 +197,6 @@ public final class ImportActivity extends Activity {
         });
     }
 
-    private static Uri downloadsUri() { return android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download"); }
     private void chooseFile() { chooseFile(null); }
     private void chooseFile(Uri start) {
         if (pickerOpen) return; Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
