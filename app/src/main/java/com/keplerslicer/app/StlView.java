@@ -84,6 +84,8 @@ final class StlView extends GLSurfaceView {
         backdrop.setBounds(0, 0, Math.max(1, backdropAnchor.getWidth()), Math.max(1, backdropAnchor.getHeight())); backdrop.draw(canvas);
         queueEvent(() -> renderer.setBackdrop(bitmap)); requestRender();
     }
+    /** Material slot colours per preview triangle (null restores the default model colour). */
+    void setTriangleColors(int[] argb) { queueEvent(() -> { renderer.triangleColors = argb; renderer.rebuildTints(); requestRender(); }); }
     /** Update only the view; raw printable dimensions remain owned by the selected profile. */
     void setBuildVolume(BedGeometry volume, TransformCallback callback) {
         cancelDrag(); volumeReady=false; bed = volume;
@@ -248,7 +250,16 @@ final class StlView extends GLSurfaceView {
     private static float distance(MotionEvent e) { return (float)Math.hypot(e.getX(0)-e.getX(1), e.getY(0)-e.getY(1)); }
 
     private static final class MeshRenderer implements Renderer {
-        FloatBuffer positions, normals, gridPositions, bedPositions; int count, gridCount, bedCount;
+        FloatBuffer positions, normals, gridPositions, bedPositions, tints; int count, gridCount, bedCount; int tint = -1;
+        /** ARGB per preview triangle (material slot colours), or null for the default model colour. */
+        int[] triangleColors;
+        void rebuildTints() {
+            int[] c = triangleColors; if (c == null || count == 0 || c.length != count / 3) { tints = null; return; }
+            float[] t = new float[count * 4];
+            for (int tri = 0; tri < c.length; tri++) { float r = ((c[tri] >> 16) & 255) / 255f, g = ((c[tri] >> 8) & 255) / 255f, b = (c[tri] & 255) / 255f;
+                for (int v = 0; v < 3; v++) { int at = (tri * 3 + v) * 4; t[at] = r; t[at + 1] = g; t[at + 2] = b; t[at + 3] = 1; } }
+            tints = buffer(t);
+        }
         ToolpathGeometry pathGeometry; FloatBuffer pathPositions; int visiblePathLayers; double bedCenterX,bedCenterY;
         volatile float yaw = -35, pitch = 25, zoom = 1,panX,panY;
         volatile float dragX, dragY; volatile double sceneScale;
@@ -349,7 +360,7 @@ final class StlView extends GLSurfaceView {
                 float len=(float)Math.sqrt(nx*nx+ny*ny+nz*nz); if (len > 1e-12f) { nx/=len; ny/=len; nz/=len; } else { nx=0; ny=0; nz=1; }
                 for(int j=0;j<3;j++){ n[i+j*3]=nx; n[i+j*3+1]=ny; n[i+j*3+2]=nz; }
             }
-            normals = buffer(n);
+            normals = buffer(n); rebuildTints();
             float minZ = Float.POSITIVE_INFINITY;
             for (int i=2; i<scene.length; i+=3) minZ = Math.min(minZ, scene[i]);
             if (!Float.isFinite(minZ)) minZ = 0;
@@ -376,7 +387,7 @@ final class StlView extends GLSurfaceView {
         public void onSurfaceCreated(GL10 gl, EGLConfig config) {
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
             // Kepler v3 model faces: top #8CC8FF, lit side #3D8FE0, shaded side #2A6FBE (Workspace viewport, node 3:73).
-            String vs="attribute vec3 aPosition; attribute vec3 aNormal; uniform mat4 uMvp; uniform mat4 uModel; varying vec3 shade; void main(){ vec3 o=normalize(aNormal); vec3 n=normalize(mat3(uModel)*aNormal); float side=clamp(0.5-0.5*n.x/max(0.2,length(n.xy)),0.0,1.0); vec3 sideColor=mix(vec3(0.165,0.435,0.745),vec3(0.239,0.561,0.878),side); shade=mix(sideColor,vec3(0.549,0.784,1.0),smoothstep(0.55,0.9,abs(o.z))); gl_Position=uMvp*vec4(aPosition,1.0); }";
+            String vs="attribute vec3 aPosition; attribute vec3 aNormal; attribute vec4 aTint; uniform mat4 uMvp; uniform mat4 uModel; varying vec3 shade; void main(){ vec3 o=normalize(aNormal); vec3 n=normalize(mat3(uModel)*aNormal); float side=clamp(0.5-0.5*n.x/max(0.2,length(n.xy)),0.0,1.0); float top=smoothstep(0.55,0.9,abs(o.z)); vec3 sideColor=mix(vec3(0.165,0.435,0.745),vec3(0.239,0.561,0.878),side); shade=mix(sideColor,vec3(0.549,0.784,1.0),top); if(aTint.a>0.5){ shade=aTint.rgb*mix(mix(0.62,0.85,side),1.0,top)+vec3(0.04); } gl_Position=uMvp*vec4(aPosition,1.0); }";
             String fs="precision mediump float; varying vec3 shade; void main(){ gl_FragColor=vec4(shade,1.0); }";
             String qvs="attribute vec2 aPosition; varying vec2 uv; void main(){ uv=vec2(aPosition.x*0.5+0.5,0.5-aPosition.y*0.5); gl_Position=vec4(aPosition,0.0,1.0); }";
             String qfs="precision mediump float; varying vec2 uv; uniform sampler2D uTexture; void main(){ gl_FragColor=texture2D(uTexture,uv); }";
@@ -392,7 +403,7 @@ final class StlView extends GLSurfaceView {
             quadPos=GLES20.glGetAttribLocation(quadProgram,"aPosition"); quadSampler=GLES20.glGetUniformLocation(quadProgram,"uTexture"); backdropTexture=0;
             program=GLES20.glCreateProgram(); GLES20.glAttachShader(program,shader(GLES20.GL_VERTEX_SHADER,vs)); GLES20.glAttachShader(program,shader(GLES20.GL_FRAGMENT_SHADER,fs)); GLES20.glLinkProgram(program);
             int[] ok=new int[1]; GLES20.glGetProgramiv(program,GLES20.GL_LINK_STATUS,ok,0); if(ok[0]==0) throw new IllegalStateException(GLES20.glGetProgramInfoLog(program));
-            pos=GLES20.glGetAttribLocation(program,"aPosition"); norm=GLES20.glGetAttribLocation(program,"aNormal"); matrix=GLES20.glGetUniformLocation(program,"uMvp"); modelMatrix=GLES20.glGetUniformLocation(program,"uModel");
+            pos=GLES20.glGetAttribLocation(program,"aPosition"); norm=GLES20.glGetAttribLocation(program,"aNormal"); tint=GLES20.glGetAttribLocation(program,"aTint"); matrix=GLES20.glGetUniformLocation(program,"uMvp"); modelMatrix=GLES20.glGetUniformLocation(program,"uModel");
             String gvs="attribute vec3 aPosition; uniform mat4 uMvp; void main(){gl_Position=uMvp*vec4(aPosition,1.0);}";
             String gfs="precision mediump float; uniform vec4 uColor; void main(){gl_FragColor=uColor;}";
             gridProgram=GLES20.glCreateProgram(); GLES20.glAttachShader(gridProgram,shader(GLES20.GL_VERTEX_SHADER,gvs)); GLES20.glAttachShader(gridProgram,shader(GLES20.GL_FRAGMENT_SHADER,gfs)); GLES20.glLinkProgram(gridProgram);
@@ -432,7 +443,9 @@ final class StlView extends GLSurfaceView {
             float[] objectModel=model.clone(),objectMvp=new float[16];Matrix.translateM(objectModel,0,dragX,dragY,0);Matrix.multiplyMM(objectMvp,0,projection,0,objectModel,0);
             GLES20.glUseProgram(program); GLES20.glUniformMatrix4fv(matrix,1,false,objectMvp,0); GLES20.glUniformMatrix4fv(modelMatrix,1,false,objectModel,0);
             positions.position(0); normals.position(0); GLES20.glEnableVertexAttribArray(pos); GLES20.glEnableVertexAttribArray(norm);
-            GLES20.glVertexAttribPointer(pos,3,GLES20.GL_FLOAT,false,0,positions); GLES20.glVertexAttribPointer(norm,3,GLES20.GL_FLOAT,false,0,normals); GLES20.glDrawArrays(GLES20.GL_TRIANGLES,0,count);
+            GLES20.glVertexAttribPointer(pos,3,GLES20.GL_FLOAT,false,0,positions); GLES20.glVertexAttribPointer(norm,3,GLES20.GL_FLOAT,false,0,normals);
+            if (tint >= 0) { if (tints != null) { tints.position(0); GLES20.glEnableVertexAttribArray(tint); GLES20.glVertexAttribPointer(tint,4,GLES20.GL_FLOAT,false,0,tints); } else { GLES20.glDisableVertexAttribArray(tint); GLES20.glVertexAttrib4f(tint,0,0,0,0); } }
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLES,0,count); if (tint >= 0 && tints != null) GLES20.glDisableVertexAttribArray(tint);
             GLES20.glDisableVertexAttribArray(pos); GLES20.glDisableVertexAttribArray(norm);
             if (gizmo && gizmoCount > 0) { GLES20.glDisable(GLES20.GL_DEPTH_TEST); GLES20.glUseProgram(colorProgram); GLES20.glUniformMatrix4fv(colorMatrix,1,false,objectMvp,0); GLES20.glEnableVertexAttribArray(colorPos); GLES20.glEnableVertexAttribArray(colorAttr); gizmoPositions.position(0); gizmoColors.position(0); GLES20.glVertexAttribPointer(colorPos,3,GLES20.GL_FLOAT,false,0,gizmoPositions); GLES20.glVertexAttribPointer(colorAttr,3,GLES20.GL_FLOAT,false,0,gizmoColors); GLES20.glLineWidth(3f); GLES20.glDrawArrays(GLES20.GL_LINES,0,gizmoCount); GLES20.glDisableVertexAttribArray(colorPos); GLES20.glDisableVertexAttribArray(colorAttr); GLES20.glEnable(GLES20.GL_DEPTH_TEST); }
         }

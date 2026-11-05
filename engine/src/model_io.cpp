@@ -84,13 +84,18 @@ ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Sli
         metadata["non_printable_instances"]=non_printable;metadata["printable_instances"]=selected.size()-non_printable;metadata["mapping_unresolved"]=unresolved;metadata["units"]="mm";empty.metadata_json=metadata.dump();return empty;
     }
     std::uint64_t stride=total/max+(total%max?1:0), index=0;
+    // Material slot of each kept preview triangle as runs [first_triangle, slot]; slot = part extruder, else object extruder, else 1.
+    json runs=json::array();int last_slot=-1;std::uint64_t kept=0;
+    auto slot_of=[](const Slic3r::ModelConfigObject &c){const auto *o=c.option("extruder");return o?o->getInt():0;};
     ImportedModelInfo result;result.preview_xyz.reserve(static_cast<size_t>(std::min<std::uint64_t>(total,max))*9);
     double low[3]={INFINITY,INFINITY,INFINITY},high[3]={-INFINITY,-INFINITY,-INFINITY};
     for(const auto &p:selected){const auto *object=model.objects[p.first];const auto *inst=object->instances[p.second];if(!inst)throw std::runtime_error("Invalid instance");
         for(const auto *volume:object->volumes)if(volume && volume->is_model_part()) {
             const Slic3r::Transform3d transform=inst->get_matrix()*volume->get_matrix();const auto &mesh=volume->mesh().its;
+            int slot=slot_of(volume->config);if(slot<=0)slot=slot_of(object->config);if(slot<=0)slot=1;
             for(const auto &triangle:mesh.indices) {
                 bool keep=(index++%stride)==0;
+                if(keep){if(slot!=last_slot){runs.push_back({kept,slot});last_slot=slot;}++kept;}
                 for(int k=0;k<3;k++) {
                     const auto vi=triangle[k];if(vi<0 || static_cast<size_t>(vi)>=mesh.vertices.size())throw std::runtime_error("Invalid triangle index");
                     const Slic3r::Vec3d xyz=transform*mesh.vertices[vi].cast<double>();
@@ -101,7 +106,7 @@ ImportedModelInfo build_preview(const Slic3r::Model &model,const std::vector<Sli
     }
     for(int a=0;a<3;a++)if(!std::isfinite(high[a]-low[a]))throw std::runtime_error("Invalid model bounds");
     if(high[0]==low[0]&&high[1]==low[1]&&high[2]==low[2])throw std::runtime_error("Model has no size");
-    metadata["selected_plate"]=plate;metadata["bounds_min"]={low[0],low[1],low[2]};metadata["bounds_max"]={high[0],high[1],high[2]};metadata["triangle_count"]=total;metadata["preview_triangle_count"]=result.preview_xyz.size()/9;metadata["non_printable_instances"]=non_printable;metadata["printable_instances"]=selected.size()-non_printable;metadata["mapping_unresolved"]=unresolved;metadata["units"]="mm";
+    metadata["selected_plate"]=plate;metadata["bounds_min"]={low[0],low[1],low[2]};metadata["bounds_max"]={high[0],high[1],high[2]};metadata["triangle_count"]=total;metadata["preview_triangle_count"]=result.preview_xyz.size()/9;metadata["non_printable_instances"]=non_printable;metadata["printable_instances"]=selected.size()-non_printable;metadata["mapping_unresolved"]=unresolved;metadata["units"]="mm";metadata["preview_slot_runs"]=runs;
     result.metadata_json=metadata.dump();return result;
 }
 }
@@ -109,6 +114,7 @@ ImportedModelInfo inspect_model(const std::string &path,int plate,size_t max_tri
     const auto ext=extension(path);
     if(ext==".3mf") {
         auto project=inspect_project_3mf(path);json metadata={{"format","3mf"},{"requires_project_semantics",true},{"project_data",json::parse(project.describe_json())}};
+        if(const auto *colours=project.project_config().option<Slic3r::ConfigOptionStrings>("filament_colour"))metadata["slot_colours"]=colours->values;
         auto &json_plates=metadata["project_data"]["plates"];
         for(size_t i=0;i<project.plates().size();++i){const auto *p=project.plates()[i];if(!p)throw std::runtime_error("Invalid 3MF plate");int index=p->plate_index;bool unresolved=false;auto selection=selected_instances(project.model(),project.plates(),index,&unresolved);
             json_plates[i]["mapping_unresolved"]=unresolved;json_plates[i]["object_instances"]=json::array();for(const auto &pair:selection)json_plates[i]["object_instances"].push_back({pair.first,pair.second});}

@@ -457,7 +457,7 @@
     <string name="l10n_net_upload_only">Будет передан только файл; команда запуска не отправляется.</string>
     <string name="l10n_net_delete_note">Будут удалены адрес и сохранённые учётные данные этого подключения.</string>
     <string name="l10n_net_all_types">Все типы серверов движка и отдельные облачные службы</string>
-    <string name="l10n_net_cloud_login">Вход SimplyPrint / 3DPrinterOS</string>
+    <string name="l10n_net_cloud_login">Вход в облако: Bambu Lab, SimplyPrint, 3DPrinterOS</string>
     <string name="l10n_net_sp_expired">Вход SimplyPrint истёк. Войдите снова.</string>
     <string name="l10n_net_profile_sync">Вход и синхронизация профилей</string>
     <string name="l10n_net_choose_cloud">Выберите SimplyPrint или 3DPrinterOS в поле протокола.</string>
@@ -685,4 +685,16 @@
     <string name="kv3_speed_silent">Тихий 50%</string>
     <string name="kv3_speed_sport">Спорт 124%</string>
     <string name="kv3_speed_ludicrous">Безумный 166%</string>
+    <string name="kv3_bambu_cloud">Bambu Lab (облако)</string>
+    <string name="kv3_bambu_cloud_hint">Войдите в аккаунт Bambu Lab (регион: %1$s, меняется в «Общие»). Пароль отправляется только в Bambu Lab, приложение хранит зашифрованный токен доступа.</string>
+    <string name="kv3_bambu_cloud_email">Почта</string>
+    <string name="kv3_bambu_cloud_password">Пароль (пусто — вход по коду)</string>
+    <string name="kv3_bambu_cloud_sign_in">Войти</string>
+    <string name="kv3_bambu_cloud_code">Код из письма</string>
+    <string name="kv3_bambu_cloud_code_sent">Bambu Lab отправил код входа на %1$s.</string>
+    <string name="kv3_bambu_cloud_tfa">У аккаунта включена двухфакторная защита. Войдите по коду из письма: оставьте пароль пустым.</string>
+    <string name="kv3_bambu_cloud_no_printers">К аккаунту не привязаны принтеры.</string>
+    <string name="kv3_bambu_cloud_choose">Принтер аккаунта</string>
+    <string name="kv3_bambu_cloud_online">в сети</string>
+    <string name="kv3_bambu_cloud_offline">не в сети</string>
 </resources>

@@ -64,7 +64,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   `outputs/Kepler-Claude/engine/src/slice_jni.cpp`). Incremental build + publish (~1 min):
   `pwsh -File engine/build-native.ps1 -Build ../../work/orca-headless-fresh -Cmake ../../work/android-tools/cmake/data/bin/cmake.exe -Ndk ../../work/android-ndk/android-ndk-r30 -Parallel 12 -PublishToApp`
   (keeps the previous .so under `outputs/Kepler-Native-Phase2-baseline/<sha>/`). Keep both ExperimentalSlicer.java copies equal.
-- Current .so SHA-256 `5487e9a7f926c39f45da1affcee90c19823b73d6496e09b337101c1aa23a54dc` (16 KB aligned).
+- Current .so SHA-256 `126f8e5973e69db003741a67c746223b053455c0f37ff62591019f0753338a0c` (16 KB aligned).
 - New JNI: `editModel` (op 1 Cut at Z via upstream `Cut::perform_with_plane` — plane is relative to the instance
   offset; op 2 Text via `Emboss`, system Roboto font; op 3 Assembly = all objects into one multi-part object) and
   `exportProject3mf` (upstream `store_bbs_3mf` with resolved settings). Code in `native_preferences.cpp`
@@ -86,6 +86,21 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   idle, status refresh every 8 s. Bambu: FTPS upload (port 990, `TlsEngineChannel` resumes the control TLS session
   on the data channel), start of an uploaded file via `gcode_file` (separate confirmed step after upload, same
   receipt rules as OctoPrint/Moonraker), MQTT commands. `tools/test_bambu_lan.ps1`: 29 checks on loopback simulators.
+- Multi-colour preview: native `inspect` returns `preview_slot_runs` ([first preview triangle, slot]) and the
+  project `slot_colours`; `MainActivity.triangleSlotColours` -> `StlView.setTriangleColors` (aTint attribute).
+  Painted (MMU-segmented) facets are not coloured yet; object and part slots are.
+- Live status + control for more hosts (`LegacyPrinterControl`, normalised `{"kepler":{...}}` telemetry):
+  Duet RRF (`rr_model`, `rr_gcode`, session key) and DSF (`machine/status`, `machine/code`), M24/M25/M0, M32 start;
+  Repetier Server (`stateList`, `printer/list`, `@pause`, `continueJob`, `stopJob`); Creality OS WebSocket :9999
+  (`{"method":"set","params":{...}}`); Elegoo Neptune via the OctoPrint API, Centauri Carbon via SDCP (UDP 3000
+  discovery `M99999`, WebSocket :3030, Cmd 0/128-131/403). Centauri Carbon 2 control is refused (protocol unknown).
+  `MiniWebSocket`; `tools/test_printer_control.ps1` (28 loopback checks, includes Bambu cloud).
+- Bambu cloud (`BambuCloud`, type `BAMBU_CLOUD`): sign-in with password or e-mail code (api.bambulab.com / .cn by
+  the Preferences region, now selectable), uid from `my/profile`, printers from `iot-service/api/user/bind`; status,
+  AMS and commands over the account MQTT broker (us/cn.mqtt.bambulab.com, username `u_<uid>`, token, normal TLS
+  checks). Token + uid stored in the connection (encrypted secret + extras). Upload through the cloud is refused
+  (use LAN). Newer firmware with Bambu "authorization control" may ignore cloud control commands; status works.
+- Connection form fixes: protocol chips apply the default address/auth (hidden Spinner sent no event), fields 48 dp.
 - Dialogs: `glass/GlassDialog` restyles every `MdUi.alert` AlertDialog (glass card, Manrope, pill buttons).
   `glass/Backdrop` blurs content under the floating nav (Android 12+); sheets/alerts blur behind.
 - Google Play: `docs/GOOGLE-PLAY.md`, `docs/PRIVACY.md`; upload key in `C:\Users\tails\.kepler-signing` (not in git).
@@ -96,7 +111,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 ## Open items
 
-- Not verified on real hardware: Bambu FTPS/MQTT commands, OctoPrint/Moonraker/PrusaLink job control. Telemetry and job control exist only for OctoPrint, Moonraker, PrusaLink and Bambu; other hosts (Duet, Repetier, Creality, ElegooLink, Flashforge, ...) have test + upload only. Bambu cloud preferences need the proprietary plug-in. Preview shows one colour for multi-material models.
+- Not verified on real hardware: every printer command and status path (Bambu LAN/cloud, OctoPrint, Moonraker, PrusaLink, Duet, Repetier, Creality, Elegoo); only loopback simulators. Not implemented: cloud upload for Bambu, Centauri Carbon 2 status/control, colours of painted facets in the preview, Bambu cloud token refresh (sign in again).
   (Lay on face, Measure, object-setting tools, camera, Project 3MF and plate label are done — see UI-010 follow-ups.)
 - Not verified: TalkBack; live Device telemetry and camera against a real OctoPrint/PrusaLink/Moonraker host; plate label with a printer that defines a bed type. The emulator test sphere has a fuzzy_skin object override from the check.
 - The duplicate `Kepler-Slicer/` clone was deleted on the owner's request.

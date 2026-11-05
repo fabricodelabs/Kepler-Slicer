@@ -392,7 +392,7 @@ public class MainActivity extends Activity {
         } else root.addView(head.view, hp);
 
         FrameLayout viewport = new FrameLayout(this);
-        StlView view = new StlView(this, mesh, projectBounds(modelMetadata)); stlView = view; view.setDarkMode(true);
+        StlView view = new StlView(this, mesh, projectBounds(modelMetadata)); stlView = view; view.setDarkMode(true); int[] slotColours = triangleSlotColours(mesh, modelMetadata); if (slotColours != null) view.setTriangleColors(slotColours);
         view.setBackdrop(kui.backdrop(), shellView);
         viewport.addView(view, new FrameLayout.LayoutParams(-1,-1));
 
@@ -741,6 +741,26 @@ public class MainActivity extends Activity {
             String text = getString(R.string.kv3_measure_result, fmt(dx), fmt(dy), fmt(dz), fmt(Math.sqrt(dx*dx+dy*dy+dz*dz))) + (mesh.previewSampled ? "\n" + getString(R.string.kv3_measure_sampled) : "");
             runOnUiThread(() -> { if (!isDestroyed()) com.keplerslicer.app.glass.GlassBottomSheet.info(this, root, false, getString(R.string.kv3_tool_measure), text); });
         }, "measure").start();
+    }
+    /** Preview colours from the material slot of each triangle (engine runs) and the project's slot colours. */
+    private int[] triangleSlotColours(StlMesh m, org.json.JSONObject meta) {
+        if (m == null || meta == null) return null;
+        org.json.JSONArray runs = meta.optJSONArray("preview_slot_runs"), colours = meta.optJSONArray("slot_colours");
+        if (runs == null || runs.length() == 0) return null;
+        boolean several = colours != null && colours.length() > 1;
+        for (int i = 0; i < runs.length() && !several; i++) { org.json.JSONArray r = runs.optJSONArray(i); if (r != null && r.optInt(1, 1) != 1) several = true; }
+        if (!several) return null; // single-material models keep the design's model colour
+        MaterialSlots.Slot[] fallback = MaterialSlots.load(this);
+        int triangles = m.vertices.length / 9; int[] out = new int[triangles];
+        for (int i = 0; i < runs.length(); i++) {
+            org.json.JSONArray r = runs.optJSONArray(i); if (r == null) continue;
+            int from = Math.max(0, r.optInt(0, 0)), slot = Math.max(1, r.optInt(1, 1));
+            org.json.JSONArray next = i + 1 < runs.length() ? runs.optJSONArray(i + 1) : null; int to = next == null ? triangles : Math.min(triangles, next.optInt(0, triangles));
+            String hex = colours != null && slot - 1 < colours.length() ? colours.optString(slot - 1, "") : slot - 1 < fallback.length ? fallback[slot - 1].colour : "";
+            int argb = hex.matches("#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?") ? 0xFF000000 | Integer.parseInt(hex.substring(1, 7), 16) : 0xFF3D8FE0;
+            for (int t = from; t < to; t++) out[t] = argb;
+        }
+        return out;
     }
     private static String fmt(double mm) { return String.format(java.util.Locale.getDefault(), "%.2f", mm); }
 

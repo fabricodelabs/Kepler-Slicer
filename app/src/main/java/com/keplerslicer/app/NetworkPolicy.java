@@ -7,7 +7,7 @@ final class NetworkPolicy {
     static boolean offline(Context c){return c.getSharedPreferences("app_preferences",0).getBoolean("network_offline",false);}
     static void requireOnline(Context c)throws IOException{if(offline(c))throw new IOException("Включён режим без сети. Измените режим на экране подключения.");}
     static void requireCloud(Context c)throws IOException{requireOnline(c);if(c.getSharedPreferences("app_preferences",0).getBoolean("stealth_mode",false))throw new IOException("Скрытый режим отключает облачные функции. Локальные принтеры остаются доступны.");}
-    static void requireEndpoint(Context c,PrinterEndpoint endpoint)throws IOException{requireOnline(c);if(CloudPrinterHosts.supports(endpoint.type))requireCloud(c);else checkUri(c,endpoint.baseUri);}
+    static void requireEndpoint(Context c,PrinterEndpoint endpoint)throws IOException{requireOnline(c);if(CloudPrinterHosts.supports(endpoint.type)||endpoint.type==PrinterEndpoint.Type.BAMBU_CLOUD)requireCloud(c);else checkUri(c,endpoint.baseUri);}
     static void install(Context context){final Context app=context.getApplicationContext();NetworkHttp.setRequestPolicy(uri->checkUri(app,uri));}
     static void checkUri(Context c,URI uri)throws IOException{requireOnline(c);if(c.getSharedPreferences("app_preferences",0).getBoolean("stealth_mode",false)){
         String host=uri.getHost();if(!OnlineRules.lanHost(host))throw new IOException("Скрытый режим блокирует облачный адрес. Используйте локальный адрес принтера.");

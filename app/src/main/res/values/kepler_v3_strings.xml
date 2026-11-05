@@ -457,7 +457,7 @@
     <string name="l10n_net_upload_only">Only the file is sent; no start command is sent.</string>
     <string name="l10n_net_delete_note">The address and saved credentials of this connection will be deleted.</string>
     <string name="l10n_net_all_types">All engine server types and separate cloud services</string>
-    <string name="l10n_net_cloud_login">SimplyPrint / 3DPrinterOS sign-in</string>
+    <string name="l10n_net_cloud_login">Cloud sign-in: Bambu Lab, SimplyPrint, 3DPrinterOS</string>
     <string name="l10n_net_sp_expired">The SimplyPrint sign-in expired. Sign in again.</string>
     <string name="l10n_net_profile_sync">Sign-in and profile sync</string>
     <string name="l10n_net_choose_cloud">Choose SimplyPrint or 3DPrinterOS in the protocol field.</string>
@@ -685,4 +685,16 @@
     <string name="kv3_speed_silent">Silent 50%</string>
     <string name="kv3_speed_sport">Sport 124%</string>
     <string name="kv3_speed_ludicrous">Ludicrous 166%</string>
+    <string name="kv3_bambu_cloud">Bambu Lab (cloud)</string>
+    <string name="kv3_bambu_cloud_hint">Sign in with your Bambu Lab account (region: %1$s, change it in Preferences). The password is sent only to Bambu Lab; the app keeps the access token, encrypted.</string>
+    <string name="kv3_bambu_cloud_email">E-mail</string>
+    <string name="kv3_bambu_cloud_password">Password (empty: sign in with a code)</string>
+    <string name="kv3_bambu_cloud_sign_in">Sign in</string>
+    <string name="kv3_bambu_cloud_code">Code from the e-mail</string>
+    <string name="kv3_bambu_cloud_code_sent">Bambu Lab sent a sign-in code to %1$s.</string>
+    <string name="kv3_bambu_cloud_tfa">This account uses two-factor authentication. Sign in with an e-mail code: leave the password empty.</string>
+    <string name="kv3_bambu_cloud_no_printers">No printers are bound to this account.</string>
+    <string name="kv3_bambu_cloud_choose">Printer of the account</string>
+    <string name="kv3_bambu_cloud_online">online</string>
+    <string name="kv3_bambu_cloud_offline">offline</string>
 </resources>

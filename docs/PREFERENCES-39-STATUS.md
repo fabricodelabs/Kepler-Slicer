@@ -28,7 +28,7 @@ All 39 entries remain visible in their desktop sections and order. A missing cap
 | 20 | Clear unsaved project choice | Removes remembered replace / backup-and-replace answer only. |
 | 21 | Clear unsaved preset choice | Removes remembered Save / Discard answer only; successful saves and canceled Save As are distinguished. |
 | 22 | Clear printer sync choice | Removes the remembered selected-printer / embedded-printer answer used by the actual 3MF import decision. This does not clear a cloud account, device state or a selected library preset. |
-| 23 | Online: region | Blocked: original Bambu network agent is absent. Global upstream Cloud is not falsely assigned regional routes. |
+| 23 | Online: region | Works for the Bambu Lab cloud account (China: bambulab.cn, other regions: bambulab.com). The profile cloud keeps its single global API. |
 | 24 | Stealth | Dynamic cloud/public HTTP gate, permits validated LAN targets, cancels active HTTP work on policy changes. |
 | 25 | Network test | Selected printer protocol test; explicit official HTTPS reachability test when no printer is selected. |
 | 26 | Stable updates only | Real stable/prerelease selection for official upstream release checks. No automatic desktop binary installation. |

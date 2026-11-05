@@ -40,8 +40,20 @@ final class BambuLan {
     private BambuLan() {}
 
     // ---- endpoint checks shared by status, commands and file transfer ----
-    private static final class Target { final InetAddress address; final String host, serial, code; Target(InetAddress a, String h, String s, String c) { address = a; host = h; serial = s; code = c; } }
+    private static final class Target {
+        final InetAddress address; final String host, serial, code, user; final boolean cloud;
+        Target(InetAddress a, String h, String s, String c) { this(a, h, s, c, "bblp", false); }
+        Target(InetAddress a, String h, String s, String c, String u, boolean cl) { address = a; host = h; serial = s; code = c; user = u; cloud = cl; }
+    }
     private static Target target(PrinterEndpoint e) throws IOException {
+        if (e.type == PrinterEndpoint.Type.BAMBU_CLOUD) {
+            // Cloud: the account broker, username u_<uid>, password = the account token; normal certificate checks.
+            String serial = e.username.trim(), token = e.secret(), uid = e.extras.get("uid"); if (uid == null) uid = "";
+            if (!serial.matches("[A-Za-z0-9]{6,32}")) throw new IOException("Bambu: выберите принтер аккаунта (кнопка входа в облако).");
+            if (token.isEmpty() || !uid.matches("[0-9]{1,20}")) throw new IOException("Bambu: войдите в облако заново.");
+            String host = BambuCloud.mqttHost(e.extras.get("region"));
+            return new Target(InetAddress.getByName(host), host, serial, token, "u_" + uid, true);
+        }
         String host = e.baseUri.getHost(), serial = e.username.trim(), code = e.secret();
         if (host == null || host.isEmpty()) throw new IOException("Bambu: printer IP address is missing.");
         if (serial.isEmpty() || !serial.matches("[A-Za-z0-9]{6,32}")) throw new IOException("Bambu: enter the printer serial number in the User field.");
@@ -87,16 +99,21 @@ final class BambuLan {
         Target t = target(e);
         Socket raw = new Socket();
         cancel.setCloser(raw);
+        int port = t.cloud ? 8883 : mqttPort;
         try {
-            raw.connect(new InetSocketAddress(t.address, mqttPort), TIMEOUT_MS);
+            raw.connect(new InetSocketAddress(t.address, port), TIMEOUT_MS);
             raw.setSoTimeout(TIMEOUT_MS);
-            SSLSocket tls = (SSLSocket) lanTls().getSocketFactory().createSocket(raw, t.host, mqttPort, true);
+            SSLSocket tls;
+            if (t.cloud) {
+                try { tls = (SSLSocket) SSLContext.getDefault().getSocketFactory().createSocket(raw, t.host, port, true); } catch (java.security.NoSuchAlgorithmException x) { throw new IOException(x); }
+                javax.net.ssl.SSLParameters params = tls.getSSLParameters(); params.setEndpointIdentificationAlgorithm("HTTPS"); tls.setSSLParameters(params);
+            } else tls = (SSLSocket) lanTls().getSocketFactory().createSocket(raw, t.host, port, true);
             tls.startHandshake();
             OutputStream out = tls.getOutputStream(); DataInputStream in = new DataInputStream(tls.getInputStream());
-            write(out, 0x10, connect("kepler-" + Long.toHexString(System.nanoTime()), "bblp", t.code));
+            write(out, 0x10, connect("kepler-" + Long.toHexString(System.nanoTime()), t.user, t.code));
             Packet ack = read(in);
             if (ack.header >> 4 != 2 || ack.body.length < 2) throw new IOException("Bambu: unexpected MQTT reply.");
-            if (ack.body[1] != 0) throw new IOException(ack.body[1] == 5 || ack.body[1] == 4 ? "Bambu: the access code was rejected." : "Bambu: connection refused (" + ack.body[1] + ").");
+            if (ack.body[1] != 0) throw new IOException(ack.body[1] == 5 || ack.body[1] == 4 ? (t.cloud ? "Bambu: облако отклонило токен, войдите заново." : "Bambu: the access code was rejected.") : "Bambu: connection refused (" + ack.body[1] + ").");
             String report = "device/" + t.serial + "/report", request = "device/" + t.serial + "/request";
             if (waitReport) write(out, 0x82, subscribe(1, report));
             cancel.check();
@@ -132,6 +149,7 @@ final class BambuLan {
     /** Uploads one file to the printer's storage root over FTPS. Returns the stored name. */
     static String upload(PrinterEndpoint e, File file, String remoteName, NetworkHttp.Cancellation cancel) throws IOException {
         checkName(remoteName);
+        if (e.type == PrinterEndpoint.Type.BAMBU_CLOUD) throw new IOException("Отправка файла через облако Bambu не поддерживается. Добавьте этот принтер как Bambu Lab (LAN).");
         Target t = target(e);
         SSLContext context = lanTls();
         Socket raw = new Socket();

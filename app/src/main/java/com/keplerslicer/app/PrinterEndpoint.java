@@ -14,7 +14,7 @@ import java.util.Collections;
 
 /** Immutable in-memory connection details. Secrets must not be logged or serialized here. */
 public final class PrinterEndpoint {
-    public enum Type { OCTOPRINT, MOONRAKER, PRUSALINK, PRUSACONNECT, SL1, DUET, ULTIMAKER, FLASHAIR, ASTROBOX, REPETIER, MKS, ESP3D, CREALITYPRINT, FLASHFORGE, ELEGOOLINK, OBICO, SIMPLYPRINT, THREE_D_PRINTER_OS, BAMBU }
+    public enum Type { OCTOPRINT, MOONRAKER, PRUSALINK, PRUSACONNECT, SL1, DUET, ULTIMAKER, FLASHAIR, ASTROBOX, REPETIER, MKS, ESP3D, CREALITYPRINT, FLASHFORGE, ELEGOOLINK, OBICO, SIMPLYPRINT, THREE_D_PRINTER_OS, BAMBU, BAMBU_CLOUD }
     public enum Auth { NONE, API_KEY, DIGEST, PASSWORD, BEARER, BASIC }
     public final Type type;
     public final Auth auth;
