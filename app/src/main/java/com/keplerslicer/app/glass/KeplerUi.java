@@ -129,7 +129,7 @@ public final class KeplerUi {
     /** Animates the new content in against a picture of the old one (iOS push/pop with parallax and dimming). */
     public static void slideFrom(android.app.Activity a, android.graphics.Bitmap shot, int dir) {
         android.widget.FrameLayout content = a.findViewById(android.R.id.content);
-        if (content == null || content.getChildCount() == 0) { shot.recycle(); return; }
+        if (content == null || content.getChildCount() == 0) return;
         final View now = content.getChildAt(content.getChildCount() - 1);
         final android.widget.ImageView old = new android.widget.ImageView(a);
         old.setImageBitmap(shot); old.setScaleType(android.widget.ImageView.ScaleType.MATRIX);
@@ -167,7 +167,7 @@ public final class KeplerUi {
             @Override public void onAnimationEnd(android.animation.Animator x) {
                 if (navOnTop != null) content.getOverlay().remove(navOnTop);
                 if (nav != null) nav.setTranslationX(0f);
-                content.removeView(old); shot.recycle();
+                old.setImageDrawable(null); content.removeView(old);
                 now.setTranslationX(0f); now.setAlpha(1f); moving.setElevation(0f); under.setElevation(0f);
             }
         });

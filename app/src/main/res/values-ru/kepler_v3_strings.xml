@@ -547,7 +547,7 @@
     <string name="l10n_net_slice_first">Сначала нарежьте текущую модель с выбранными параметрами.</string>
     <string name="l10n_net_send_first">Сначала передайте текущий файл на этот принтер.</string>
     <string name="l10n_net_state">Состояние:\u0020</string>
-    <string name="l10n_net_save_note">Сохранение не соединяется с сервером. Bambu Lab работает в режиме LAN: укажите IP принтера, серийный номер в поле «Пользователь» и код доступа LAN в поле ключа; читаются состояние и AMS, передача файлов на Bambu пока не поддерживается. SL1 поддерживает соединение, но не FFF G-code.</string>
+    <string name="l10n_net_save_note">Сохранение не соединяется с принтером — проверьте связь на экране принтера после сохранения. SL1 поддерживает соединение, но не FFF G-code.</string>
     <string name="l10n_net_save">Сохранить подключение</string>
     <string name="l10n_net_saving_choice">Сохраняем выбор…</string>
     <string name="l10n_net_saved_printers">Сохранённые принтеры</string>
