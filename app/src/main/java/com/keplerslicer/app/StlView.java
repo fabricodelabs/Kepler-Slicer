@@ -46,6 +46,24 @@ final class StlView extends GLSurfaceView {
         float u = (float) Math.cos(a) * r, v = (float) Math.sin(a) * r;
         return axis == 0 ? new float[]{cx, cy + u, cz + v} : axis == 1 ? new float[]{cx + u, cy, cz + v} : new float[]{cx + u, cy + v, cz};
     }
+    /** Move arrow under the finger (X red, Y green), with its screen direction and pixels per scene unit. */
+    private int arrowAxis; private float arrowDirX, arrowDirY, arrowPx = 1;
+    private boolean grabArrow(float x, float y) {
+        int w = getWidth(), h = getHeight(); float len = renderer.moveLen; if (w <= 0 || h <= 0 || len <= 0) return false;
+        float[] p = new float[16], camera = new float[16], mvp = new float[16]; project(p, (float) w / h); cameraMatrix(camera); Matrix.multiplyMM(mvp, 0, p, 0, camera, 0);
+        float cx = renderer.rotateCX, cy = renderer.rotateCY, z0 = renderer.moveZ0;
+        float[] s = toScreen(mvp, cx, cy, z0); if (s == null) return false;
+        int best = -1; double bestD = 40 * getResources().getDisplayMetrics().density;
+        for (int axis = 0; axis < 2; axis++) {
+            float[] e = toScreen(mvp, cx + (axis == 0 ? len : 0), cy + (axis == 1 ? len : 0), z0); if (e == null) continue;
+            double vx = e[0] - s[0], vy = e[1] - s[1], l2 = vx * vx + vy * vy; if (l2 < 1) continue;
+            double t = Math.max(0, Math.min(1.15, ((x - s[0]) * vx + (y - s[1]) * vy) / l2)); // a little past the tip counts too
+            double d = Math.hypot(x - (s[0] + t * vx), y - (s[1] + t * vy));
+            if (t > 0.15 && d < bestD) { bestD = d; best = axis; double l = Math.sqrt(l2); arrowDirX = (float) (vx / l); arrowDirY = (float) (vy / l); arrowPx = (float) (l / len); }
+        }
+        if (best < 0) return false;
+        arrowAxis = best; return true;
+    }
     /** Picks the ring under the finger (within 40 dp); false when the touch is away from all rings. */
     private boolean grabRing(float x, float y) {
         int w = getWidth(), h = getHeight(); float r = renderer.rotateR; if (w <= 0 || h <= 0 || r <= 0) return false;
@@ -318,7 +336,7 @@ final class StlView extends GLSurfaceView {
         }
         if(action==MotionEvent.ACTION_DOWN) { pickDownX=e.getX();pickDownY=e.getY();getParent().requestDisallowInterceptTouchEvent(true);lastX=e.getX();lastY=e.getY();lastDistance=0;pinchGesture=false;mouseAction=mouseAction(e);
             if(renderer.rotateRings&&rotateCallback!=null&&mouseAction==0&&sourceMesh!=null&&volumeReady&&currentTransform!=null&&grabRing(lastX,lastY)){rotating=true;rotateBase=currentTransform;renderer.dragRotAxis=ringAxis;renderer.dragRotZ=0;performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);return true;}
-            if(moveMode&&mouseAction==0&&sourceMesh!=null&&volumeReady&&renderer.sceneScale>0&&moveCallback!=null){double[] p=bedPoint(lastX,lastY);if(p!=null){dragging=true;dragStartX=p[0];dragStartY=p[1];dragBase=currentTransform;}} return true; }
+            if(moveMode&&mouseAction==0&&sourceMesh!=null&&volumeReady&&renderer.sceneScale>0&&moveCallback!=null&&grabArrow(lastX,lastY)){dragging=true;dragStartX=lastX;dragStartY=lastY;dragBase=currentTransform;performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);} return true; }
         if(action==MotionEvent.ACTION_POINTER_DOWN&&e.getPointerCount()>=2){cancelDrag();if(rotating){rotating=false;renderer.dragRotZ=0;}pinchGesture=true;lastDistance=distance(e);lastMidX=(e.getX(0)+e.getX(1))/2;lastMidY=(e.getY(0)+e.getY(1))/2;return true;}
         if(action==MotionEvent.ACTION_MOVE){
             if(e.getPointerCount()>=2){float d=distance(e),mx=(e.getX(0)+e.getX(1))/2,my=(e.getY(0)+e.getY(1))/2;
@@ -329,9 +347,9 @@ final class StlView extends GLSurfaceView {
                 float deg=renderer.dragRotZ+(float)Math.toDegrees(turn)*ringSign;ringStart=(float)now;deg=Math.round(deg);
                 float snapped=Math.round(deg/5f)*5f;
                 if(snapped!=Math.round(renderer.dragRotZ/5f)*5f)performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);renderer.dragRotZ=deg;}
-            else if(dragging){double[] p=bedPoint(e.getX(),e.getY());if(p!=null){double dx=(p[0]-dragStartX)*moveSpeed,dy=(p[1]-dragStartY)*moveSpeed,scale=renderer.sceneScale,ox=dragBase.offsetX+dx/scale,oy=dragBase.offsetY+dy/scale;if(Double.isFinite(ox)&&Double.isFinite(oy)&&Math.abs(ox)<=10000&&Math.abs(oy)<=10000){renderer.dragX=(float)dx;renderer.dragY=(float)dy;}}}
+            else if(dragging){double along=((e.getX()-dragStartX)*arrowDirX+(e.getY()-dragStartY)*arrowDirY)/arrowPx*moveSpeed;double dx=arrowAxis==0?along:0,dy=arrowAxis==1?along:0,scale=renderer.sceneScale,ox=dragBase.offsetX+dx/scale,oy=dragBase.offsetY+dy/scale;if(Double.isFinite(ox)&&Double.isFinite(oy)&&Math.abs(ox)<=10000&&Math.abs(oy)<=10000){renderer.dragX=(float)dx;renderer.dragY=(float)dy;}}
             else if(mouseAction!=0&&!pinchGesture){if(mouseAction==2)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
-            else if(!moveMode&&!pinchGesture&&!isMouse(e)){if(swapGestures)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
+            else if(!pinchGesture&&!isMouse(e)){if(swapGestures)pan(e.getX()-lastX,e.getY()-lastY);else orbit(e.getX()-lastX,e.getY()-lastY);}
             lastX=e.getX();lastY=e.getY();requestRender();return true; }
         if(action==MotionEvent.ACTION_POINTER_UP){lastDistance=0;int n=e.getActionIndex()==0?1:0;lastX=e.getX(n);lastY=e.getY(n);return true;}
         if(action==MotionEvent.ACTION_CANCEL){cancelDrag();if(rotating){rotating=false;renderer.dragRotZ=0;requestRender();}getParent().requestDisallowInterceptTouchEvent(false);return true;}
@@ -424,6 +442,7 @@ final class StlView extends GLSurfaceView {
         }
         ToolpathGeometry pathGeometry; FloatBuffer pathPositions; int visiblePathLayers; double bedCenterX,bedCenterY;
         volatile float yaw = -35, pitch = 25, zoom = 1,panX,panY;
+        volatile float moveZ0, moveLen;
         volatile float dragX, dragY, dragRotZ, rotateCX, rotateCY, rotateCZ, rotateR; volatile int dragRotAxis = 2; volatile double sceneScale;
         volatile boolean dark = true;
         final float[] projection = new float[16], model = new float[16], mvp = new float[16];
@@ -454,7 +473,7 @@ final class StlView extends GLSurfaceView {
             float[][] c = {{x0,y0,z0},{x1,y0,z0},{x1,y1,z0},{x0,y1,z0},{x0,y0,z1},{x1,y0,z1},{x1,y1,z1},{x0,y1,z1}}; int[][] e = {{0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}};
             float[] box = {1f, .706f, .329f};
             for (int[] edge : e) { float[] a = c[edge[0]], b = c[edge[1]]; int dashes = 8; for (int d = 0; d < dashes; d++) { float t0 = d / (float) dashes, t1 = (d + .55f) / dashes; lines.add(new float[]{a[0]+(b[0]-a[0])*t0, a[1]+(b[1]-a[1])*t0, a[2]+(b[2]-a[2])*t0, a[0]+(b[0]-a[0])*t1, a[1]+(b[1]-a[1])*t1, a[2]+(b[2]-a[2])*t1, box[0], box[1], box[2]}); } }
-            float cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; rotateCX = cx; rotateCY = cy; float len = .55f * Math.max(.4f, Math.max(x1 - x0, y1 - y0)), up = .7f * Math.max(.4f, z1 - z0) + (z1 - z0);
+            float cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; rotateCX = cx; rotateCY = cy; moveZ0 = z0; float len = .55f * Math.max(.4f, Math.max(x1 - x0, y1 - y0)), up = .7f * Math.max(.4f, z1 - z0) + (z1 - z0);
             if (rotateRings) {
                 float cz = (z0 + z1) / 2, r = .62f * Math.max(.4f, Math.max(x1 - x0, Math.max(y1 - y0, z1 - z0))); rotateCZ = cz; rotateR = r;
                 int seg = 72;
@@ -471,7 +490,9 @@ final class StlView extends GLSurfaceView {
                 for (float[] l : lines) { System.arraycopy(l, 0, p, k, 6); col[k] = col[k+3] = l[6]; col[k+1] = col[k+4] = l[7]; col[k+2] = col[k+5] = l[8]; k += 6; }
                 gizmoPositions = buffer(p); gizmoColors = buffer(col); gizmoCount = p.length / 3; return;
             }
-            float[][] axes = {{len,0,0, 1f,.541f,.502f},{0,len,0, .545f,.886f,.545f},{0,0,up, .541f,.706f,1f}};
+            // Arrows reach well past the model so a finger can take them (Orca draws them outside the box too).
+            len = Math.max(len * 1.6f, .55f * Math.max(.4f, Math.max(x1 - x0, y1 - y0)) + .18f); moveLen = len;
+            float[][] axes = {{len,0,0, 1f,.541f,.502f},{0,len,0, .545f,.886f,.545f}};
             for (float[] a : axes) { float ex = cx + a[0], ey = cy + a[1], ez = z0 + a[2]; lines.add(new float[]{cx, cy, z0, ex, ey, ez, a[3], a[4], a[5]});
                 float hx = a[0] * .15f, hy = a[1] * .15f, hz = a[2] * .15f, sx = a[2] != 0 ? .08f * up : 0, sy = a[0] != 0 ? .08f * len : a[1] != 0 ? 0 : 0, sz = a[2] == 0 ? .08f * len : 0;
                 lines.add(new float[]{ex, ey, ez, ex - hx + sx, ey - hy + sy, ez - hz + sz, a[3], a[4], a[5]}); lines.add(new float[]{ex, ey, ez, ex - hx - sx, ey - hy - sy, ez - hz - sz, a[3], a[4], a[5]}); }
