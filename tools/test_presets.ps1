@@ -16,6 +16,8 @@ $phaseSources=@(
     (Join-Path $PSScriptRoot 'tests\PresetRepositoryTest.java')
 )
 $phaseSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Filter '*.java' -Recurse | ForEach-Object FullName
+# Sources moved into the core/engine modules are found at their new place.
+$phaseSources=@($phaseSources | ForEach-Object { $p=[string]$_; if(-not (Test-Path -LiteralPath $p)){ foreach($alt in @($p.Replace('\app\src\main\java\com\keplerslicer\app\','\core\src\main\java\com\keplerslicer\app\'),$p.Replace('\app\src\main\java\com\keplerslicer\engine\','\engine\java\com\keplerslicer\engine\'))){ if(Test-Path -LiteralPath $alt){$p=$alt;break} } }; $p }) # Resolve-KeplerSource
 & (Join-Path $JavaHome 'bin\javac.exe') -encoding UTF-8 -cp $JsonJar -d $phaseClasses @phaseSources
 if($LASTEXITCODE -ne 0){throw 'Preset tests did not compile'}
 & (Join-Path $JavaHome 'bin\java.exe') -cp ($phaseClasses+';'+$JsonJar) com.keplerslicer.app.settings.PresetRepositoryTest (Join-Path $phaseTestRoot 'data') (Join-Path $phaseProjectRoot 'app\src\main\assets') $Official3mf

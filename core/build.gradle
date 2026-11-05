@@ -1,0 +1,19 @@
+// Android-free core: printer protocols, network transport, model geometry, profile parsing.
+// Plain Java, so it is unit-tested on the JVM with JUnit (./gradlew :core:test).
+plugins {
+    id 'java-library'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+    // Android ships org.json; the JVM build and tests use the same API from Maven.
+    compileOnly 'org.json:json:20231013'
+    testImplementation 'org.json:json:20231013'
+    testImplementation 'junit:junit:4.13.2'
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
