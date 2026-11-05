@@ -30,7 +30,6 @@ public final class NetworkActivity extends Activity {
         row(NetworkPolicy.offline(this)?KeplerApplication.str(R.string.l10n_net_offline_mode):KeplerApplication.str(R.string.l10n_net_lan_cloud),NetworkPolicy.offline(this)?KeplerApplication.str(R.string.l10n_net_local_note):KeplerApplication.str(R.string.l10n_net_uses_network),"⌁",this::mode);
         row(KeplerApplication.str(R.string.l10n_net_find_wifi),KeplerApplication.str(R.string.l10n_net_discover_note),"⌕",busy?null:this::discover);
         row(KeplerApplication.str(R.string.l10n_net_add),KeplerApplication.str(R.string.l10n_net_all_types),"＋",busy?null:()->form(null,null));
-        row(KeplerApplication.str(R.string.l10n_cloud_profiles),KeplerApplication.str(R.string.l10n_net_profile_sync),"☁",busy?null:()->startActivity(new Intent(this,CloudSyncActivity.class)));
         if(state==null)return;
         ui.gap(page,12);page.addView(ui.text(KeplerApplication.str(R.string.l10n_net_saved_printers),18,true));ui.gap(page,12);
         if(state.connections.isEmpty()){TextView empty=ui.text(KeplerApplication.str(R.string.l10n_net_add_hint),14,false);empty.setTextColor(ui.muted);page.addView(empty);}
