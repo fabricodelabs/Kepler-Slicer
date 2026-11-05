@@ -90,6 +90,90 @@ public final class KeplerUi {
         spinner.setPopupBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF2E323A)); // opaque fallback (keyboard/TalkBack)
     }
 
+    /**
+     * In-screen navigation (a section opened inside the same screen, or back out of it) animated like a screen
+     * push/pop: {@code rebuild} replaces the content view; the old content, captured first, slides away under or
+     * over it. dir &gt; 0 pushes deeper, dir &lt; 0 goes back, 0 just rebuilds.
+     */
+    public static void navigate(android.app.Activity a, int dir, Runnable rebuild) {
+        android.graphics.Bitmap shot = dir == 0 ? null : snapshotContent(a);
+        rebuild.run();
+        if (shot != null) slideFrom(a, shot, dir);
+    }
+
+    /** Picture of the current screen content (null when not laid out yet). */
+    public static android.graphics.Bitmap snapshotContent(android.app.Activity a) {
+        android.view.ViewGroup content = a.findViewById(android.R.id.content);
+        if (content == null || content.getChildCount() == 0) return null;
+        View old = content.getChildAt(content.getChildCount() - 1);
+        if (old.getWidth() <= 0 || old.getHeight() <= 0) return null;
+        try {
+            android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(old.getWidth(), old.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas c = new android.graphics.Canvas(bmp);
+            android.graphics.drawable.Drawable windowBg = a.getWindow().getDecorView().getBackground();
+            if (windowBg != null) windowBg.draw(c);
+            // The tab bar stays put during in-screen navigation, so it is left out of the picture.
+            GlassNavigation nav = findNav(old); int vis = nav == null ? 0 : nav.getVisibility();
+            if (nav != null) nav.setVisibility(View.INVISIBLE);
+            try { old.draw(c); } finally { if (nav != null) nav.setVisibility(vis); }
+            return bmp;
+        } catch (RuntimeException | OutOfMemoryError e) { return null; }
+    }
+
+    private static GlassNavigation findNav(View v) {
+        if (v instanceof GlassNavigation) return (GlassNavigation) v;
+        if (v instanceof android.view.ViewGroup) { android.view.ViewGroup g = (android.view.ViewGroup) v; for (int i = 0; i < g.getChildCount(); i++) { GlassNavigation n = findNav(g.getChildAt(i)); if (n != null) return n; } }
+        return null;
+    }
+
+    /** Animates the new content in against a picture of the old one (iOS push/pop with parallax and dimming). */
+    public static void slideFrom(android.app.Activity a, android.graphics.Bitmap shot, int dir) {
+        android.widget.FrameLayout content = a.findViewById(android.R.id.content);
+        if (content == null || content.getChildCount() == 0) { shot.recycle(); return; }
+        final View now = content.getChildAt(content.getChildCount() - 1);
+        final android.widget.ImageView old = new android.widget.ImageView(a);
+        old.setImageBitmap(shot); old.setScaleType(android.widget.ImageView.ScaleType.MATRIX);
+        old.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        final boolean push = dir > 0;
+        if (push) content.addView(old, 0, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        else content.addView(old, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        final View moving = push ? now : old, under = push ? old : now;
+        final float w = content.getWidth() > 0 ? content.getWidth() : a.getResources().getDisplayMetrics().widthPixels;
+        moving.setElevation(12 * a.getResources().getDisplayMetrics().density);
+        if (push) { now.setTranslationX(w); } else { now.setTranslationX(-0.3f * w); }
+        // Keep the tab bar fixed: counter-move it with its screen, and when the old picture slides over the new screen,
+        // draw the bar again on top through the overlay.
+        final GlassNavigation nav = findNav(now);
+        final android.graphics.drawable.Drawable navOnTop = nav == null || push ? null : new android.graphics.drawable.Drawable() {
+            final int[] at = new int[2], base = new int[2];
+            @Override public void draw(android.graphics.Canvas c) { nav.getLocationInWindow(at); content.getLocationInWindow(base); int save = c.save(); c.translate(at[0] - base[0], at[1] - base[1]); nav.draw(c); c.restoreToCount(save); }
+            @Override public void setAlpha(int alpha) {}
+            @Override public void setColorFilter(android.graphics.ColorFilter cf) {}
+            @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+        };
+        if (navOnTop != null) { navOnTop.setBounds(0, 0, content.getWidth(), content.getHeight()); content.getOverlay().add(navOnTop); }
+        if (nav != null) nav.setTranslationX(-now.getTranslationX());
+        Spring spring = Spring.smooth(0.45f);
+        android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        anim.setDuration(spring.duration()); anim.setInterpolator(spring);
+        anim.addUpdateListener(v -> {
+            float t = (float) v.getAnimatedValue();
+            if (push) { now.setTranslationX(w * (1 - t)); old.setTranslationX(-0.3f * w * t); old.setAlpha(1f - 0.15f * t); }
+            else { old.setTranslationX(w * t); now.setTranslationX(-0.3f * w * (1 - t)); }
+            if (nav != null) { nav.setTranslationX(-now.getTranslationX()); }
+            if (navOnTop != null) content.invalidate();
+        });
+        anim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(android.animation.Animator x) {
+                if (navOnTop != null) content.getOverlay().remove(navOnTop);
+                if (nav != null) nav.setTranslationX(0f);
+                content.removeView(old); shot.recycle();
+                now.setTranslationX(0f); now.setAlpha(1f); moving.setElevation(0f); under.setElevation(0f);
+            }
+        });
+        anim.start();
+    }
+
     /** Switches between the four top-level tabs in place, like a tab bar: no slide between the screens. */
     public static void tab(android.app.Activity from, android.content.Intent intent, boolean finish) {
         // Tabs dissolve into each other (iOS 26 tab bar): the new screen fades in over the old one, no slide.
