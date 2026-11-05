@@ -54,7 +54,8 @@ public final class SettingsActivity extends Activity implements SettingsOptionAd
     private String reason(Throwable e){return EngineText.clean(e.getMessage()==null?e.getClass().getSimpleName():e.getMessage());}
     private void error(Throwable e){if(status!=null)status.setText(reason(e));GlassBottomSheet.info(this,root,false,getString(R.string.phase2_settings_title),reason(e));}
     private void toast(String text){Toast.makeText(this,text,Toast.LENGTH_LONG).show();}
-    private void shell(){root=new FrameLayout(this);root.setBackground(GlassBackground.create(this));setContentView(root);getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);getWindow().setStatusBarColor(Color.rgb(74,79,89));getWindow().setNavigationBarColor(Color.rgb(74,79,89));getWindow().getDecorView().setSystemUiVisibility(0);
+    private int slideDir;
+    private void shell(){android.graphics.Bitmap slideShot=slideDir!=0?com.keplerslicer.app.glass.KeplerUi.snapshotContent(this):null;int slideTo=slideDir;slideDir=0;root=new FrameLayout(this);root.setBackground(GlassBackground.create(this));setContentView(root);getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);getWindow().setStatusBarColor(Color.rgb(74,79,89));getWindow().setNavigationBarColor(Color.rgb(74,79,89));getWindow().getDecorView().setSystemUiVisibility(0);
         // On edge-to-edge Android the list must measure above the IME, not behind it.
         // The inset union takes the maximum bottom; never add IME and system bars.
         ui=new GlassUi(this,root,false);page=ui.vertical();ui.pad(page,20,28,20,0);LinearLayout column=new LinearLayout(this);column.setOrientation(LinearLayout.VERTICAL);root.addView(column,new FrameLayout.LayoutParams(-1,-1));column.addView(page,new LinearLayout.LayoutParams(-1,0,1));
@@ -63,11 +64,11 @@ public final class SettingsActivity extends Activity implements SettingsOptionAd
         LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);
         int navInset=ui.dp(ui.tokens.navInset);
         np.setMargins(navInset,ui.dp(8),navInset,ui.dp(ui.tokens.navBottom));
-        column.addView(nav,np);com.keplerslicer.app.glass.KeplerUi.floatNavigation(root,column,nav,navInset,ui.dp(ui.tokens.navBottom));com.keplerslicer.app.glass.KeplerUi.edgeToEdge(root,ui.dp(ui.tokens.navBottom));
+        column.addView(nav,np);com.keplerslicer.app.glass.KeplerUi.floatNavigation(root,column,nav,navInset,ui.dp(ui.tokens.navBottom));com.keplerslicer.app.glass.KeplerUi.edgeToEdge(root,ui.dp(ui.tokens.navBottom));if(slideShot!=null)com.keplerslicer.app.glass.KeplerUi.slideFrom(this,slideShot,slideTo);
     }
     private void message(String text){status=ui.text(text,12,400,ui.tokens.textSecondary);ui.space(page,8);page.addView(status);}
     private String label(String k){return getString(k.equals("printer")?R.string.phase2_settings_printer:k.equals("filament")?R.string.phase2_settings_filament:R.string.phase2_settings_process);}
-    private void hub(){kind="";preset=null;draft=null;objectMode=false;projectView=false;query="";shell();syncBack();
+    private void hub(){slideDir=kind.isEmpty()?0:-1;kind="";preset=null;draft=null;objectMode=false;projectView=false;query="";shell();syncBack();
         final com.keplerslicer.app.glass.SettingsHubUi hu=new com.keplerslicer.app.glass.SettingsHubUi(this);final int white=com.keplerslicer.app.glass.SettingsHubUi.WHITE;final float radius=ui.tokens.cardRadius;
         root.setBackground(com.keplerslicer.app.glass.SettingsHubUi.backdrop(this));final LinearLayout hubPage=page;page.removeViewAt(0);
         EditText search=ui.edit("",android.text.InputType.TYPE_CLASS_TEXT,false);search.setHint(R.string.phase2_settings_search_all);search.setVisibility(hubSearch?View.VISIBLE:View.GONE);
@@ -111,7 +112,7 @@ public final class SettingsActivity extends Activity implements SettingsOptionAd
     private void open(String selectedKind,String id,String restored){open(selectedKind,id,restored,null);}
     /** Back is ours only inside a section (it returns to the hub); on the hub the system animates the gesture. */
     private void syncBack(){boolean want=!kind.isEmpty();if(want&&backCallback==null)backCallback=Api33.register(this);else if(!want&&backCallback!=null){Api33.unregister(this,backCallback);backCallback=null;}}
-    private void open(String selectedKind,String id,String restored,Runnable afterLoaded){kind=selectedKind;syncBack();if(restored.isEmpty())query="";shell();title.setText(label(kind));message(getString(R.string.phase2_settings_load_profile));
+    private void open(String selectedKind,String id,String restored,Runnable afterLoaded){if(kind.isEmpty()&&!selectedKind.isEmpty()&&root!=null)slideDir=1;kind=selectedKind;syncBack();if(restored.isEmpty())query="";shell();title.setText(label(kind));message(getString(R.string.phase2_settings_load_profile));
         task(()->{Loaded l=new Loaded();String selected=id;if(selected.isEmpty()){try{selected=SettingsState.activeId(this,selectedKind);}catch(IOException missing){return l;}}l.preset=repo.load(selected);l.draft=repo.beginDraft(selected);if(l.preset.parentId!=null&&!l.preset.parentId.isEmpty())l.parent=repo.resolve(l.preset.parentId);
             try{ProcessOverridesStore.Identity identity=ProcessOverridesStore.Identity.capture(this);if(selected.equals(SettingsState.activeId(this,selectedKind))){NativeConfigValues.Result nativeValues=NativeConfigValues.loadDetailed(this,schema,selectedKind,identity);l.fallback=nativeValues.values;l.sources=nativeValues.sources;l.projectConfiguration=nativeValues.projectConfiguration;if(l.projectConfiguration)l.note=nativeValues.optionalDiagnostic;else if(selectedKind.equals("process")){JSONObject legacy=new JSONObject(ProcessOverridesStore.load(this,identity));Iterator<String> keys=legacy.keys();while(keys.hasNext()){String key=keys.next();Object v=legacy.get(key);l.draft.set(key,v instanceof Boolean?((Boolean)v?"1":"0"):v.toString());}}}}catch(Throwable unavailable){if(CurrentModelStore.projectMode(this)>0)throw new IOException(reason(unavailable),unavailable);l.note=getString(R.string.phase2_settings_defaults_unavailable,reason(unavailable));}
             if(selectedKind.equals("process")){try{l.scope=ObjectSettingsStore.current(this);l.objects=l.scope.changes();}catch(IOException unavailable){l.note+=(l.note.isEmpty()?"":"\n")+reason(unavailable);}}

@@ -28,7 +28,7 @@ public final class LiquidPress {
 
     /** Background with the inner glow over {@code resting}; also installs the flex animation on {@code v}. */
     public static Drawable apply(View v, Drawable resting, float radiusPx) {
-        Glow glow = new Glow(radiusPx, v.getResources().getDisplayMetrics().density);
+        Glow glow = new Glow(radiusPx, v.getResources().getDisplayMetrics().density, v, resting);
         v.addOnLayoutChangeListener((view, l, t, r, b, ol, ot, orr, ob) -> {
             if (r - l != orr - ol || b - t != ob - ot) view.setStateListAnimator(flex(view, r - l));
         });
@@ -88,8 +88,25 @@ public final class LiquidPress {
         private final Path clip = new Path(); private final RectF r = new RectF();
         private float hx = -1, hy = -1, level; private boolean pressed; private ValueAnimator anim;
 
-        private final float density;
-        Glow(float radius, float density) { this.radius = radius; this.density = density; rim.setStyle(Paint.Style.STROKE); }
+        private final float density; private final View view; private final Drawable resting; private final Outline shape = new Outline();
+        Glow(float radius, float density, View view, Drawable resting) { this.radius = radius; this.density = density; this.view = view; this.resting = resting; rim.setStyle(Paint.Style.STROKE); }
+
+        /**
+         * Where the light goes: a control with its own glass shape lights up exactly inside that shape; a list cell
+         * inside a card gets an inset highlight with corners concentric to the card; a bare row uses its radius.
+         */
+        private float shape(android.graphics.Rect b) {
+            r.set(b);
+            if (resting != null) {
+                resting.setBounds(b); shape.setEmpty(); resting.getOutline(shape);
+                float rr = shape.getRadius();
+                return rr >= 0 ? rr : radius;
+            }
+            boolean inCard = view.getParent() instanceof View && ((View) view.getParent()).getBackground() != null;
+            if (inCard && b.width() > 140 * density) { r.inset(4 * density, 4 * density); return Math.min(14 * density, Math.min(r.width(), r.height()) / 2f); }
+            if (b.width() <= 140 * density && b.height() <= 72 * density) return Math.min(b.width(), b.height()) / 2f;
+            return Math.min(radius, Math.min(b.width(), b.height()) / 2f);
+        }
 
         @Override public boolean isStateful() { return true; }
         @Override protected boolean onStateChange(int[] state) {
@@ -113,25 +130,16 @@ public final class LiquidPress {
             android.graphics.Rect b = getBounds(); if (b.isEmpty()) return;
             float x = hx < 0 ? b.exactCenterX() : hx, y = hy < 0 ? b.exactCenterY() : hy;
             float reach = Math.max(b.width(), b.height()) * 0.9f;
-            // Buttons light up as a capsule. Wide rows (list cells inside a card) light up as a rounded rect inset
-            // from the cell, with corners concentric to the card, so the highlight never bulges past the card corners.
-            boolean row = b.width() > 140 * density;
-            float inset = row ? 4 * density : 0;
-            r.set(b); r.inset(inset, inset);
-            float half = Math.min(r.width(), r.height()) / 2f;
-            float rr = row ? Math.min(14 * density, half) : (b.height() <= 72 * density ? half : Math.min(Math.max(radius, 20 * density), half));
+            float rr = shape(b);
             clip.reset(); clip.addRoundRect(r, rr, rr, Path.Direction.CW);
             int save = c.save(); c.clipPath(clip);
-            paint.setShader(null); paint.setColor(alpha(0x14, level)); c.drawRect(b, paint);
+            paint.setShader(null); paint.setColor(alpha(0x1C, level)); c.drawRect(b, paint);
             paint.setShader(new RadialGradient(x, y, reach, new int[]{alpha(0x40, level), alpha(0x12, level), 0}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(b, paint);
             c.restoreToCount(save);
-            float sw = Math.max(1f, b.height() / 48f); rim.setStrokeWidth(sw);
-            rim.setShader(new android.graphics.LinearGradient(b.left, b.top, b.right, b.bottom, alpha(0x8C, level), alpha(0x1F, level), Shader.TileMode.CLAMP));
-            r.inset(sw / 2f, sw / 2f); c.drawRoundRect(r, Math.max(0f, rr - sw / 2f), Math.max(0f, rr - sw / 2f), rim);
         }
         private static int alpha(int a, float k) { return (Math.round(a * k) << 24) | 0xFFFFFF; }
-        @Override public void getOutline(Outline o) { android.graphics.Rect b = getBounds(); float half = Math.min(b.width(), b.height()) / 2f; o.setRoundRect(b, b.height() <= 72 * density ? half : Math.min(Math.max(radius, 20 * density), half)); }
+        @Override public void getOutline(Outline o) { android.graphics.Rect b = getBounds(); float rr = shape(b); o.setRoundRect(Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom), rr); }
         @Override public void setAlpha(int a) {}
         @Override public void setColorFilter(ColorFilter cf) {}
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
