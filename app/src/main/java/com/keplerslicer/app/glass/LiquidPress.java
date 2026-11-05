@@ -70,6 +70,7 @@ public final class LiquidPress {
     private static StateListAnimator flex(View v, int widthPx) {
         float density = v.getResources().getDisplayMetrics().density;
         if (widthPx > 140 * density || insideOutlineClip(v)) return null;
+        if (v.getParent() instanceof android.widget.LinearLayout && ((android.widget.LinearLayout) v.getParent()).getOrientation() == android.widget.LinearLayout.HORIZONTAL && ((android.widget.LinearLayout) v.getParent()).getChildCount() > 1 && v.getLayoutParams() instanceof android.widget.LinearLayout.LayoutParams && ((android.widget.LinearLayout.LayoutParams) v.getLayoutParams()).weight > 0) return null;
         float grow = widthPx <= 0 ? 1.05f : 1f + Math.max(0.03f, Math.min(0.08f, 8f * density / widthPx));
         StateListAnimator s = new StateListAnimator();
         ObjectAnimator down = ObjectAnimator.ofPropertyValuesHolder(v, PropertyValuesHolder.ofFloat(View.SCALE_X, grow), PropertyValuesHolder.ofFloat(View.SCALE_Y, grow));
