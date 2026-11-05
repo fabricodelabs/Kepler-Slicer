@@ -106,6 +106,12 @@ std::unique_ptr<PresetBundle> load_system_bundle(const fs::path &root)
 
 Slic3r::DynamicPrintConfig resolve_system_profile_config_with_overrides(const SystemProfileSelection &s, const std::string &overrides_json)
 {
+    return resolve_multi_material_config(s, overrides_json, {});
+}
+
+Slic3r::DynamicPrintConfig resolve_multi_material_config(const SystemProfileSelection &s, const std::string &overrides_json,
+                                                         const std::vector<MaterialSlot> &extra_slots)
+{
     using namespace Slic3r;
     const fs::path root(s.profiles_root);
     const std::set<std::string> vendors{s.printer_vendor, s.process_vendor, s.filament_vendor};
@@ -129,10 +135,30 @@ Slic3r::DynamicPrintConfig resolve_system_profile_config_with_overrides(const Sy
     if (!checked_printer_compatible(process, printer) || !checked_filament_compatible(filament, printer, process))
         throw std::runtime_error("Selected system presets are incompatible");
 
-    bundle.set_num_filaments(1);
-    if (bundle.filament_presets.size() != 1)
+    if (extra_slots.size() > 15) throw std::invalid_argument("At most 16 material slots are supported");
+    std::vector<std::string> names{filament.name};
+    for (const auto &slot : extra_slots) {
+        require_vendor(root, slot.vendor);
+        Preset &extra = exact_preset(bundle.filaments, slot.name);
+        if (!extra.vendor || extra.vendor->id != slot.vendor)
+            throw std::runtime_error("Material slot preset does not belong to the requested vendor");
+        if (!checked_filament_compatible(extra, printer, process))
+            throw std::runtime_error("Material slot preset is incompatible with the printer or process: " + slot.name);
+        names.push_back(extra.name);
+    }
+    const unsigned slots = static_cast<unsigned>(names.size());
+    bundle.set_num_filaments(slots);
+    if (bundle.filament_presets.size() != slots)
         throw std::runtime_error("Unexpected number of filament slots");
-    bundle.filament_presets[0] = filament.name;
+    for (unsigned i = 0; i < slots; ++i) bundle.filament_presets[i] = names[i];
+    if (slots > 1) {
+        bundle.update_multi_material_filament_presets();
+        auto *colours = bundle.project_config.option<ConfigOptionStrings>("filament_colour");
+        auto *multi = bundle.project_config.option<ConfigOptionStrings>("filament_multi_colour");
+        if (!colours || colours->values.size() != slots) throw std::runtime_error("Material slot colours were not resized");
+        for (unsigned i = 1; i < slots; ++i) if (!extra_slots[i - 1].colour.empty()) colours->values[i] = extra_slots[i - 1].colour;
+        if (multi) { multi->values.resize(slots); for (unsigned i = 0; i < slots; ++i) multi->values[i] = colours->values[i]; }
+    }
     // The desktop slicing path passes the unexpanded configuration to Print::apply,
     // which resolves extruder/filament variants itself (Plater.cpp).
     DynamicPrintConfig config = bundle.full_config(false);

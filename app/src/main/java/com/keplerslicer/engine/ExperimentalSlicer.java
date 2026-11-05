@@ -49,6 +49,12 @@ public final class ExperimentalSlicer {
     /** Project 3MF with the resolved settings and current placement; returns job/project.3mf. */
     public static native String exportProject3mf(String pv,String qv,String fv,String pn,String qn,String fn,
             String model,String resources,String data,String job,double[] transform,String settings);
+    /** Objects and parts with their stored material slot: {"objects":[{"name","slot","parts":[{"name","slot"}]}]}. */
+    public static native byte[] materialLayout(String pv,String qv,String fv,String pn,String qn,String fn,
+            String model,String resources,String data,double[] transform,String settings);
+    /** Multi-material project: extra slots, colours and object/part slots (JSON request); returns job/project.3mf. */
+    public static native String assignMaterials(String pv,String qv,String fv,String pn,String qn,String fn,
+            String model,String resources,String data,String job,double[] transform,String settings,String request);
     public static native String setNativeLogLevel(String level);
     public static native byte[] runNativePreferencesSelfTest(String resources,String data);
 }

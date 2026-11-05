@@ -776,6 +776,103 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_exportProject3mf(JNIEnv *env,jcl
     return nullptr;
 }
 
+namespace {
+// Slot (1-based extruder) stored on an object or part; 0 = inherits.
+int stored_slot(const Slic3r::ModelConfigObject &config) {
+    const auto *opt=config.option("extruder");return opt?opt->getInt():0;
+}
+bool valid_colour(const std::string &c) {
+    return c.size()==7&&c[0]=='#'&&c.find_first_not_of("0123456789abcdefABCDEF",1)==std::string::npos;
+}
+std::vector<kepler::MaterialSlot> read_material_slots(const nlohmann::json &request) {
+    std::vector<kepler::MaterialSlot> slots;
+    if(!request.contains("slots"))return slots;
+    const auto &list=request.at("slots");if(!list.is_array()||list.size()>15)throw std::invalid_argument("Material slots must be an array of at most 15 extra presets");
+    for(const auto &item:list){
+        if(!item.is_object()||!item.contains("vendor")||!item.contains("name")||!item.at("vendor").is_string()||!item.at("name").is_string())throw std::invalid_argument("Material slot needs vendor and name");
+        const std::string colour=item.value("colour",std::string());
+        if(!colour.empty()&&!valid_colour(colour))throw std::invalid_argument("Material colour must be #RRGGBB");
+        slots.push_back({item.at("vendor").get<std::string>(),item.at("name").get<std::string>(),colour});
+    }
+    return slots;
+}
+}
+
+// Objects and parts of a model with their stored material slot (read-only).
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_materialLayout(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
+    jdoubleArray params,jstring settings_json) {
+    try {
+        const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),settings=standard_utf8(env,settings_json);
+        auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
+        Slic3r::Model model=load_editable_model(path,transform,config);
+        nlohmann::json objects=nlohmann::json::array();
+        for(const auto *object:model.objects){
+            nlohmann::json parts=nlohmann::json::array();
+            for(const auto *volume:object->volumes)if(volume->is_model_part())parts.push_back({{"name",volume->name},{"slot",stored_slot(volume->config)}});
+            objects.push_back({{"name",object->name},{"slot",stored_slot(object->config)},{"parts",parts}});
+        }
+        return json_bytes(env,nlohmann::json{{"format","kepler-material-layout-v1"},{"objects",objects}}.dump());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown material layout error");}
+    return nullptr;
+}
+
+// Multi-material project. request: {"colour":"#RRGGBB" (slot 1), "slots":[{vendor,name,colour}] (slots 2..N),
+// "assign":[{"object":i,"part":-1|j,"slot":k}]}. Flushing volumes are recalculated from the slot colours with
+// upstream FlushVolCalculator. Writes project.3mf with the full multi-material settings; the source is unchanged.
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_keplerslicer_engine_ExperimentalSlicer_assignMaterials(JNIEnv *env,jclass,
+    jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
+    jstring job_path,jdoubleArray params,jstring settings_json,jstring request_json) {
+    try {
+        const auto path=standard_utf8(env,model_path),resources=standard_utf8(env,resources_path),data=standard_utf8(env,data_path),job_name=standard_utf8(env,job_path),settings=standard_utf8(env,settings_json);
+        const auto request=nlohmann::json::parse(standard_utf8(env,request_json));
+        if(!request.is_object())throw std::invalid_argument("Material request must be an object");
+        auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
+        const auto extra=read_material_slots(request);
+        std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
+        auto config=kepler::resolve_multi_material_config(selection,settings,extra);
+        const int slots=static_cast<int>(extra.size())+1;
+        const std::string first=request.value("colour",std::string());
+        if(!first.empty()){
+            if(!valid_colour(first))throw std::invalid_argument("Material colour must be #RRGGBB");
+            auto *colours=config.option<Slic3r::ConfigOptionStrings>("filament_colour");if(!colours||colours->values.empty())throw std::runtime_error("Missing filament colours");colours->values[0]=first;
+        }
+        if(slots>1)config=kepler::recalculate_flushing(config,-1);
+        Slic3r::Model model=load_editable_model(path,transform,config);
+        if(request.contains("assign")){
+            const auto &assign=request.at("assign");if(!assign.is_array())throw std::invalid_argument("assign must be an array");
+            for(const auto &item:assign){
+                const int o=item.at("object").get<int>(),p=item.value("part",-1),slot=item.at("slot").get<int>();
+                if(o<0||o>=static_cast<int>(model.objects.size()))throw std::invalid_argument("Object index is outside the model");
+                if(slot<1||slot>slots)throw std::invalid_argument("Material slot is outside the project");
+                auto *object=model.objects[o];
+                if(p<0)object->config.set_key_value("extruder",new Slic3r::ConfigOptionInt(slot));
+                else {
+                    int seen=0;Slic3r::ModelVolume *target=nullptr;
+                    for(auto *volume:object->volumes)if(volume->is_model_part()){if(seen==p){target=volume;break;}++seen;}
+                    if(!target)throw std::invalid_argument("Part index is outside the object");
+                    target->config.set_key_value("extruder",new Slic3r::ConfigOptionInt(slot));
+                }
+            }
+        }
+        // Nothing may point past the slot count (a source that had more filaments).
+        for(auto *object:model.objects){
+            if(stored_slot(object->config)>slots)object->config.set_key_value("extruder",new Slic3r::ConfigOptionInt(1));
+            for(auto *volume:object->volumes)if(stored_slot(volume->config)>slots)volume->config.set_key_value("extruder",new Slic3r::ConfigOptionInt(1));
+        }
+        const auto job=create_job_directory(job_name,data),output=job/"project.3mf";
+        kepler::store_project_3mf(model,config,output.string());
+        return env->NewStringUTF(output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown material assignment error");}
+    return nullptr;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_keplerslicer_engine_ExperimentalSlicer_setNativeLogLevel(JNIEnv *env,jclass,jstring level) {
     try {const auto requested=standard_utf8(env,level);std::lock_guard<std::mutex> guard(engine_mutex);return env->NewStringUTF(kepler::set_native_log_level(requested).c_str());}

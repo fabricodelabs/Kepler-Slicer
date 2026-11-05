@@ -64,7 +64,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   `outputs/Kepler-Claude/engine/src/slice_jni.cpp`). Incremental build + publish (~1 min):
   `pwsh -File engine/build-native.ps1 -Build ../../work/orca-headless-fresh -Cmake ../../work/android-tools/cmake/data/bin/cmake.exe -Ndk ../../work/android-ndk/android-ndk-r30 -Parallel 12 -PublishToApp`
   (keeps the previous .so under `outputs/Kepler-Native-Phase2-baseline/<sha>/`). Keep both ExperimentalSlicer.java copies equal.
-- Current .so SHA-256 `12e68879a0a7429223f3b4e1602f942b7a70cfd62ef8cfe203080516519ab916` (16 KB aligned).
+- Current .so SHA-256 `5487e9a7f926c39f45da1affcee90c19823b73d6496e09b337101c1aa23a54dc` (16 KB aligned).
 - New JNI: `editModel` (op 1 Cut at Z via upstream `Cut::perform_with_plane` — plane is relative to the instance
   offset; op 2 Text via `Emboss`, system Roboto font; op 3 Assembly = all objects into one multi-part object) and
   `exportProject3mf` (upstream `store_bbs_3mf` with resolved settings). Code in `native_preferences.cpp`
@@ -72,6 +72,20 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 - Java: `NativePreferenceActions.editModel/exportProject` (same snapshot/session guards as clone), Tools sheet dialogs
   in `MainActivity` (`cutTool`, `textTool`, `assemblyTool`), Project 3MF export uses the engine unless the source is a
   real project (has `Metadata/project_settings.config`). Verified on the emulator: cut, assembly, text, slice, export.
+- Multi-material (2026-11-05): `resolve_multi_material_config` (system_profile_config.cpp) sets up to 16 filament
+  presets in the PresetBundle; JNI `materialLayout` (objects/parts with stored slot) and `assignMaterials` (slots,
+  colours, object/part `extruder`, flushing via `recalculate_flushing`, writes project.3mf). Java: `MaterialSlots`
+  (slots 2-4 per printer, Filament screen cards), `MaterialAssignment` (Model details > Multi-material),
+  `NativePreferenceActions.EDIT_MATERIALS` publishes the derived project in project mode 1 with a checked
+  `project_settings_snapshot`. Verified: two slots -> G-code with T0/T1 and a wipe tower.
+- Printer catalog: `tools/build_printer_catalog.py` (recurses into vendor sub-folders such as Elegoo/machine/EN4SERIES),
+  then `tools/build_printer_covers.py`. 1188 machine profiles / 453 models (was 1100 / 428: Elegoo, Eryone ER20,
+  FlyingBear Ghost7/S1, InfiMech, Wanhao D12 were missing).
+- Printer control (owner asked 2026-11-05 to implement job control): `PrinterHostClient.job/speed/chamberLight/auxFan/move`
+  (OctoPrint, Moonraker, PrusaLink, Bambu), Device screen buttons with confirmation dialogs, axis moves only when
+  idle, status refresh every 8 s. Bambu: FTPS upload (port 990, `TlsEngineChannel` resumes the control TLS session
+  on the data channel), start of an uploaded file via `gcode_file` (separate confirmed step after upload, same
+  receipt rules as OctoPrint/Moonraker), MQTT commands. `tools/test_bambu_lan.ps1`: 29 checks on loopback simulators.
 - Dialogs: `glass/GlassDialog` restyles every `MdUi.alert` AlertDialog (glass card, Manrope, pill buttons).
   `glass/Backdrop` blurs content under the floating nav (Android 12+); sheets/alerts blur behind.
 - Google Play: `docs/GOOGLE-PLAY.md`, `docs/PRIVACY.md`; upload key in `C:\Users\tails\.kepler-signing` (not in git).
@@ -82,7 +96,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 ## Open items
 
-- Bambu LAN status + AMS (BambuLan, AmsTrays; Device screen, filament "Sync from printer"); tested on a loopback simulator only. Not implemented: Bambu file transfer (FTPS), Bambu cloud preferences (proprietary plug-in), printer job control (kept disabled by the safety rules).
+- Not verified on real hardware: Bambu FTPS/MQTT commands, OctoPrint/Moonraker/PrusaLink job control. Telemetry and job control exist only for OctoPrint, Moonraker, PrusaLink and Bambu; other hosts (Duet, Repetier, Creality, ElegooLink, Flashforge, ...) have test + upload only. Bambu cloud preferences need the proprietary plug-in. Preview shows one colour for multi-material models.
   (Lay on face, Measure, object-setting tools, camera, Project 3MF and plate label are done — see UI-010 follow-ups.)
 - Not verified: TalkBack; live Device telemetry and camera against a real OctoPrint/PrusaLink/Moonraker host; plate label with a printer that defines a bed type. The emulator test sphere has a fuzzy_skin object override from the check.
 - The duplicate `Kepler-Slicer/` clone was deleted on the owner's request.

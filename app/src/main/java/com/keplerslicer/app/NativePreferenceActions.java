@@ -227,7 +227,34 @@ final class NativePreferenceActions {
         catch (LinkageError | RuntimeException e) { throw new IOException(message(e), e); }
     }
 
-    static final int EDIT_CUT = 1, EDIT_TEXT = 2, EDIT_ASSEMBLY = 3;
+    static final int EDIT_CUT = 1, EDIT_TEXT = 2, EDIT_ASSEMBLY = 3, EDIT_MATERIALS = 4;
+
+    /** Objects and parts of the current model with their stored material slot (engine, read-only). */
+    static org.json.JSONObject materialLayout(Context context) throws IOException {
+        requireWorker();
+        final Context app = context.getApplicationContext();
+        final EngineProfileSession session = EngineProfileSession.capture(app);
+        final File staging = Files.createTempDirectory(app.getCacheDir().toPath(), "native-layout-").toFile();
+        try {
+            final CurrentModelStore.Snapshot source = CurrentModelStore.snapshotToDirectory(app, staging);
+            requireUnchanged(app, source, session);
+            final ProcessOverridesStore.Identity id = session.id;
+            final byte[] bytes = ExperimentalSlicer.materialLayout(id.printer.vendor, id.process.vendor, id.filament.vendor,
+                id.printerName, id.processName, id.filamentName, source.file.getAbsolutePath(),
+                session.resources.getAbsolutePath(), session.data.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides);
+            org.json.JSONObject layout = new org.json.JSONObject(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+            if (!"kepler-material-layout-v1".equals(layout.optString("format"))) throw new IOException(app.getString(R.string.native_actions_invalid_result));
+            return layout;
+        } catch (org.json.JSONException e) {
+            throw new IOException(app.getString(R.string.native_actions_invalid_result), e);
+        } catch (LinkageError e) {
+            throw new IOException(app.getString(R.string.native_actions_engine_unavailable), e);
+        } catch (RuntimeException e) {
+            throw new IOException(app.getString(R.string.native_actions_native_error, EngineText.clean(message(e))), e);
+        } finally {
+            deletePrivateJob(staging);
+        }
+    }
 
     /**
      * Cut / Text / Assembly through the engine. Same contract as cloning: an immutable model snapshot and profile
@@ -247,12 +274,18 @@ final class NativePreferenceActions {
             requireUnchanged(app, source, session);
             final ProcessOverridesStore.Identity id = session.id;
             final String font = op == EDIT_TEXT ? textFont(session) : null;
-            final String result = ExperimentalSlicer.editModel(
-                id.printer.vendor, id.process.vendor, id.filament.vendor,
-                id.printerName, id.processName, id.filamentName,
-                source.file.getAbsolutePath(), session.resources.getAbsolutePath(), session.data.getAbsolutePath(),
-                job.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides,
-                op, a, b, op == EDIT_TEXT ? text : null, font);
+            final String result = op == EDIT_MATERIALS
+                ? ExperimentalSlicer.assignMaterials(
+                    id.printer.vendor, id.process.vendor, id.filament.vendor,
+                    id.printerName, id.processName, id.filamentName,
+                    source.file.getAbsolutePath(), session.resources.getAbsolutePath(), session.data.getAbsolutePath(),
+                    job.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides, text)
+                : ExperimentalSlicer.editModel(
+                    id.printer.vendor, id.process.vendor, id.filament.vendor,
+                    id.printerName, id.processName, id.filamentName,
+                    source.file.getAbsolutePath(), session.resources.getAbsolutePath(), session.data.getAbsolutePath(),
+                    job.getAbsolutePath(), source.transform.toNativeArguments(), session.selection.overrides,
+                    op, a, b, op == EDIT_TEXT ? text : null, font);
             interrupted(app);
             final File derived = derivedResult(app, job, result);
             requireUnchanged(app, source, session);
@@ -260,16 +293,27 @@ final class NativePreferenceActions {
             // Drop suffixes left by earlier edits, so repeated edits do not grow the name.
             for (boolean stripped = true; stripped; ) {
                 stripped = false;
-                for (int nameId : new int[]{R.string.kv3_cut_name, R.string.kv3_text_name, R.string.kv3_assembly_name}) {
+                for (int nameId : new int[]{R.string.kv3_cut_name, R.string.kv3_text_name, R.string.kv3_assembly_name, R.string.kv3_materials_name}) {
                     String tail = app.getString(nameId, "").replaceAll("(?i)\\.3mf$", "");
                     if (!tail.isEmpty() && base.endsWith(tail) && base.length() > tail.length()) { base = base.substring(0, base.length() - tail.length()); stripped = true; }
                 }
             }
-            final String name = app.getString(op == EDIT_CUT ? R.string.kv3_cut_name : op == EDIT_TEXT ? R.string.kv3_text_name : R.string.kv3_assembly_name, base);
+            final String name = app.getString(op == EDIT_CUT ? R.string.kv3_cut_name : op == EDIT_TEXT ? R.string.kv3_text_name : op == EDIT_MATERIALS ? R.string.kv3_materials_name : R.string.kv3_assembly_name, base);
+            // The multi-material project is loaded with its own settings, checked like a project import.
+            org.json.JSONObject projectSnapshot = null;
+            if (op == EDIT_MATERIALS) {
+                ProjectSettingsSnapshot snapshot = ProjectSettingsSnapshot.parse(ExperimentalSlicer.projectSettingsSnapshot(
+                    id.printer.vendor, id.process.vendor, id.filament.vendor, id.printerName, id.processName, id.filamentName,
+                    session.resources.getAbsolutePath(), session.data.getAbsolutePath(), session.selection.overrides, "{}", derived.getAbsolutePath(), -1));
+                if (!snapshot.canLoad(false)) throw new IOException(EngineText.clean(snapshot.validationError(false)));
+                projectSnapshot = snapshot.json();
+            }
+            final org.json.JSONObject checkedSnapshot = projectSnapshot;
             ProcessOverridesStore.changeSelection(app, false, () -> {
                 interrupted(app);
                 if (!session.stillCurrent(app)) throw new IOException(app.getString(R.string.native_actions_profiles_changed));
-                CurrentModelStore.replaceDerived(app, derived, name, expected);
+                // A multi-material result is a full project: its slots and flushing come from project_settings.config.
+                CurrentModelStore.replaceDerived(app, derived, name, expected, op == EDIT_MATERIALS ? 1 : 0, checkedSnapshot);
             });
             return name;
         } catch (LinkageError e) {

@@ -152,9 +152,13 @@ final class CurrentModelStore {
         }finally{if(!published)prepared.discard();}
     }
     /** Caller holds the profile-selection lock; publication also checks the captured workspace. */
-    static void replaceDerived(Context context,File derived,String displayName,RestoreSelection expected)throws IOException {
+    static void replaceDerived(Context context,File derived,String displayName,RestoreSelection expected)throws IOException {replaceDerived(context,derived,displayName,expected,0,null);}
+    /** projectMode 1 keeps the derived project's own material slots and settings with the selected printer (needs its checked snapshot). */
+    static void replaceDerived(Context context,File derived,String displayName,RestoreSelection expected,int projectMode,org.json.JSONObject projectSnapshot)throws IOException {
+        if(projectMode!=0&&projectMode!=1||projectMode==1&&projectSnapshot==null)throw new IllegalArgumentException("Unsupported project mode");
         CurrentModelStore prepared=prepare(context,Uri.fromFile(derived),displayName);boolean published=false;
-        try{prepared.setProjectMode(0);prepared.publish(context,ModelTransform.identity(),-1,expected);published=true;}finally{if(!published)prepared.discard();}
+        try{if(projectSnapshot!=null){if(prepared.metadata==null)throw new IOException("Project metadata is missing");try{prepared.metadata.put("project_settings_snapshot",projectSnapshot);}catch(org.json.JSONException e){throw new IOException(e);}}
+            prepared.setProjectMode(projectMode);prepared.publish(context,ModelTransform.identity(),-1,expected);published=true;}finally{if(!published)prepared.discard();}
     }
 
     static void saveTransform(Context context, String expectedFile, ModelTransform transform) throws IOException {
