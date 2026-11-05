@@ -68,6 +68,17 @@ final class KeplerScreen {
         if (floating != null) body.removeView(floating);
         floating = button; FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM); p.setMargins(ui.dp(20), 0, ui.dp(20), nav == null ? ui.dp(16) : ui.dp(24 + 68 + 16));
         body.addView(button, p); content.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), ui.dp(84));
+        if (nav != null) {
+            // Keep 12 dp of air above the floating tab bar, wherever the gesture-bar inset puts it.
+            View.OnLayoutChangeListener follow = (v, l, t, r, b, ol, ot, orr, ob) -> {
+                if (floating != button || nav.getHeight() == 0 || body.getHeight() == 0) return;
+                int[] n = new int[2], bd = new int[2]; nav.getLocationInWindow(n); body.getLocationInWindow(bd);
+                int want = bd[1] + body.getHeight() - n[1] + ui.dp(12);
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) button.getLayoutParams();
+                if (want > 0 && lp.bottomMargin != want) { lp.bottomMargin = want; button.setLayoutParams(lp); content.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), want + button.getHeight() + ui.dp(12)); }
+            };
+            nav.addOnLayoutChangeListener(follow); body.addOnLayoutChangeListener(follow);
+        }
     }
 
     /** Section header (Kepler/Section: 12/700 uppercase, tracking 0.72, pt20 pb8 px4) with optional trailing action. */
