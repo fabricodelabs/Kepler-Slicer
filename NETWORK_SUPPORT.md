@@ -1,40 +1,108 @@
-# Kepler Slicer — рабочая матрица сетевого переноса
+<div align="center">
 
-Матрица описывает исходный код и локальные проверки. Через Android UI проверен сценарий OctoPrint на локальном имитаторе; подключение к реальным принтерам, облачным аккаунтам и серверам не проверено. Обычная передача G-code не отправляет команду запуска; отдельные действия OctoPrint, Moonraker и UltiMaker запускают печать после предупреждения. Поведение удалённого сервера не гарантировано.
+# Network support
 
-| Тип из upstream | В коде Android | Проверка и существенные границы |
+[Kepler Slicer](README.md) · Printer hosts and print services
+
+</div>
+
+Kepler Slicer sends sliced G-code to printers and print services over the network, using the same host types as
+OrcaSlicer. Printers are added in **Preferences → Network**; the **Device** screen shows live status and controls.
+
+<table>
+<tr>
+<td>
+<strong>⚠️ Please note.</strong> Every protocol is tested against local simulators (<code>tools/test_*.ps1</code>),
+not against every real printer or account. A plain upload never starts a print: starting, pausing, stopping and
+moving axes are separate actions that you confirm, and each command is sent once and never retried.
+</td>
+</tr>
+</table>
+
+## Overview
+
+| Symbol | Meaning |
+|:---:|---|
+| ✅ | Supported |
+| ➖ | Not available for this host |
+
+| Host | Upload | Start print | Live status | Pause / resume / stop | Speed, light, axes |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Bambu Lab — LAN** | ✅ | ✅ | ✅ (with AMS) | ✅ | ✅ |
+| **Bambu Lab — cloud** | ✅ | ➖ | ✅ (with AMS) | ✅ | ✅ |
+| OctoPrint | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Klipper / Moonraker | ✅ | ✅ | ✅ | ✅ | ✅ |
+| PrusaLink | ✅ | ➖ | ✅ | ✅ | ✅ |
+| Duet (RRF and DSF) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Repetier Server | ✅ | ➖ | ✅ | ✅ | ➖ |
+| Creality OS (K1 / K2) | ✅ | ➖ | ✅ | ✅ | ✅ |
+| Elegoo Neptune | ✅ | ➖ | ✅ | ✅ | ➖ |
+| Elegoo Centauri Carbon (SDCP) | ✅ | ➖ | ✅ | ✅ | ✅ |
+| Elegoo Centauri Carbon 2 | ✅ | ➖ | ✅ | ✅ | ✅ |
+| UltiMaker | ✅ | ✅ | ➖ | ➖ | ➖ |
+| PrusaConnect | ✅ | ➖ | ➖ | ➖ | ➖ |
+| FlashAir, AstroBox, MKS, ESP3D, Flashforge, Creality Print | ✅ | ➖ | ➖ | ➖ | ➖ |
+| Prusa SL1 / SL1S | `.sl1` / `.sl1s` only | ➖ | ➖ | ➖ | ➖ |
+| SimplyPrint | ✅ | ➖ | ➖ | ➖ | ➖ |
+| 3DPrinterOS | ✅ | ➖ | ➖ | ➖ | ➖ |
+| Obico | ✅ | ➖ | ➖ | ➖ | ➖ |
+
+## Bambu Lab
+
+### LAN
+
+| | |
+|---|---|
+| Connection | Printer IP address, **serial number** and **access code** (shown on the printer screen) |
+| Discovery | Printers on the same Wi-Fi are found automatically (SSDP) |
+| Status and commands | MQTT over TLS, port 8883, user `bblp` |
+| Upload | Implicit FTPS, port 990 |
+| Certificate | Pinned on first connection (trust on first use); a changed certificate is refused until you save the printer again |
+| Network | Private (LAN) addresses only |
+
+The printer must allow LAN access (LAN-only or developer mode, depending on the firmware). From the Device screen
+you can start the uploaded file, pause, resume and stop, change the speed, switch the chamber light and auxiliary fan,
+and move the axes while idle. Both the global and the China versions of the printers are supported.
+
+### Cloud
+
+Sign in with your Bambu Lab account (password or e-mail code; the region, including China, is set in
+Preferences). The app lists your printers, shows status and AMS, and sends commands through the account MQTT broker
+with certificate checks. Files are uploaded to your cloud storage; start the print from Bambu Handy or over LAN.
+
+## Job control
+
+| Host | How it works |
+|---|---|
+| OctoPrint | `api/job`, `api/printer/printhead`, `api/printer/command`; upload with `print=false`, then a separate start |
+| Klipper / Moonraker | `printer/print/*`, `printer/gcode/script`; upload, then a separate start |
+| PrusaLink | `api/v1/job/{id}`; API key or Digest authentication |
+| Duet | RepRapFirmware (HTTP) and DSF; speed and axes by G-code, start of an uploaded file with `M32` |
+| Repetier Server | Status and job control for the selected printer or group |
+| Creality OS | WebSocket on port 9999 (K1 / K2), including the light |
+| Elegoo | Neptune through the OctoPrint API; Centauri Carbon through SDCP; Centauri Carbon 2 through its MQTT broker (port 1883, LAN-only mode) |
+| UltiMaker | Digest authentication with pairing code; its upload always starts the print, so it is a separate “upload and print” action |
+
+Speed changes use `M220`. Axis moves are allowed only while the printer is idle.
+
+## Print services
+
+| Service | Sign-in | What it does |
 |---|---|---|
-| OctoPrint | Проверка API, статус, multipart-загрузка. | На локальном имитаторе через Android UI выполнена загрузка с `print=false`, затем отдельная команда `select` с `print=true`; в режиме без сети повторного запроса не было. Реальный принтер не проверен. |
-| Moonraker | Проверка API, состояние, загрузка в хранилище. | Loopback: версия, состояние, `print=false` и отдельная команда старта; отдельный запуск переданного файла подключён к UI; UI-проверка ожидается. |
-| PrusaLink | Проверка API, состояние, PUT/POST-загрузка, API key и Digest. | Loopback: PUT без запуска, Digest challenge/qop. Команда старта не подключена. |
-| PrusaConnect | Проверка API, загрузка. | Loopback: multipart без `to_print`/`to_queue`, статус 202. Статус принтера и старт/очередь в UI не реализованы. |
-| Duet | Подключение к RRF/DSF и загрузка. | Loopback RRF и DSF, включая неверный пароль; старт и статус в общем UI не реализованы. |
-| UltiMaker | Проверка Digest и код сопряжения. | Loopback проверки и сопряжения. Простая загрузка блокируется, поскольку upstream-метод запускает печать; сопряжение и отдельное действие «передать и начать печать» подключены к UI, новая UI-интеграция пока не проверена. |
-| FlashAir | Проверка и загрузка на карту. | Loopback; статуса и команды старта нет. |
-| AstroBox | Проверка API и multipart-загрузка. | Loopback; общий статус сообщает unknown. |
-| Repetier Server | Проверка и загрузка на выбранный принтер/группу. | Loopback; общий статус сообщает unknown. |
-| MKS | Проверка TCP и HTTP-загрузка. | Loopback TCP + HTTP; общий статус сообщает unknown. |
-| ESP3D | Проверка и multipart-загрузка. | Loopback; имя передаётся в формате 8.3, общий статус сообщает unknown. |
-| Creality Print | Проверка и multipart-загрузка с bearer. | Loopback; общий статус сообщает unknown. |
-| Flashforge | Варианты HTTP и TCP, загрузка без запрошенного запуска. | Loopback для обоих вариантов; общий статус сообщает unknown. |
-| ElegooLink | Octo-совместимый fallback, CC1/CC2 и загрузка чанками. | Loopback fallback, CC1 и CC2; общий статус сообщает unknown. |
-| Prusa SL1 / SL1S | Проверка версии и транспорт SLA-файлов `.sl1` / `.sl1s`; текущий UI отвергает FFF G-code. | Loopback проверки версии и отказа неподдерживаемого старта; загрузка SL1 отдельно не проверена, статус unknown, SLA-нарезка не реализована. |
-| Obico | Bearer, проверка, получение списка принтеров, multipart-загрузка с `print=false`. | Loopback Bearer + передача, нужен `printer_id`; отдельное OAuth-подключение Obico пока не выполнено. |
-| SimplyPrint | Bearer, TokenInfo, TempUpload и передача чанками. Возвращается ссылка для отдельного завершения импорта пользователем. | TempUpload и чанки проверены на локальном mock; PKCE, token exchange и refresh — на loopback. Вход подключён к UI; реальный сервис, аккаунт и новая UI-интеграция ещё не проверялись. |
-| 3DPrinterOS | Проверка session, проекты и типы, multipart-загрузка и необязательное обновление типа. | Loopback session + project + file ID, получение token и опрос login. Вход подключён к UI; реальный сервис, аккаунт и новая UI-интеграция ещё не проверялись. |
+| SimplyPrint | Browser sign-in (OAuth with PKCE) | Uploads the file in chunks and returns a link to finish the import in SimplyPrint |
+| 3DPrinterOS | Browser sign-in | Uploads the file to a project, optionally sets its type |
+| Obico | API token | Lists your printers and uploads the file without starting it |
 
-**Upstream Cloud:** реализован экспериментальный вход внешним браузером с PKCE и локальным callback, шифрованное хранение сессии, обновление токена, pull профилей и удалений, локальное зеркало с атомарным курсором, явное редактирование и отправка выбранного JSON, выявление конфликтов и экспорт через SAF. Проверки выполнялись с loopback и JVM-подменами, а не с реальными аккаунтами. Серверная политика авторизации и все провайдеры не подтверждены. Импортированные профили пока не применяются нативным движком к нарезке; это не синхронизация всех возможностей desktop.
+## Testing
 
-**Bambu (LAN, 2026-11-05):** status and AMS over the printer MQTT (port 8883, user `bblp`, access code; serial in the User field), private LAN addresses only. Upload over implicit FTPS (port 990, TLS session reuse on the data channel); starting the uploaded file (`gcode_file`), pause/resume/stop, speed, chamber light, aux fan and axis moves are separate actions confirmed by the user. Tested against loopback simulators (`tools/test_bambu_lan.ps1`), not a real printer. Bambu cloud is not implemented.
+```bash
+pwsh tools/run_host_tests.ps1 -JsonJar <path to org.json jar>
+```
 
-**Job control (2026-11-05):** OctoPrint (`api/job`, `api/printer/printhead`, `api/printer/command`), Moonraker (`printer/print/*`, `printer/gcode/script`) and PrusaLink (`api/v1/job/{id}`) pause/resume/cancel and speed (M220) from the Device screen; each command is confirmed and sent once, never retried. Axis moves only while idle.
+The suites (`test_bambu_lan.ps1`, `test_printer_control.ps1` and others) run every protocol against loopback
+simulators, including wrong passwords, refused certificates and cancelled uploads.
 
-**More hosts (2026-11-05):** live status and pause/resume/stop for Duet (RRF and DSF; speed and axis moves by G-code, start of an uploaded file with M32), Repetier Server, Creality OS (K1/K2 WebSocket 9999, also the light) and Elegoo (Neptune via the OctoPrint API; Centauri Carbon via SDCP, also the light). Centauri Carbon 2: status, pause/resume/stop and light over its own MQTT broker (port 1883, LAN-only mode). Loopback simulators only (`tools/test_printer_control.ps1`).
+## References
 
-**Bambu (cloud, 2026-11-05):** the user signs in with their Bambu Lab account (password or e-mail code; region from Preferences); the app lists the account printers and reads status/AMS and sends commands over the account MQTT broker with certificate checks. Files can be uploaded to the account cloud storage (signed S3 URLs); the cloud print start is not sent, start the print in Bambu Handy or over LAN. Not verified against the real service.
-
-**Bambu (cloud):** официальный README Bambu Studio указывает на сетевой плагин с non-free библиотеками. Официальный Android SDK для этого плагина в доступной документации не обнаружен; это не доказывает его отсутствия. Bambu LAN/cloud, аккаунт, камера и отправка в текущем Android-порту не заявлены работающими.
-
-Источники: [исходный upstream на использованном коммите](https://github.com/OrcaSlicer/OrcaSlicer/tree/6d2869c430284714f0a22570c38d3b359965a802), [Bambu Studio README](https://github.com/bambulab/BambuStudio/blob/master/README.md), [руководство upstream Cloud](https://cloud.orcaslicer.com/wiki/). Практическая доступность сервисов, пользовательские данные, совместимость устройств и пригодность G-code к печати требуют отдельной проверки.
-
-
+- [OrcaSlicer at the pinned commit](https://github.com/OrcaSlicer/OrcaSlicer/tree/6d2869c430284714f0a22570c38d3b359965a802) — host types and upload behaviour
+- [Bambu Studio](https://github.com/bambulab/BambuStudio) — Bambu Lab printers

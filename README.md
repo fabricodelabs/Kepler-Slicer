@@ -1,46 +1,98 @@
-# Kepler Slicer — экспериментальная Android-версия
+<div align="center">
 
-Kepler Slicer — разрабатываемое Android-приложение на основе движка и ресурсов [upstream](https://github.com/OrcaSlicer/OrcaSlicer). Рабочие экраны Settings и Preferences используют согласованную монохромную дизайн-систему Glass UI (Java/Views); оформление остальных экранов переносится по фазам ТЗ. Это ещё не полный перенос возможностей настольной upstream.
+<img alt="Kepler Slicer logo" src="docs/images/logo.svg" width="120" height="120">
 
-## Что реализовано
+# Kepler Slicer
 
-Текущая работа — Фаза 2: настройки из схемы и Preferences. В Settings доступны схема Process/Filament/Printer, поиск, пользовательские профили, наследование и сохранение. Preferences подключены к Android-действиям; точный статус всех 39 ранее отсутствовавших пунктов приведён в [матрице Preferences](docs/PREFERENCES-39-STATUS.md). 13 пунктов полностью зависят от ещё отсутствующих возможностей ядра/провайдера; отдельные реализации имеют явно описанные ограничения. Ядро не менялось. Фазы 3–7 ждут отдельного «ок»; iOS отложен. Галерея доступна после включения режима разработчика и использует токены, Manrope и Material Symbols; её демонстрационные значения не меняют нарезку. Подробнее: [дизайн-система Фазы 1](docs/PHASE1-DESIGN.md) и [статус Фазы 2](docs/PHASE2-STATUS.md).
+**English** | [Русский](README.ru.md)
 
-- Открытие STL, OBJ и 3MF через системный выбор файлов Android. STL читается потоково без прежних фиксированных порогов в 32 МБ и 250 000 треугольников; полный исходный файл сохраняется отдельно, а в просмотр попадает ограниченная выборка. Размер доступной памяти и хранилища устройства по-прежнему влияет на работу. Для STL предполагаются миллиметры, поскольку единицы в нём не заданы. Последняя модель хранится во внутреннем хранилище; список недавних файлов использует сохранённые разрешения системного файлового провайдера, когда они предоставлены.
-- Импорт OBJ и 3MF использует загрузчик upstream. Оригинальный файл сохраняется; для 3MF показываются объекты, экземпляры, части, сведения о настройках и пластины, между которыми можно переключаться. Отдельные файлы материалов OBJ (`.mtl`) и текстуры пока не импортируются. Размещение проверенного геометрического 3MF в подготовке совпало с просмотром траекторий; соответствие всех проектов настольной версии ещё не подтверждено. Восстановление полноценного проекта и всех настроек настольной версии ещё не завершено.
-- Рабочий стол с контуром и высотой области печати из профиля принтера upstream, вращением и масштабированием камеры, а также инструментами изменения положения, поворота и масштаба модели. В режиме перемещения модель можно перетаскивать; масштаб вида управляется двумя пальцами. Геометрический просмотр не доказывает пригодность модели для печати.
-- Отдельный экран выбора принтера и сопла с изображениями из официальных ресурсов, а также выбор профилей процесса и материала. Совместимость вычисляется нативным движком upstream с учётом наследования и условий профилей; полный каталог позволяет увидеть и несовместимые варианты. При смене принтера или сопла прежние несовместимые выборы сбрасываются.
-- Параметры процесса на рабочем экране с шестью разделами: качество, прочность, скорость, поддержки, мультиматериал и прочее. Названия, описания и значения основаны на метаданных upstream; для доступных строк используются русские переводы upstream. Поддерживаемые скалярные значения можно изменить и проверить нативным движком перед сохранением; векторы и другие неподдерживаемые значения показаны только для чтения. Изменения привязаны к выбранной комбинации принтера, процесса и материала. Наличие раздела мультиматериала не означает поддержку многоматериальной нарезки.
-- Экспериментальная FFF-нарезка одним экструдером через нативный движок upstream (`arm64-v8a`) с выбранными профилями и поддерживаемыми изменениями параметров. STL и доступная геометрия OBJ/3MF подаются из оригинального файла. 3MF с несколькими пластинами, встроенными глобальными или пластинными настройками, пользовательским G-code либо неподтверждёнными единицами и преобразованиями пока не нарезается: оригинал сохраняется, а причина отображается. Изменение расположения проекта 3MF и трансформация многокомпонентного OBJ при нарезке пока не поддержаны. При первом использовании ресурсы движка извлекаются во внутреннее хранилище и занимают около 249 МБ. Подробный прогресс нарезки пока не подключён.
-- Результат хранится во внутреннем хранилище и экспортируется через системный диалог Android. Режим слоёв показывает траектории в том же 3D-поле с общей камерой и выбором количества видимых слоёв. Это приблизительный просмотр линий экструзии и поддерживаемых дуг XY на высоте слоя: холостые перемещения, толщина линий, изменение Z внутри сегмента и физика печати не отображаются. Слои без известной высоты пропускаются; сведения о пропущенных командах доступны в интерфейсе. Просмотр не проверяет пригодность G-code к печати.
-- Добавлены сохранение подключений, проверка и передача G-code для OctoPrint, Moonraker, PrusaLink, PrusaConnect, Duet, UltiMaker, FlashAir, AstroBox, Repetier Server, MKS, ESP3D, Creality Print, Flashforge, ElegooLink, Obico, SimplyPrint и 3DPrinterOS. Доступные поля, статусы и действия различаются по протоколам: некоторые возвращают только доступность; SimplyPrint требует завершить импорт отдельно. Обычная передача не отправляет команду запуска; для OctoPrint и Moonraker предусмотрен отдельный запуск переданного файла, для UltiMaker — передача с запуском. Эти действия требуют подтверждения. Поведение удалённого сервера не гарантировано. Подробнее — в [матрице сетевых возможностей](NETWORK_SUPPORT.md).
-- Для Prusa SL1/SL1S добавлена проверка соединения и транспорт подготовленных SLA-файлов `.sl1`/`.sl1s`; текущая FFF-нарезка и интерфейс передачи G-code не создают подходящий SLA-файл. Bambu LAN/cloud, камера и передача пока недоступны: официальный Bambu Studio описывает сетевой плагин как основанный на несвободных библиотеках; совместимый официальный Android SDK в доступной документации не найден.
-- Экспериментальный upstream Cloud: вход через браузер, хранение токенов в зашифрованном хранилище, получение профилей и конфликтов, локальное редактирование JSON, явная отправка выбранных изменений и экспорт. Синхронизация подключена к настоящему репозиторию пользовательских профилей с сохранением типов и неизвестных полей, контролем ревизий, удалений и конфликтов. Автосинхронизация выключена по умолчанию и требует явного включения. Серверная политика авторизации и реальные аккаунты ещё не проверены.
+[![Platform](https://img.shields.io/badge/platform-Android%2013%2B-3DDC84?logo=android&logoColor=white)](#requirements)
+[![Engine](https://img.shields.io/badge/engine-OrcaSlicer-1B1C1B)](https://github.com/OrcaSlicer/OrcaSlicer)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE-ORCASLICER.txt)
+[![CI](https://img.shields.io/github/actions/workflow/status/nitronov/Kepler-Slicer/ci.yml?label=CI)](https://github.com/nitronov/Kepler-Slicer/actions/workflows/ci.yml)
 
-Полноценное сохранение проектов, управление всеми функциями принтеров, SLA-нарезка и многоматериальная печать пока не реализованы. Доступность сетевого протокола не означает полного переноса всех возможностей настольной upstream.
+A 3D-printing slicer for Android phones and tablets, built on the OrcaSlicer engine.<br>
+Prepare a model, slice it on the device and send it to your printer — no computer needed.
 
-## Проверка и ограничения
+</div>
 
-В предыдущей сборке основной интерфейс проверен на эмуляторе Android 17 x86_64 с ARM-трансляцией. Для 20-мм тестового STL, принтера Prusa CORE One 0.4, процесса 0.20 SPEED и материала Prusament PLA получен G-code размером 258 193 байта и 100 слоёв; просмотрен слой 51. После преобразования модели получен файл размером 205 454 байта и 100 слоёв; экспорт через системный диалог Android выполнен. Проверен переход на сопло 0.6 и соответствие предлагаемых профилей процессу и материалу.
+<table>
+<tr>
+<td>
+<strong>⚠️ Early version.</strong> Kepler Slicer is under active development and is not an official OrcaSlicer app.
+Check the G-code preview before printing, and do not leave a printer unattended with a print you have not verified.
+</td>
+</tr>
+</table>
 
-В более новой сборке на том же эмуляторе проверены светлая и тёмная темы, рабочий стол, разделы параметров, импорт и общие настройки; все четыре пункта навигации видны в портретной и альбомной ориентации. Для Prusa CORE One 0.6 выбраны процесс 0.20 SPEED и Prusament PLA 0.6; сохранённые трансформации модели (поворот Z 90°, масштаб X 0,5 и смещение X 10 мм) восстановились. Высота слоя изменена с 0,2 до 0,3 мм и сохранена; нарезка создала 150 617 байт G-code с 67 слоями, в просмотре выбран слой 34 (Z 10,100 мм). После включения и сохранения параметра ironing приложение потребовало повторить нарезку перед использованием старого результата. Команда `gradlew.bat --offline assembleDebug` завершилась успешно.
+<div align="center">
 
-После исправлений порядка метаданных, контрастности диалогов и навигации предпросмотра сборка снова прошла offline-команду Gradle и была проверена через интерфейс эмулятора. Диалог трансформаций читается в светлой и тёмной темах; параметры качества и поддержек показаны в ожидаемом порядке. Для указанной конфигурации 0.6 нарезка с высотой слоя 0,3 мм и включённым ironing снова дала 150 617 байт и 67 слоёв; предпросмотр открылся, кнопка «Стол» вернула на рабочий стол с сохранённой моделью и трансформациями. Подробнее — в отчёте проверки рядом с APK.
+| Workspace | Tools | Layer preview | Settings |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/images/screen-ws.png" width="180" alt="Workspace"> | <img src="docs/images/screen-tools.png" width="180" alt="Tools"> | <img src="docs/images/screen-layers.png" width="180" alt="Layer preview"> | <img src="docs/images/screen-settings.png" width="180" alt="Settings"> |
 
-В последующей сборке на том же эмуляторе проверены импорт большого бинарного STL размером 35 000 084 байта и восстановление модели после переустановки, импорт тестового OBJ с двумя треугольниками и импорт геометрического 3MF. Последний имеет размеры 10 × 20 × 30 мм и был нарезан в файл размером 182 979 байт со 100 слоями; просмотр траекторий в 3D-поле открылся. Панель параметров видна в портретной и альбомной ориентации, значение высоты слоя 0,3 мм сохранилось. В предыдущей сборке также проверены перетаскивание STL-модели, нарезка на 67 слоёв и просмотр слоя 34 при Z 10,1 мм с вращением камеры.
+</div>
 
-Сетевой сценарий OctoPrint проверен через интерфейс на локальном имитаторе: передача G-code выполнялась с `print=false`, затем отдельная команда запуска была принята имитатором. В режиме без сети повторный запрос не отправлялся. Это не проверка реального сервера или принтера. Другие протоколы проверялись преимущественно локальными mock/loopback-тестами; вход в реальные облачные аккаунты не проверен.
+# Main features
 
-В более новой сборке исправлены выявленные на этих файлах ошибки размещения 3MF и чтения OrcaBadge: геометрический 3MF повторно нарезан в 182 979 байт и 100 слоёв с совпадающим положением в подготовке и просмотре траекторий. OrcaBadge открылся с 72 586 треугольниками, размерами 95,9 × 111,1 × 1,6 мм, одной пластиной и тремя экземплярами; нарезка была корректно заблокирована из-за неподдерживаемых настроек пластины, G-code не создан. В предыдущей сборке также нарезан замкнутый тестовый OBJ: 183 355 байт; после обновления проверено его восстановление. Потоковый STL дополнительно проверен на JVM на бинарном файле 35 000 084 байта и ASCII-файле 65 800 031 байт — по 700 000 треугольников в каждом. Математика 3D-траекторий проверена на синтетических данных с 67 слоями.
+- **The real OrcaSlicer engine on the phone**<br>
+  Slicing runs on the device through the native OrcaSlicer engine (arm64), with the same printer, process and filament profiles as the desktop version.
+- **Models and projects**<br>
+  STL, OBJ, 3MF and STEP. 3MF projects keep their plates, objects, colours and settings; several plates and multi-material projects are supported. Models can also be opened from a Printables link or generated as simple shapes.
+- **Editing tools**<br>
+  Move with X/Y/Z arrows, rotate with X/Y/Z rings, scale, lay on face, sink below the plate, cut, add text, assemble, measure, and brushes for supports, seams, colour and fuzzy skin.
+- **Full printer catalogue**<br>
+  Every printer of the desktop version (450+ models from Bambu Lab, Prusa, Creality, Qidi, Elegoo, Anycubic, Voron and more), grouped by maker; filaments grouped by brand.
+- **All slicer settings**<br>
+  Quality, strength, speed, supports, multi-material and other settings with search, user presets and per-object overrides.
+- **Layer preview**<br>
+  3D preview of the toolpaths by line type, speed, flow and layer height, with print time, filament and cost.
+- **Printing over the network**<br>
+  Upload, start and control prints on Bambu Lab (LAN and cloud), OctoPrint, Klipper/Moonraker, PrusaLink, Duet, Repetier, Creality, Elegoo and more; Bambu Lab printers are found on Wi-Fi automatically. See [Network support](NETWORK_SUPPORT.md).
+- **Glass interface**<br>
+  A clean dark interface with English and Russian translations.
 
-Описанные проверки охватывают конкретные сценарии и не подтверждают работу всех функций или профилей. Сравнение G-code с настольной версией, проверка на физическом Android-устройстве, реальных принтерах и облачных аккаунтах не выполнены; полученный G-code не проверен для печати.
+# Download
 
-## Источники и лицензии
+Builds are published on the [Releases](https://github.com/nitronov/Kepler-Slicer/releases) page.
+Download the `.apk`, open it on the phone and allow installation from this source.
 
-Профили, ресурсы и портируемая логика основаны на официальном upstream на коммите [`6d2869c430284714f0a22570c38d3b359965a802`](https://github.com/OrcaSlicer/OrcaSlicer/tree/6d2869c430284714f0a22570c38d3b359965a802). Каталог в `app/src/main/assets/kepler_profiles.zip` и индексы принтеров, процесса и материала основаны на этих файлах. Индекс профилей воспроизводится скриптом `tools/build_print_profile_index.py`, а изображения принтеров — `tools/build_printer_covers.py` с указанным checkout upstream. Русские строки параметров включают переводы из upstream. Upstream распространяется под [GNU AGPL-3.0](LICENSE-ORCASLICER.txt); при распространении сохраняйте применимые исходный код, указания авторства и лицензии. Эксперимент semver использует код с отдельной MIT-лицензией, указанной в файлах upstream. О статусе плагина Bambu см. [официальный README Bambu Studio](https://github.com/bambulab/BambuStudio/blob/master/README.md). Kepler Slicer не является официальным приложением upstream.
+## Requirements
 
-## Сборка
+- Android 13 or newer, 64-bit ARM device (arm64-v8a)
+- About 500 MB of free storage (the engine unpacks its printer profiles on first start)
 
-- Android 8.0 (API 26) или новее, `arm64-v8a` и OpenGL ES 2.0. Для эмулятора x86_64 необходима поддержка ARM-трансляции.
-- Android Studio, Android SDK Platform 36, JDK 17 или новее. Откройте проект и выберите **Build → Build APK(s)**, либо выполните `gradlew.bat assembleDebug` в Windows. При первой сборке могут скачиваться Gradle и Android Gradle Plugin.
-- Отладочный APK: `app/build/outputs/apk/debug/app-debug.apk`. Проект включает заранее собранную экспериментальную библиотеку `app/src/main/jniLibs/arm64-v8a/libkepler_slicer_experimental.so`. Полный checkout upstream и все зависимости для её пересборки в проект не входят; сборочные материалы и патчи находятся в `engine/`. Исторические сведения о тестировании в `engine/README.md` относятся к более раннему этапу; текущий статус основного интерфейса указан выше.
+# How to build
+
+Prerequisites: Android Studio (or JDK 17+), Android SDK 36. The native engine is prebuilt in `engine/jniLibs`;
+rebuilding it needs the Android NDK r30 and the OrcaSlicer dependencies (see [engine/README.md](engine/README.md)).
+
+```bash
+./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :core:test           # JUnit tests of the core module
+pwsh tools/run_host_tests.ps1 -JsonJar <path to org.json jar>   # protocol and settings test suites
+```
+
+## Project structure
+
+| Module | Contents |
+|---|---|
+| `app` | Android screens, glass UI, 3D view and device storage |
+| `core` | Plain Java: printer protocols, network transport, model geometry, profile and project parsing |
+| `engine` | JNI bridge and the native OrcaSlicer engine (`libkepler_slicer_experimental.so`) |
+
+More in [docs/architecture/MODULES-AND-KOTLIN.md](docs/architecture/MODULES-AND-KOTLIN.md).
+
+# License
+
+Kepler Slicer is based on [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer) and is licensed under the
+**GNU Affero General Public License, version 3** — see [LICENSE-ORCASLICER.txt](LICENSE-ORCASLICER.txt).
+OrcaSlicer is based on Bambu Studio by Bambu Lab, which is based on PrusaSlicer by Prusa Research, which is based on
+Slic3r by Alessandro Ranellucci and the RepRap community.
+
+The printer profiles, images and translated setting names come from OrcaSlicer at commit
+[`6d2869c`](https://github.com/OrcaSlicer/OrcaSlicer/tree/6d2869c430284714f0a22570c38d3b359965a802).
+Fonts: Manrope ([OFL](docs/Manrope-OFL.txt)); icons: Material Symbols ([Apache 2.0](docs/Material-Symbols-LICENSE.txt)).
+
+Kepler Slicer is not affiliated with OrcaSlicer, Bambu Lab or any printer maker. Product names are trademarks of
+their owners.
