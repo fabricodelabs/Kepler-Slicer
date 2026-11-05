@@ -9,6 +9,20 @@ public final class KeplerApplication extends android.app.Application {
     private static void installMessages(android.content.Context c){try(java.io.InputStream in=c.getAssets().open("kepler_messages.json")){org.json.JSONObject j=new org.json.JSONObject(new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));L.install(map(j.optJSONObject("en")),map(j.optJSONObject("ru")));}catch(Exception ignored){}}
     private static java.util.Map<String,String> map(org.json.JSONObject o){java.util.HashMap<String,String> m=new java.util.HashMap<>();if(o!=null)for(java.util.Iterator<String> it=o.keys();it.hasNext();){String k=it.next();m.put(k,o.optString(k,k));}return m;}
     @Override public void onCreate(){super.onCreate();instance=this;installMessages(this);GeneralPreferences.install(this);OnlinePreferences.attach(this);
+        // iOS-style push/pop for every screen. On Android 14+ these also drive the predictive back gesture, so a
+        // swipe back scrubs the pop animation with the finger and shows the previous screen underneath.
+        if (android.os.Build.VERSION.SDK_INT >= 34) registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+            @Override public void onActivityCreated(android.app.Activity a, android.os.Bundle b) {
+                a.overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_OPEN, R.anim.kv_push_in, R.anim.kv_push_out);
+                a.overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_CLOSE, R.anim.kv_pop_in, R.anim.kv_pop_out);
+            }
+            @Override public void onActivityStarted(android.app.Activity a) {}
+            @Override public void onActivityResumed(android.app.Activity a) {}
+            @Override public void onActivityPaused(android.app.Activity a) {}
+            @Override public void onActivityStopped(android.app.Activity a) {}
+            @Override public void onActivitySaveInstanceState(android.app.Activity a, android.os.Bundle b) {}
+            @Override public void onActivityDestroyed(android.app.Activity a) {}
+        });
         // Warm the settings schema and profile index so the Settings tab opens without a loading page.
         new Thread(()->{try{com.keplerslicer.app.settings.SettingsSchema.load(this);SettingsState.repository(this);}catch(Exception ignored){}},"settings-warmup").start();
         new Thread(()->{try{String requested=getSharedPreferences("app_preferences",0).getString("log_severity_level","info");String actual=NativePreferenceActions.setLogLevel(requested);getSharedPreferences("app_preferences",0).edit().putString("native_log_severity_actual",actual).apply();}catch(java.io.IOException ignored){getSharedPreferences("app_preferences",0).edit().remove("native_log_severity_actual").apply();}},"native-log-init").start();

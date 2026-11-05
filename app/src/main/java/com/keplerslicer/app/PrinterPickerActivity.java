@@ -63,7 +63,7 @@ public class PrinterPickerActivity extends Activity {
         String key() { return vendor + "\u0000" + name; }
     }
     @Override public void onCreate(Bundle state) {
-        MdUi.prepare(this); super.onCreate(state); if(android.os.Build.VERSION.SDK_INT>=33)backCallback=Api33.register(this);
+        MdUi.prepare(this); super.onCreate(state);
         MdUi palette = new MdUi(this);
         INK=palette.ink; MUTED=palette.muted; BG=palette.bg; SURFACE=palette.container; LINE=palette.line; CARD=palette.surface;
         if (state != null) { query = state.getString("query", ""); restoredModel = state.getString("model"); restoredVariant = state.getString("variant"); }
@@ -111,6 +111,8 @@ public class PrinterPickerActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle out) { out.putString("query",query); if(chosenModel!=null) out.putString("model",chosenModel.key()); if(chosenVariant!=null) out.putString("variant",chosenVariant.path); super.onSaveInstanceState(out); }
     @Override protected void onDestroy() { worker.shutdownNow(); if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback); super.onDestroy(); }
     @android.annotation.TargetApi(33) private static final class Api33 {static Object register(PrinterPickerActivity a){android.window.OnBackInvokedCallback cb=a::handleBack;a.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,cb);return cb;}static void unregister(PrinterPickerActivity a,Object cb){a.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)cb);}}
+    /** Back is intercepted only inside the library or a chosen model; at the top the system animates the gesture. */
+    private void syncBack() { boolean want = chosenModel != null || library; if (want && backCallback == null) backCallback = Api33.register(this); else if (!want && backCallback != null) { Api33.unregister(this, backCallback); backCallback = null; } }
     private void handleBack() { if(chosenModel!=null) { chosenModel=null; chosenVariant=null; render(); } else if(library) { library=false; render(); } else finish(); }
     @android.annotation.SuppressLint("GestureBackNavigation") @Override public void onBackPressed() { handleBack(); }
     private int dp(float n) { return (int)(n*getResources().getDisplayMetrics().density+.5f); }
@@ -128,7 +130,7 @@ public class PrinterPickerActivity extends Activity {
     @Override protected void onResume() { super.onResume(); if (!library && chosenModel == null) render(); }
     /** Process of the current slicing selection (also for user printer profiles, which the catalog does not track). */
     private String activeProcessName() { try { return ProcessOverridesStore.Identity.capture(this).processName; } catch (Exception e) { return null; } }
-    private void render() {
+    private void render() { syncBack();
         String title = chosenModel != null ? chosenModel.name : library ? getString(R.string.kv3_printer_library) : getString(R.string.kv3_printers);
         View plus = new com.keplerslicer.app.glass.KeplerUi(this).glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.kv3_add_printer), () -> { library = true; chosenModel = null; render(); });
         screen = new KeplerScreen(this, title, this::handleBack, library || chosenModel != null ? null : plus, 1); ui = screen.ui;

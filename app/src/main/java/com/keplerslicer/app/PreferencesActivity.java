@@ -40,7 +40,7 @@ public final class PreferencesActivity extends Activity {
     private boolean busy,dead;
     private static final int FOLDER=710,STL=711,THREE_MF=712,OBJ=713;
     private static final int[] SECTIONS={R.string.phase2_preferences_general,R.string.phase2_preferences_control,R.string.phase2_preferences_online,R.string.phase2_preferences_associate,R.string.phase2_preferences_developer};
-    @Override public void onCreate(Bundle state){super.onCreate(state);prefs=getSharedPreferences("app_preferences",MODE_PRIVATE);if(state!=null){section=Math.max(0,Math.min(4,state.getInt("section",0)));restoreScroll=Math.max(0,state.getInt("scroll",0));}if(android.os.Build.VERSION.SDK_INT>=33)backCallback=Api33.register(this);render();}
+    @Override public void onCreate(Bundle state){super.onCreate(state);prefs=getSharedPreferences("app_preferences",MODE_PRIVATE);if(state!=null){section=Math.max(0,Math.min(4,state.getInt("section",0)));restoreScroll=Math.max(0,state.getInt("scroll",0));}render();}
     @Override protected void onDestroy(){dead=true;worker.shutdownNow();if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback);super.onDestroy();}
     @android.annotation.TargetApi(33) private static final class Api33 {
         static Object register(PreferencesActivity a){android.window.OnBackInvokedCallback callback=a::finish;a.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,callback);return callback;}
