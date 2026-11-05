@@ -812,7 +812,7 @@ public class MainActivity extends Activity {
             nx /= len; ny /= len; nz /= len;
             double rx = Math.atan2(ny, nz), r = Math.sqrt(ny*ny+nz*nz), ry = Math.atan2(nx, -r);
             selectTool(activeTool);
-            applyTransform(new ModelTransform(Math.toDegrees(rx), Math.toDegrees(ry), t.rz, t.sx, t.sy, t.sz, t.offsetX, t.offsetY));
+            applyTransform(new ModelTransform(Math.toDegrees(rx), Math.toDegrees(ry), t.rz, t.sx, t.sy, t.sz, t.offsetX, t.offsetY, t.offsetZ));
         });
         com.keplerslicer.app.glass.GlassBottomSheet.info(this, root, false, getString(R.string.kv3_tool_lay_on_face), L.t("Нажмите на грань модели, которой она должна лечь на стол."));
     }
@@ -1133,7 +1133,7 @@ public class MainActivity extends Activity {
     private double[] toolValues(ModelTransform t) {
         if (activeTool == 1) return new double[]{t.rx, t.ry, t.rz};
         if (activeTool == 2) return new double[]{t.sx * 100, t.sy * 100, t.sz * 100};
-        return new double[]{t.offsetX, t.offsetY, 0};
+        return new double[]{t.offsetX, t.offsetY, t.offsetZ};
     }
     private void refreshToolFields() {
         if (axisFields == null) return;
@@ -1142,7 +1142,7 @@ public class MainActivity extends Activity {
         boolean editable = previewReady && mesh != null && mesh.vertices.length > 0 && transformSupported();
         for (int i = 0; i < 3; i++) {
             EditText field = axisFields[i].value; if (!field.hasFocus()) field.setText(String.format(java.util.Locale.ROOT, "%.2f", v[i]));
-            boolean enabled = editable && !(activeTool == 0 && i == 2);
+            boolean enabled = editable;
             field.setEnabled(enabled); axisFields[i].view.setAlpha(enabled ? 1f : .5f);
             field.setContentDescription(getString(R.string.kv3_axis, new String[]{"X","Y","Z"}[i], unit));
         }
@@ -1158,9 +1158,9 @@ public class MainActivity extends Activity {
         v[axis] = value;
         final ModelTransform next;
         try {
-            if (activeTool == 1) next = new ModelTransform(v[0], v[1], v[2], t.sx, t.sy, t.sz, t.offsetX, t.offsetY);
-            else if (activeTool == 2) next = new ModelTransform(t.rx, t.ry, t.rz, v[0] / 100, v[1] / 100, v[2] / 100, t.offsetX, t.offsetY);
-            else next = new ModelTransform(t.rx, t.ry, t.rz, t.sx, t.sy, t.sz, v[0], v[1]);
+            if (activeTool == 1) next = new ModelTransform(v[0], v[1], v[2], t.sx, t.sy, t.sz, t.offsetX, t.offsetY, t.offsetZ);
+            else if (activeTool == 2) next = new ModelTransform(t.rx, t.ry, t.rz, v[0] / 100, v[1] / 100, v[2] / 100, t.offsetX, t.offsetY, t.offsetZ);
+            else next = new ModelTransform(t.rx, t.ry, t.rz, t.sx, t.sy, t.sz, v[0], v[1], Math.min(0, v[2]));
         } catch (IllegalArgumentException e) { refreshToolFields(); dialog(getString(R.string.kv3_apply_failed), e.getMessage()); return; }
         final StlView view = stlView; final String file = meshFileName; final ModelTransform old = modelTransform;
         dragReady(view, viewportTransform, viewportMove, false);
@@ -1434,7 +1434,7 @@ public class MainActivity extends Activity {
                 try {
                     double[] n = new double[8];
                     for (int i = 0; i < n.length; i++) n[i] = Double.parseDouble(fields[i].getText().toString().trim().replace(',', '.'));
-                    ModelTransform next = new ModelTransform(n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7]);
+                    ModelTransform next = new ModelTransform(n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], modelTransform.offsetZ);
                     editor.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
                     editor.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(false);
                     editor.getButton(AlertDialog.BUTTON_NEUTRAL).setEnabled(false);

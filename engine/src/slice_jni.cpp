@@ -183,7 +183,7 @@ std::string slice_model(const std::string &model_file, const std::string &output
     if (!volume.valid()) throw std::runtime_error("The build volume shape is invalid");
     // Match the desktop's lateral centering step for a newly loaded model.
     // This is centering, not the multi-object arrangement algorithm.
-    const bool identity=!transform || (transform->rotation_x==0 && transform->rotation_y==0 && transform->rotation_z==0 && transform->scale_x==1 && transform->scale_y==1 && transform->scale_z==1 && transform->offset_x==0 && transform->offset_y==0);
+    const bool identity=!transform || (transform->rotation_x==0 && transform->rotation_y==0 && transform->rotation_z==0 && transform->scale_x==1 && transform->scale_y==1 && transform->scale_z==1 && transform->offset_x==0 && transform->offset_y==0 && transform->offset_z==0);
     if(center_derived_step) {
         const kepler::ModelTransform unchanged{0,0,0,1,1,1,0,0};
         kepler::place_step_geometry(model,volume,transform?*transform:unchanged);
@@ -462,10 +462,11 @@ jbyteArray json_bytes(JNIEnv *env,const std::string &json) {
     return out;
 }
 kepler::ModelTransform read_transform(JNIEnv *env,jdoubleArray params) {
-    if(!params||env->GetArrayLength(params)!=8)throw std::invalid_argument("Expected eight transform values");
-    jdouble v[8];env->GetDoubleArrayRegion(params,0,8,v);
+    const jsize n=params?env->GetArrayLength(params):0;
+    if(n!=8&&n!=9)throw std::invalid_argument("Expected eight or nine transform values");
+    jdouble v[9]={0,0,0,0,0,0,0,0,0};env->GetDoubleArrayRegion(params,0,n,v);
     if(env->ExceptionCheck())throw std::runtime_error("Cannot read transform");
-    return {v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7]};
+    kepler::ModelTransform t{v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7]};t.offset_z=v[8];kepler::check_offset_z(t);return t;
 }
 }
 
@@ -718,7 +719,7 @@ Slic3r::Model load_editable_model(const std::string &path,const kepler::ModelTra
         ? Slic3r::Model::read_from_file(path,nullptr,nullptr,Slic3r::LoadStrategy::LoadModel|Slic3r::LoadStrategy::AddDefaultInstances|Slic3r::LoadStrategy::Silence)
         : Slic3r::Model::read_from_file(path);
     if(model.objects.empty())throw std::invalid_argument("The model has no objects");
-    const bool identity=t.rotation_x==0&&t.rotation_y==0&&t.rotation_z==0&&t.scale_x==1&&t.scale_y==1&&t.scale_z==1&&t.offset_x==0&&t.offset_y==0;
+    const bool identity=t.rotation_x==0&&t.rotation_y==0&&t.rotation_z==0&&t.scale_x==1&&t.scale_y==1&&t.scale_z==1&&t.offset_x==0&&t.offset_y==0&&t.offset_z==0;
     if(model.objects.size()==1&&model.objects.front()->instances.size()==1) {
         if(ext!=".3mf"||!identity){
             const auto *area=config.opt<Slic3r::ConfigOptionPoints>("printable_area");

@@ -204,6 +204,7 @@
 "Модель ещё загружается. Повторите через секунду.": "The model is still loading. Try again in a second.",
 "Модель изменилась. Откройте настройки снова.": "The model changed. Open the settings again.",
 "Модель или стол изменились при проверке результата. Повторите операцию.": "The model or bed changed while checking the result. Try again.",
+"Модель можно только утопить ниже стола (Z от 0 и ниже).": "The model can only sink below the plate (Z 0 or lower).",
 "Модель не имеет размеров.": "The model has no size.",
 "Мультиматериал": "Multi-material",
 "На принтере Bambu Lab:\n• IP-адрес и код доступа: Настройки → WLAN (на A1/P1 — Настройки → Сеть).\n• Серийный номер: Настройки → Устройство (или наклейка на корпусе).\n• Включите «Только LAN» (LAN Only). На прошивках 2025 года для управления сторонними программами также включите «Режим разработчика».\nТелефон и принтер должны быть в одной сети Wi-Fi. Китайская и глобальная версии подключаются одинаково.": "On the Bambu Lab printer:\n• IP address and access code: Settings → WLAN (on A1/P1: Settings → Network).\n• Serial number: Settings → Device (or the label on the case).\n• Turn on LAN Only. On 2025 firmware also turn on Developer Mode so third-party apps can control the printer.\nThe phone and the printer must be on the same Wi-Fi network. The Chinese and global versions connect the same way.",

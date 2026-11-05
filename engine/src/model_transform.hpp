@@ -13,7 +13,13 @@ struct ModelTransform {
     double rotation_x, rotation_y, rotation_z; // radians
     double scale_x, scale_y, scale_z;
     double offset_x, offset_y; // mm from the printable bounding-box center
+    // Sinking (as on desktop): mm below the plate, 0 or negative; the part under the plate is not printed.
+    double offset_z = 0;
 };
+
+inline void check_offset_z(const ModelTransform &t) {
+    if (!std::isfinite(t.offset_z) || t.offset_z > 0 || t.offset_z < -10000) throw std::invalid_argument("Sinking depth must be between 0 and -10000 mm");
+}
 
 inline void apply_model_transform(Slic3r::Model &model, const Slic3r::BuildVolume &bed,
                                   const ModelTransform &t)
@@ -43,6 +49,12 @@ inline void apply_model_transform(Slic3r::Model &model, const Slic3r::BuildVolum
     object->ensure_on_bed(false);
     model.center_instances_around_point(bed.bed_center());
     object->translate_instances(Slic3r::Vec3d(t.offset_x, t.offset_y, 0.0));
+    check_offset_z(t);
+    if (t.offset_z < 0) {
+        if (-t.offset_z >= size.z()) throw std::invalid_argument("The model cannot sink completely below the plate");
+        object->translate_instances(Slic3r::Vec3d(0.0, 0.0, t.offset_z));
+        object->invalidate_bounding_box();
+    }
 }
 
 // Projects (several objects, original layout): the transform moves the whole plate as one group.
@@ -74,6 +86,8 @@ inline void apply_group_transform(Slic3r::Model &model, const ModelTransform &t)
     if (!moved.defined || !moved.min.allFinite()) throw std::runtime_error("Invalid transformed project bounds");
     const auto size = moved.size();
     if ((size.array() <= 0).any() || (size.array() > 10000).any()) throw std::runtime_error("Transformed project dimensions are outside 0-10000 mm");
-    for (auto *object : model.objects) { object->translate_instances(Slic3r::Vec3d(0, 0, -moved.min.z())); object->invalidate_bounding_box(); }
+    check_offset_z(t);
+    if (-t.offset_z >= size.z()) throw std::invalid_argument("The model cannot sink completely below the plate");
+    for (auto *object : model.objects) { object->translate_instances(Slic3r::Vec3d(0, 0, -moved.min.z() + t.offset_z)); object->invalidate_bounding_box(); }
 }
 }
