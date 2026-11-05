@@ -64,7 +64,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   `outputs/Kepler-Claude/engine/src/slice_jni.cpp`). Incremental build + publish (~1 min):
   `pwsh -File engine/build-native.ps1 -Build ../../work/orca-headless-fresh -Cmake ../../work/android-tools/cmake/data/bin/cmake.exe -Ndk ../../work/android-ndk/android-ndk-r30 -Parallel 12 -PublishToApp`
   (keeps the previous .so under `outputs/Kepler-Native-Phase2-baseline/<sha>/`). Keep both ExperimentalSlicer.java copies equal.
-- Current .so SHA-256 `126f8e5973e69db003741a67c746223b053455c0f37ff62591019f0753338a0c` (16 KB aligned).
+- Current .so SHA-256 `dd9ff7bf67ee55b864725193798b5aea397bfcb547622fede765f7e6da31626c` (16 KB aligned).
 - New JNI: `editModel` (op 1 Cut at Z via upstream `Cut::perform_with_plane` — plane is relative to the instance
   offset; op 2 Text via `Emboss`, system Roboto font; op 3 Assembly = all objects into one multi-part object) and
   `exportProject3mf` (upstream `store_bbs_3mf` with resolved settings). Code in `native_preferences.cpp`
@@ -101,6 +101,23 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   checks). Token + uid stored in the connection (encrypted secret + extras). Upload through the cloud is refused
   (use LAN). Newer firmware with Bambu "authorization control" may ignore cloud control commands; status works.
 - Connection form fixes: protocol chips apply the default address/auth (hidden Spinner sent no event), fields 48 dp.
+- Localisation of helper messages: `L.t("...")` wraps ~540 source strings (mostly Russian, some English) in protocol/
+  model/storage classes; `assets/kepler_messages.json` (en: RU->EN, ru: EN->RU) is loaded by KeplerApplication and
+  chosen per call by the current language. Host tests compile `L.java` (added to the test scripts) without the table.
+  The table and wrapping are produced by a scratch script; add new messages through `L.t` with a translation.
+  Default `values/` resources are English now; Russian lives in `values-ru`.
+- Paint brushes: Support and Seam tiles offer the brush or the object setting; Multi-material > Brush for colour.
+  Engine preview exports `preview_source_map` (stride 1 only) and `preview_paint_*`; strokes go through
+  `assignMaterials` "paint" (TriangleSelector, standard 3MF paint attributes). Painted supports need supports on.
+- Multi-plate projects: `plate_grid_origin` (desktop PartPlateList grid) moves the chosen plate onto the bed for
+  preview and slicing; plate chip / Model details choose the plate (`ProjectPlates` refreshes the snapshot).
+  Move/Rotate/Scale on a project act on the plate as one group (`apply_group_transform`).
+- Elegoo Centauri Carbon 2: `ElegooCc2` (MQTT 1883 on the printer, user elegoo, access code or 123456, UDP 52700
+  discovery, methods 1002/1021/1022/1023/1029). Bambu cloud upload: signed S3 URLs from
+  `v1/iot-service/api/user/upload`; no cloud print start (undocumented; use Bambu Handy or LAN).
+- Bambu cloud token: session (access/refresh/expiry) stored with the connection, refreshed a day before expiry.
+- Preferences: filament sync mode, Bambu network switch, built-in version, reload, skip AMS check, abnormal storage
+  gate are real now. Built-in profile updates stay unavailable on purpose (profiles follow the pinned engine).
 - Dialogs: `glass/GlassDialog` restyles every `MdUi.alert` AlertDialog (glass card, Manrope, pill buttons).
   `glass/Backdrop` blurs content under the floating nav (Android 12+); sheets/alerts blur behind.
 - Google Play: `docs/GOOGLE-PLAY.md`, `docs/PRIVACY.md`; upload key in `C:\Users\tails\.kepler-signing` (not in git).
@@ -111,7 +128,7 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
 
 ## Open items
 
-- Not verified on real hardware: every printer command and status path (Bambu LAN/cloud, OctoPrint, Moonraker, PrusaLink, Duet, Repetier, Creality, Elegoo); only loopback simulators. Not implemented: cloud upload for Bambu, Centauri Carbon 2 status/control, colours of painted facets in the preview, Bambu cloud token refresh (sign in again).
+- Not verified on real hardware: every printer command and status path (Bambu LAN/cloud incl. cloud upload, OctoPrint, Moonraker, PrusaLink, Duet, Repetier, Creality, Elegoo incl. CC2); only loopback simulators. Not implemented: Bambu cloud print start, SLA (dropped by the owner), automatic built-in profile updates.
   (Lay on face, Measure, object-setting tools, camera, Project 3MF and plate label are done — see UI-010 follow-ups.)
 - Not verified: TalkBack; live Device telemetry and camera against a real OctoPrint/PrusaLink/Moonraker host; plate label with a printer that defines a bed type. The emulator test sphere has a fuzzy_skin object override from the check.
 - The duplicate `Kepler-Slicer/` clone was deleted on the owner's request.

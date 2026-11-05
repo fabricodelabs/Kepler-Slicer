@@ -26,7 +26,7 @@ final class LegacyPrinterControl {
     private LegacyPrinterControl() {}
 
     static boolean supportsStatus(PrinterEndpoint e) {
-        switch (e.type) { case DUET: case REPETIER: case CREALITYPRINT: return true; case ELEGOOLINK: return elegooModel(e) != 2; default: return false; }
+        switch (e.type) { case DUET: case REPETIER: case CREALITYPRINT: return true; case ELEGOOLINK: return true; default: return false; }
     }
 
     // ---------------------------------------------------------------- status
@@ -36,7 +36,7 @@ final class LegacyPrinterControl {
             case DUET: k = duetStatus(e, c); break;
             case REPETIER: k = repetierStatus(e, c); break;
             case CREALITYPRINT: k = crealityStatus(e, c); break;
-            case ELEGOOLINK: k = elegooModel(e) == 1 ? sdcpStatus(e, c) : elegooOctoStatus(e, c); break;
+            case ELEGOOLINK: { int m = elegooModel(e); k = m == 2 ? ElegooCc2.status(e, c) : m == 1 ? sdcpStatus(e, c) : elegooOctoStatus(e, c); break; }
             default: throw new IOException(L.t("Статус для этого сервера не поддерживается."));
         }
         try { return new PrinterHostClient.Status(k.optString("state", "unknown"), new JSONObject().put("kepler", k).toString()); }
@@ -56,7 +56,7 @@ final class LegacyPrinterControl {
                 int m = elegooModel(e);
                 if (m == 1) { sdcpCommand(e, job == PrinterHostClient.Job.PAUSE ? 129 : job == PrinterHostClient.Job.RESUME ? 131 : 130, new JSONObject(), c); return; }
                 if (m == 0) { octo(e).job(job, c); return; }
-                throw new IOException(L.t("Elegoo Centauri Carbon 2: управление пока не поддерживается."));
+                ElegooCc2.command(e, job == PrinterHostClient.Job.PAUSE ? 1021 : job == PrinterHostClient.Job.RESUME ? 1023 : 1022, new JSONObject(), c); return;
             }
             default: throw new IOException(L.t("Управление печатью для этого сервера не поддерживается."));
         }
@@ -73,6 +73,10 @@ final class LegacyPrinterControl {
 
     static void light(PrinterEndpoint e, boolean on, NetworkHttp.Cancellation c) throws IOException {
         if (e.type == PrinterEndpoint.Type.CREALITYPRINT) { crealitySet(e, "lightSw", on ? 1 : 0, c); return; }
+        if (e.type == PrinterEndpoint.Type.ELEGOOLINK && elegooModel(e) == 2) {
+            try { ElegooCc2.command(e, 1029, new JSONObject().put("brightness", on ? 255 : 0), c); } catch (JSONException x) { throw new IOException(x); }
+            return;
+        }
         if (e.type == PrinterEndpoint.Type.ELEGOOLINK && elegooModel(e) == 1) {
             try { sdcpCommand(e, 403, new JSONObject().put("LightStatus", new JSONObject().put("SecondLight", on)), c); } catch (JSONException x) { throw new IOException(x); }
             return;

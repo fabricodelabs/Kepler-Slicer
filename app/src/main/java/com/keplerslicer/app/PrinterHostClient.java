@@ -95,6 +95,7 @@ public final class PrinterHostClient {
             return new UploadResult(sentName,0,null,L.t("Файл отправлен; команда запуска не отправлялась.")+(sentName.equals(remoteName)?"":L.t(" Имя для передачи изменено; проверьте возможное совпадение на сервере.")));
         }
         if(CloudPrinterHosts.supports(endpoint.type)) return CloudPrinterHosts.upload(endpoint,file,remoteName,cancel);
+        if(endpoint.type==PrinterEndpoint.Type.BAMBU_CLOUD) { BambuCloud.upload(endpoint.extras.get("region"),endpoint.secret(),file,remoteName,cancel); return new UploadResult(null,0,null,L.t("Файл загружен в облако Bambu (файлы аккаунта); команда печати не отправлялась. Запустите печать в Bambu Handy или по LAN.")); }
         if(endpoint.type==PrinterEndpoint.Type.BAMBU||endpoint.type==PrinterEndpoint.Type.BAMBU_CLOUD) { String stored=BambuLan.upload(endpoint,file,remoteName,cancel); return new UploadResult(stored,0,null,L.t("Файл отправлен; команда запуска не отправлялась.")); }
         HostInfo info=test(cancel); NetworkHttp.Response response; String path;
         switch(endpoint.type) {

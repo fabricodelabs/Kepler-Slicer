@@ -29,9 +29,9 @@
 
 **Job control (2026-11-05):** OctoPrint (`api/job`, `api/printer/printhead`, `api/printer/command`), Moonraker (`printer/print/*`, `printer/gcode/script`) and PrusaLink (`api/v1/job/{id}`) pause/resume/cancel and speed (M220) from the Device screen; each command is confirmed and sent once, never retried. Axis moves only while idle.
 
-**More hosts (2026-11-05):** live status and pause/resume/stop for Duet (RRF and DSF; speed and axis moves by G-code, start of an uploaded file with M32), Repetier Server, Creality OS (K1/K2 WebSocket 9999, also the light) and Elegoo (Neptune via the OctoPrint API; Centauri Carbon via SDCP, also the light). Centauri Carbon 2 control is not offered. Loopback simulators only (`tools/test_printer_control.ps1`).
+**More hosts (2026-11-05):** live status and pause/resume/stop for Duet (RRF and DSF; speed and axis moves by G-code, start of an uploaded file with M32), Repetier Server, Creality OS (K1/K2 WebSocket 9999, also the light) and Elegoo (Neptune via the OctoPrint API; Centauri Carbon via SDCP, also the light). Centauri Carbon 2: status, pause/resume/stop and light over its own MQTT broker (port 1883, LAN-only mode). Loopback simulators only (`tools/test_printer_control.ps1`).
 
-**Bambu (cloud, 2026-11-05):** the user signs in with their Bambu Lab account (password or e-mail code; region from Preferences); the app lists the account printers and reads status/AMS and sends commands over the account MQTT broker with certificate checks. Files are sent over LAN only. Not verified against the real service.
+**Bambu (cloud, 2026-11-05):** the user signs in with their Bambu Lab account (password or e-mail code; region from Preferences); the app lists the account printers and reads status/AMS and sends commands over the account MQTT broker with certificate checks. Files can be uploaded to the account cloud storage (signed S3 URLs); the cloud print start is not sent, start the print in Bambu Handy or over LAN. Not verified against the real service.
 
 **Bambu (cloud):** официальный README Bambu Studio указывает на сетевой плагин с non-free библиотеками. Официальный Android SDK для этого плагина в доступной документации не обнаружен; это не доказывает его отсутствия. Bambu LAN/cloud, аккаунт, камера и отправка в текущем Android-порту не заявлены работающими.
 

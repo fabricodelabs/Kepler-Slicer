@@ -87,6 +87,26 @@ final class BambuCloud {
         return out;
     }
 
+    /**
+     * Puts a file into the account's cloud storage: the API returns signed upload URLs, the file is PUT to them
+     * unchanged (no extra headers, they would break the signature). No print is started.
+     */
+    static String upload(String region, String token, java.io.File file, String name, NetworkHttp.Cancellation c) throws IOException {
+        if (name == null || !name.matches("[^/\\\\\\p{Cntrl}]{1,200}")) throw new IOException(L.t("Недопустимое имя файла."));
+        long size = file.length();
+        NetworkHttp.Response r = NetworkHttp.request("GET", URI.create(apiBase(region) + "/v1/iot-service/api/user/upload?filename=" + java.net.URLEncoder.encode(name, "UTF-8").replace("+", "%20") + "&size=" + size), headers(token), null, c);
+        JSONObject info = reply(r); String fileUrl = info.optString("upload_url", ""), sizeUrl = "";
+        JSONArray urls = info.optJSONArray("urls");
+        for (int i = 0; urls != null && i < urls.length(); i++) { JSONObject u = urls.optJSONObject(i); if (u == null) continue; String type = u.optString("type"), url = u.optString("url");
+            if ("filename".equals(type) && fileUrl.isEmpty()) fileUrl = url; else if ("size".equals(type)) sizeUrl = url; }
+        if (fileUrl.isEmpty() && urls != null && urls.optJSONObject(0) != null) fileUrl = urls.optJSONObject(0).optString("url", "");
+        if (!fileUrl.startsWith("https://") && !(testBase != null && fileUrl.startsWith(testBase))) throw new IOException(L.t("Bambu не выдал адрес загрузки."));
+        NetworkHttp.Response put = NetworkHttp.request("PUT", URI.create(fileUrl), new LinkedHashMap<>(), NetworkHttp.file(file), c, 64 * 1024);
+        if (put.status / 100 != 2) throw new IOException(L.t("Облако Bambu не приняло файл (HTTP ") + put.status + ").");
+        if (sizeUrl.startsWith("https://") || (testBase != null && sizeUrl.startsWith(testBase))) { try { NetworkHttp.request("PUT", URI.create(sizeUrl), new LinkedHashMap<>(), NetworkHttp.bytes(String.valueOf(size).getBytes(StandardCharsets.UTF_8)), c, 64 * 1024); } catch (IOException ignored) { } }
+        return name;
+    }
+
     private static Map<String, String> headers(String token) {
         Map<String, String> h = new LinkedHashMap<>(); h.put("Content-Type", "application/json"); h.put("User-Agent", "KeplerSlicer");
         if (token != null) h.put("Authorization", "Bearer " + token); return h;
