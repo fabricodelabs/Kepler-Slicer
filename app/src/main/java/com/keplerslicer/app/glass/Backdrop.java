@@ -97,6 +97,10 @@ public final class Backdrop {
             if (windowBg != null) { int save = rec.save(); rec.translate(-g[0], -g[1]); windowBg.draw(rec); rec.restoreToCount(save); }
             if (!(glass.getParent() instanceof android.view.ViewGroup)) { int save = rec.save(); rec.translate(s[0] - g[0], s[1] - g[1]); source.draw(rec); rec.restoreToCount(save); return; }
             android.view.ViewGroup host = (android.view.ViewGroup) glass.getParent();
+            // The screen's own backdrop lives on the host, not on the window: without it the glass showed the
+            // (light) window background and read as a flat grey bar on some screens.
+            Drawable hostBg = host.getBackground();
+            if (hostBg != null) { host.getLocationInWindow(c); int save = rec.save(); rec.translate(c[0] - g[0], c[1] - g[1]); hostBg.draw(rec); rec.restoreToCount(save); }
             for (int i = 0; i < host.getChildCount(); i++) {
                 View child = host.getChildAt(i);
                 if (child == glass || child.getVisibility() != View.VISIBLE || child.getWidth() <= 0) continue;

@@ -104,27 +104,32 @@ public final class GlassNavigation extends LinearLayout {
         if (pillAnimator != null) pillAnimator.cancel();
         final float fromL = pill.left, fromR = pill.right;
         final View target = items[selected];
-        animateLift(1f, 140, 0);
+        animateLift(1f, Spring.smooth(0.22f), 0);
+        Spring spring = Spring.bouncy(0.5f);
+        final float[] last = {pill.centerX()};
         pillAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f);
-        pillAnimator.setDuration(420);
-        pillAnimator.setInterpolator(new android.view.animation.PathInterpolator(0.32f, 1.18f, 0.36f, 1f));
+        pillAnimator.setDuration(spring.duration());
+        pillAnimator.setInterpolator(spring);
         pillAnimator.addUpdateListener(a -> {
-            float t = (float) a.getAnimatedValue(), f = a.getAnimatedFraction();
+            float t = (float) a.getAnimatedValue();
             pill.set(fromL + (target.getLeft() - fromL) * t, target.getTop(), fromR + (target.getRight() - fromR) * t, target.getBottom());
-            stretch = (float) Math.sin(Math.PI * Math.min(1f, f * 1.15f)) * 0.22f;
+            // The droplet stretches with its speed and relaxes as it slows (liquid, not a rigid capsule).
+            float speed = Math.abs(pill.centerX() - last[0]) / Math.max(1f, pill.width()); last[0] = pill.centerX();
+            stretch += (Math.min(0.24f, speed * 2.4f) - stretch) * 0.35f;
+            if (a.getAnimatedFraction() > 0.55f && lift > 0.99f && (liftAnimator == null || !liftAnimator.isRunning())) animateLift(0f, Spring.bouncy(0.42f), 0);
             magnifyUnderPill(); invalidate();
         });
         pillAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
-            @Override public void onAnimationEnd(android.animation.Animator a) { stretch = 0f; animateLift(0f, 260, 0); }
+            @Override public void onAnimationEnd(android.animation.Animator a) { stretch = 0f; if (lift > 0f && (liftAnimator == null || !liftAnimator.isRunning())) animateLift(0f, Spring.bouncy(0.42f), 0); invalidate(); }
         });
         pillAnimator.start();
     }
 
-    private void animateLift(float to, long duration, long delay) {
+    private void animateLift(float to, Spring spring, long delay) {
         if (liftAnimator != null) liftAnimator.cancel();
         liftAnimator = android.animation.ValueAnimator.ofFloat(lift, to);
-        liftAnimator.setDuration(duration); liftAnimator.setStartDelay(delay);
-        liftAnimator.setInterpolator(to > lift ? new android.view.animation.DecelerateInterpolator() : new android.view.animation.OvershootInterpolator(1.6f));
+        liftAnimator.setDuration(spring.duration()); liftAnimator.setStartDelay(delay);
+        liftAnimator.setInterpolator(spring);
         liftAnimator.addUpdateListener(a -> { lift = Math.max(0f, (float) a.getAnimatedValue()); magnifyUnderPill(); updateItemColors(); invalidate(); });
         liftAnimator.start();
     }
@@ -191,7 +196,7 @@ public final class GlassNavigation extends LinearLayout {
         if (pillAnimator != null) pillAnimator.cancel();
         for (LinearLayout item : items) item.setPressed(false);
         performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-        animateLift(1f, 140, 0);
+        animateLift(1f, Spring.smooth(0.22f), 0);
     }
 
     private void followFinger(float x) {
@@ -282,10 +287,10 @@ public final class GlassNavigation extends LinearLayout {
         // Frosted glass: Figma glass/fill over a blurred backdrop (Android 12+). Without blur the fill stays nearly
         // opaque so content scrolling under the floating bar does not fight with the labels.
         boolean blur = !reduced && backdropSource != null && Backdrop.supported();
-        bar.setColor(reduced ? tokens.reduceTransparencyFill : blur ? (LiquidLens.supported() ? 0x704E535A : 0xB84E535A) : 0xE64E535A);
+        bar.setColor(reduced ? tokens.reduceTransparencyFill : blur ? 0x3A3A3F48 : 0xE64E535A);
         bar.setCornerRadius(tokens.dp(tokens.navRadius));
         bar.setStroke(Math.max(1, tokens.dp(tokens.navStrokeWidth)), tokens.navStroke);
-        setBackground(blur ? Backdrop.behind(this, backdropSource, tokens.dp(LiquidLens.supported() ? 10 : 24), tokens.dp(tokens.navRadius), bar) : bar);
+        setBackground(blur ? Backdrop.behind(this, backdropSource, tokens.dp(3), tokens.dp(tokens.navRadius), bar) : bar);
 
         for (int index = 0; index < items.length; index++) {
             boolean active = index == selected;

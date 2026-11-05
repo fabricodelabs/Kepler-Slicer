@@ -42,9 +42,10 @@ public final class LiquidPress {
         float grow = widthPx <= 0 ? 1.04f : 1f + Math.max(0.012f, Math.min(0.07f, 6f * density / widthPx * 2f));
         StateListAnimator s = new StateListAnimator();
         ObjectAnimator down = ObjectAnimator.ofPropertyValuesHolder(v, PropertyValuesHolder.ofFloat(View.SCALE_X, grow), PropertyValuesHolder.ofFloat(View.SCALE_Y, grow));
-        down.setDuration(160); down.setInterpolator(new PathInterpolator(0.2f, 0.9f, 0.3f, 1f));
+        Spring press = Spring.smooth(0.22f), release = Spring.bouncy(0.45f);
+        down.setDuration(press.duration()); down.setInterpolator(press);
         ObjectAnimator up = ObjectAnimator.ofPropertyValuesHolder(v, PropertyValuesHolder.ofFloat(View.SCALE_X, 1f), PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f));
-        up.setDuration(420); up.setInterpolator(new OvershootInterpolator(2.4f));
+        up.setDuration(release.duration()); up.setInterpolator(release);
         s.addState(new int[]{android.R.attr.state_pressed, android.R.attr.state_enabled}, down);
         s.addState(new int[0], up);
         return s;
@@ -62,13 +63,13 @@ public final class LiquidPress {
         @Override protected boolean onStateChange(int[] state) {
             boolean p = false; for (int s : state) if (s == android.R.attr.state_pressed) p = true;
             if (p == pressed) return false;
-            pressed = p; fade(p ? 1f : 0f, p ? 140 : 380); return true;
+            pressed = p; fade(p ? 1f : 0f, p ? Spring.smooth(0.18f) : Spring.smooth(0.4f)); return true;
         }
         @Override public void setHotspot(float x, float y) { hx = x; hy = y; invalidateSelf(); }
 
-        private void fade(float to, long ms) {
+        private void fade(float to, Spring spring) {
             if (anim != null) anim.cancel();
-            anim = ValueAnimator.ofFloat(level, to); anim.setDuration(ms);
+            anim = ValueAnimator.ofFloat(level, to); anim.setDuration(spring.duration()); anim.setInterpolator(spring);
             anim.addUpdateListener(a -> { level = (float) a.getAnimatedValue(); invalidateSelf(); });
             anim.start();
         }
