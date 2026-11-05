@@ -151,6 +151,17 @@ Read this first in a new chat. Full screen-by-screen mapping and deviations: [UI
   honest client name only. Code window with "Новый код". Cloud button on a LAN form asks for the service.
   Not verified against the real server (the owner signs in themselves).
 
+## Liquid Glass (2026-11-05, owner: "как в WWDC25 Meet Liquid Glass")
+
+- minSdk is 33 (Android 13+) by owner decision: older devices are not supported.
+- `glass/LiquidLens` (AGSL): the backdrop is refracted at the rounded edge with a chromatic split and a specular
+  rim, after a light blur (`Backdrop`). Nav fill is lighter so the lens shows.
+- `GlassNavigation`: selection is a clear glass droplet (no white capsule). It lifts and stretches while it
+  flows to the new tab, items under it magnify; it can be dragged along the bar and drops on the nearest tab.
+- Tabs dissolve (`KeplerUi.tab`, `kv_tab_in`/`kv_tab_hold`); the 3D camera is kept when the workspace is rebuilt.
+- `glass/LiquidPress`: glow from the touch point plus a springy swell, used by every pressable/clickable.
+- Spinners open the glass bottom sheet (`KeplerUi.sheetSpinner`).
+
 ## Known defects to fix next
 
 - Hard-coded Russian text remains only in protocol/model helper classes (error messages; they are compiled by host tests without Android context). Screens are localised.

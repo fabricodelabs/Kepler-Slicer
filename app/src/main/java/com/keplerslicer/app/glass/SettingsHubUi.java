@@ -55,7 +55,7 @@ public final class SettingsHubUi {
     public TextView text(String value,float sp,int weight,int color){TextView t=new TextView(context);t.setText(value);t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,sp);t.setTextColor(color);GlassTypography.apply(t,weight);t.setIncludeFontPadding(false);t.setLineSpacing(0,1.3f);return t;}
 
     private GradientDrawable shape(int fill,int stroke,float radiusDp){GradientDrawable g=new GradientDrawable();g.setColor(fill);g.setCornerRadius(dp(radiusDp));if(stroke!=0)g.setStroke(Math.max(1,dp(1)),stroke);return g;}
-    private void pressable(View v,int fill,int stroke,float radiusDp){v.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF),fill==0?null:shape(fill,stroke,radiusDp),shape(WHITE,0,radiusDp)));v.setClickable(true);v.setFocusable(true);}
+    private void pressable(View v,int fill,int stroke,float radiusDp){v.setBackground(LiquidPress.apply(v,fill==0?null:shape(fill,stroke,radiusDp),dp(radiusDp)));v.setClickable(true);v.setFocusable(true);}
     private ImageView image(int res,float sizeDp){ImageView i=new ImageView(context);i.setImageResource(res);i.setScaleType(ImageView.ScaleType.FIT_CENTER);i.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp),dp(sizeDp)));i.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);return i;}
 
     public LinearLayout topBar(View title,View... actions){

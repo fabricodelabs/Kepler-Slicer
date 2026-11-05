@@ -92,9 +92,10 @@ public final class KeplerUi {
 
     /** Switches between the four top-level tabs in place, like a tab bar: no slide between the screens. */
     public static void tab(android.app.Activity from, android.content.Intent intent, boolean finish) {
-        from.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        // Tabs dissolve into each other (iOS 26 tab bar): the new screen fades in over the old one, no slide.
+        from.startActivity(intent);
         if (finish) from.finish();
-        from.overridePendingTransition(0, 0);
+        from.overridePendingTransition(com.keplerslicer.app.R.anim.kv_tab_in, com.keplerslicer.app.R.anim.kv_tab_hold);
     }
     private static void padScrollables(View v, int navTop, int fallback) {
         if (v.getVisibility() == View.GONE) return;
@@ -132,7 +133,7 @@ public final class KeplerUi {
 
     /** Ripple feedback over the given resting background; mask follows the radius. */
     public void pressable(View v, Drawable resting, float radiusDp) {
-        v.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), resting, shape(WHITE, 0, radiusDp)));
+        v.setBackground(LiquidPress.apply(v, resting, dp(radiusDp)));
         v.setClickable(true); v.setFocusable(true);
     }
 
