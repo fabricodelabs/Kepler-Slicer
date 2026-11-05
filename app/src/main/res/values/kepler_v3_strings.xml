@@ -160,7 +160,7 @@
     <string name="kv3_saved_bytes">Saved: %1$s.</string>
     <string name="kv3_saved_obj">Toolpaths saved: %1$d layers, %2$d segments.</string>
     <string name="kv3_quick_share_detail">Receive the model with Quick Share or Nearby Share on this phone, then pick it from Files (usually Downloads). Kepler also opens 3D files shared to it from other apps.</string>
-    <string name="kv3_url_hint">Direct link to an STL, 3MF, OBJ or STEP file.</string>
+    <string name="kv3_url_hint">Printables model page or a direct link to an STL, 3MF, OBJ or STEP file.</string>
     <string name="kv3_download">Download</string>
     <string name="kv3_url_invalid">Enter an http:// or https:// link.</string>
     <string name="kv3_url_format">The link does not point to an STL, 3MF, OBJ or STEP file.</string>

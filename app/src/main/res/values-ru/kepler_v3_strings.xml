@@ -160,7 +160,7 @@
     <string name="kv3_saved_bytes">Сохранено: %1$s.</string>
     <string name="kv3_saved_obj">Траектории сохранены: слоёв %1$d, отрезков %2$d.</string>
     <string name="kv3_quick_share_detail">Примите модель через Quick Share на этом телефоне, затем выберите её в «Файлах» (обычно папка «Загрузки»). Kepler также открывает 3D-файлы, отправленные в него из других приложений.</string>
-    <string name="kv3_url_hint">Прямая ссылка на файл STL, 3MF, OBJ или STEP.</string>
+    <string name="kv3_url_hint">Страница модели Printables или прямая ссылка на файл STL, 3MF, OBJ или STEP.</string>
     <string name="kv3_download">Загрузить</string>
     <string name="kv3_url_invalid">Введите ссылку http:// или https://.</string>
     <string name="kv3_url_format">Ссылка не ведёт на файл STL, 3MF, OBJ или STEP.</string>

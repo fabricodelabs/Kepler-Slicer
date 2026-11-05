@@ -46,18 +46,14 @@ public final class ImportActivity extends Activity {
         content.addView(formatScroll, new LinearLayout.LayoutParams(-1, -2));
 
         screen.section(getString(R.string.kv3_open_from), null, null);
-        int[] icons = {R.drawable.kv3_folder, R.drawable.kv3_drive, R.drawable.kv3_quick_share, R.drawable.kv3_clock, R.drawable.kv3_link, R.drawable.kv3_cube};
-        int[] labels = {R.string.kv3_source_files, R.string.kv3_source_drive, R.string.kv3_source_quick_share, R.string.kv3_source_recent, R.string.kv3_source_url, R.string.kv3_source_shapes};
+        // "Choose file" below opens any storage (Files, Google Drive and other providers). The tiles add what it does not:
+        // the Downloads folder (browsers, Telegram, Quick Share save there), a model link and generated shapes.
+        int[] icons = {R.drawable.kv3_folder, R.drawable.kv3_link, R.drawable.kv3_cube};
+        String[] labels = {L.t("Загрузки"), getString(R.string.kv3_source_url), getString(R.string.kv3_source_shapes)};
         View[] tiles = new View[icons.length];
         for (int i = 0; i < icons.length; i++) {
-            final int index = i; final String label = getString(labels[i]);
-            tiles[i] = sourceTile(icons[i], label, () -> {
-                if (index <= 1) chooseFile();
-                else if (index == 3) screen.scroll.post(() -> screen.scroll.smoothScrollTo(0, recent.getTop()));
-                else if (index == 4) fromUrl();
-                else if (index == 5) shapes();
-                else screen.info(label, getString(R.string.kv3_quick_share_detail));
-            });
+            final int index = i;
+            tiles[i] = sourceTile(icons[i], labels[i], () -> { if (index == 0) chooseFile(downloadsUri()); else if (index == 1) fromUrl(); else shapes(); });
         }
         content.addView(ui.grid(tiles, 3), new LinearLayout.LayoutParams(-1, -2));
 
@@ -139,7 +135,16 @@ public final class ImportActivity extends Activity {
         final LinearLayout[] go = new LinearLayout[1];
         go[0] = ui.primaryButton(R.drawable.kv3_link, getString(R.string.kv3_download), () -> {
             String text = field.getText().toString().trim(); ui.setEnabled(go[0], false); error.setVisibility(View.GONE);
-            new Thread(() -> { try { File file = download(text); runOnUiThread(() -> { if (isDestroyed()) return; dialog.dismiss(); returnUri(ShareProvider.uriFor(this, file)); }); }
+            new Thread(() -> { try {
+                    java.net.URI page = new java.net.URI(text);
+                    String explain = ModelLinks.unsupportedPage(page); if (explain != null) throw new java.io.IOException(explain);
+                    String printables = ModelLinks.printablesId(page);
+                    if (printables != null) {
+                        java.util.List<ModelLinks.FileRef> files = ModelLinks.printablesFiles(printables, new NetworkHttp.Cancellation());
+                        runOnUiThread(() -> { if (isDestroyed()) return; ui.setEnabled(go[0], true); dialog.dismiss(); pickPrintables(files); });
+                        return;
+                    }
+                    File file = download(text); runOnUiThread(() -> { if (isDestroyed()) return; dialog.dismiss(); returnUri(ShareProvider.uriFor(this, file)); }); }
                 catch (Exception e) { String m = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); runOnUiThread(() -> { if (isDestroyed()) return; ui.setEnabled(go[0], true); error.setText(m); error.setVisibility(View.VISIBLE); }); } }, "url-import").start();
         });
         go[0].setMinimumHeight(ui.dp(48)); LinearLayout.LayoutParams gp = ui.weight(); gp.leftMargin = ui.dp(8); actions.addView(go[0], gp);
@@ -147,13 +152,28 @@ public final class ImportActivity extends Activity {
         dialog.setContentView(body); if (dialog.getWindow() != null) { dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0)); dialog.getWindow().setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - ui.dp(32), ui.dp(420)), -2); }
         dialog.show();
     }
+    /** One file goes straight in; several are offered in a sheet. */
+    private void pickPrintables(java.util.List<ModelLinks.FileRef> files) {
+        if (files.size() == 1) { fetchPrintables(files.get(0)); return; }
+        String[] names = new String[files.size()];
+        for (int i = 0; i < names.length; i++) { ModelLinks.FileRef f = files.get(i); names[i] = f.name + (f.size > 0 ? " · " + android.text.format.Formatter.formatShortFileSize(this, f.size) : ""); }
+        com.keplerslicer.app.glass.GlassBottomSheet.choose(this, screen.root, false, L.t("Файл модели"), names, -1, i -> fetchPrintables(files.get(i)));
+    }
+    private void fetchPrintables(ModelLinks.FileRef f) {
+        screen.info(L.t("Загрузка"), L.t("Скачиваем ") + f.name + "…");
+        new Thread(() -> { try { File file = download(ModelLinks.printablesLink(f.url, new NetworkHttp.Cancellation())); runOnUiThread(() -> { if (!isDestroyed()) returnUri(ShareProvider.uriFor(this, file)); }); }
+            catch (Exception e) { String m = EngineText.clean(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); runOnUiThread(() -> { if (!isDestroyed()) screen.info(L.t("Загрузка"), m); }); } }, "printables-import").start();
+    }
     private File download(String text) throws Exception {
         java.net.URI uri = new java.net.URI(text);
         if (uri.getScheme() == null || !(uri.getScheme().equalsIgnoreCase("https") || uri.getScheme().equalsIgnoreCase("http")) || uri.getHost() == null) throw new java.io.IOException(getString(R.string.kv3_url_invalid));
         NetworkPolicy.checkUri(this, uri);
         java.net.HttpURLConnection c = (java.net.HttpURLConnection) uri.toURL().openConnection(); c.setConnectTimeout(15000); c.setReadTimeout(30000); c.setInstanceFollowRedirects(true);
+        c.setRequestProperty("User-Agent", "KeplerSlicer"); // file CDNs (e.g. Printables) refuse the default Dalvik agent
         try {
-            int code = c.getResponseCode(); if (code < 200 || code >= 300) throw new java.io.IOException("HTTP " + code);
+            int code = c.getResponseCode(); if (code < 200 || code >= 300) throw new java.io.IOException(L.t("Сервер не отдал файл (HTTP ") + code + ").");
+            String type = c.getContentType() == null ? "" : c.getContentType().toLowerCase(Locale.ROOT);
+            if (type.startsWith("text/html")) throw new java.io.IOException(L.t("Ссылка ведёт на веб-страницу, а не на файл модели. Нужна прямая ссылка на .stl/.3mf/.obj/.step или страница Printables."));
             String name = null, disposition = c.getHeaderField("Content-Disposition");
             if (disposition != null) { java.util.regex.Matcher m = java.util.regex.Pattern.compile("filename\\*?=(?:UTF-8'')?\"?([^\";]+)\"?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(disposition); if (m.find()) name = java.net.URLDecoder.decode(m.group(1), "UTF-8"); }
             if (name == null) { String path = c.getURL().getPath(); name = path == null ? "" : path.substring(path.lastIndexOf('/') + 1); name = java.net.URLDecoder.decode(name, "UTF-8"); }
@@ -178,10 +198,12 @@ public final class ImportActivity extends Activity {
         });
     }
 
-    private void chooseFile() {
+    private static Uri downloadsUri() { return android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download"); }
+    private void chooseFile() { chooseFile(null); }
+    private void chooseFile(Uri start) {
         if (pickerOpen) return; Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"model/stl", "application/sla", "model/x.stl-binary", "model/obj", "text/obj", "text/plain", "model/3mf", "application/vnd.ms-3mfdocument", "application/x-3mf", "model/step", "application/step", "application/x-step", "model/x-step", "application/octet-stream"});
-        Uri initial = GeneralPreferences.initialDocumentUri(this); if (initial != null) i.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, initial);
+        Uri initial = start != null ? start : GeneralPreferences.initialDocumentUri(this); if (initial != null) i.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, initial);
         try { pickerOpen = true; startActivityForResult(i, PICK_FILE); } catch (android.content.ActivityNotFoundException e) { pickerOpen = false; screen.info(getString(R.string.kv3_choose_file), L.t("На устройстве нет приложения для выбора документов.")); }
     }
     private static String formatLabel(String name) { String lower = name == null ? "" : name.toLowerCase(Locale.ROOT); return lower.endsWith(".step") || lower.endsWith(".stp") ? "STEP" : lower.endsWith(".3mf") ? "3MF" : lower.endsWith(".obj") ? "OBJ" : lower.endsWith(".amf") ? "AMF" : "STL"; }
