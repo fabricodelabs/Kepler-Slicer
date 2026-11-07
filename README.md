@@ -92,7 +92,8 @@ Slic3r by Alessandro Ranellucci and the RepRap community.
 
 The printer profiles, images and translated setting names come from OrcaSlicer at commit
 [`6d2869c`](https://github.com/OrcaSlicer/OrcaSlicer/tree/6d2869c430284714f0a22570c38d3b359965a802).
-Fonts: Manrope ([OFL](docs/Manrope-OFL.txt)); icons: Material Symbols ([Apache 2.0](docs/Material-Symbols-LICENSE.txt)).
+Bambu Lab printers connect through [open-bamboo-networking](https://github.com/ClusterM/open-bamboo-networking)
+(AGPL-3.0). Fonts: Manrope ([OFL](docs/Manrope-OFL.txt)); icons: Material Symbols ([Apache 2.0](docs/Material-Symbols-LICENSE.txt)).
 
 Kepler Slicer is not affiliated with OrcaSlicer, Bambu Lab or any printer maker. Product names are trademarks of
 their owners.

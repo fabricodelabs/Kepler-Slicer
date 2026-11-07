@@ -30,12 +30,9 @@ public final class KeplerApplication extends android.app.Application {
             @Override public void onActivitySaveInstanceState(android.app.Activity a, android.os.Bundle b) {}
             @Override public void onActivityDestroyed(android.app.Activity a) {}
         });
-        final android.content.SharedPreferences pinPrefs = getSharedPreferences("bambu_lan_pins", MODE_PRIVATE);
-        BambuLan.pins = new BambuLan.CertificatePins() {
-            public String get(String serial) { return pinPrefs.getString(serial, null); }
-            public void put(String serial, String sha256) { pinPrefs.edit().putString(serial, sha256).apply(); }
-            public void forget(String serial) { pinPrefs.edit().remove(serial).apply(); }
-        };
+        // Bambu printers connect through open-bamboo-networking; the agent starts on the first connection.
+        BambuLan.transport = new BambuObnTransport(this);
+        getSharedPreferences("bambu_lan_pins", MODE_PRIVATE).edit().clear().apply(); // certificates of the old Java client
         // Warm the settings schema and profile index so the Settings tab opens without a loading page.
         new Thread(()->{try{com.keplerslicer.app.settings.SettingsSchema.load(this);SettingsState.repository(this);}catch(Exception ignored){}},"settings-warmup").start();
         new Thread(()->{try{String requested=getSharedPreferences("app_preferences",0).getString("log_severity_level","info");String actual=NativePreferenceActions.setLogLevel(requested);getSharedPreferences("app_preferences",0).edit().putString("native_log_severity_actual",actual).apply();}catch(java.io.IOException ignored){getSharedPreferences("app_preferences",0).edit().remove("native_log_severity_actual").apply();}},"native-log-init").start();

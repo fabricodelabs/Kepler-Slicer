@@ -113,11 +113,13 @@ public final class DeviceActivity extends Activity {
     }
 
     private NetworkHttp.Cancellation cancellation;
+    /** The timer skips a poll while the previous one still waits for a slow printer, so its answer is shown. */
+    private volatile boolean statusRunning;
     private android.widget.ImageView cameraImage; private View cameraCenter; private volatile Thread cameraThread; private volatile java.net.HttpURLConnection cameraConnection;
     @Override protected void onDestroy() { if (cancellation != null) cancellation.cancel(); stopCamera(); super.onDestroy(); }
     @Override protected void onPause() { stopCamera(); polling = false; refresher.removeCallbacksAndMessages(null); super.onPause(); }
     @Override protected void onResume() { super.onResume(); polling = true; refresher.postDelayed(this::poll, 8000); }
-    private void poll() { if (!polling || isDestroyed()) return; if (!commandRunning) refreshStatus(); refresher.postDelayed(this::poll, 8000); }
+    private void poll() { if (!polling || isDestroyed()) return; if (!commandRunning && !statusRunning) refreshStatus(); refresher.postDelayed(this::poll, 8000); }
 
     /** Live view: MJPEG stream of the selected OctoPrint/Moonraker host (webcam/?action=stream), read-only. */
     private void toggleCamera() {
@@ -154,6 +156,7 @@ public final class DeviceActivity extends Activity {
     private void refreshStatus() {
         if (cancellation != null) cancellation.cancel(); // never two polls at once: the newer one wins
         final NetworkHttp.Cancellation cancel = new NetworkHttp.Cancellation(); cancellation = cancel;
+        statusRunning = true;
         new Thread(() -> {
             NetworkStore.Connection c = null; String text; boolean online = false; org.json.JSONObject raw = null; String state = null;
             try {
@@ -169,7 +172,7 @@ public final class DeviceActivity extends Activity {
                 }
             } catch (Exception e) { text = getString(R.string.kv3_device_unreachable, c == null ? "" : label(c.endpoint.type), e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()); }
             final String value = text; final boolean ok = online; final org.json.JSONObject json = raw; final PrinterEndpoint.Type type = c == null ? null : c.endpoint.type; final String st = state;
-            runOnUiThread(() -> { if (isDestroyed() || cancellation != cancel) return; status.setText(value); statusDot.setBackground(ui.shape(ok ? KeplerUi.MINT : 0x99FFFFFF, 0, 4)); activeType = ok ? type : null; jobState = ok ? phase(st) : Phase.UNKNOWN; if (json != null && type != null) applyTelemetry(type, json, st); updateControls(); });
+            runOnUiThread(() -> { if (cancellation == cancel) statusRunning = false; if (isDestroyed() || cancellation != cancel) return; status.setText(value); statusDot.setBackground(ui.shape(ok ? KeplerUi.MINT : 0x99FFFFFF, 0, 4)); activeType = ok ? type : null; jobState = ok ? phase(st) : Phase.UNKNOWN; if (json != null && type != null) applyTelemetry(type, json, st); updateControls(); });
         }, "device-status").start();
     }
     private static String label(PrinterEndpoint.Type type) { String n = type.name().replace('_', ' '); return n.charAt(0) + n.substring(1).toLowerCase(java.util.Locale.ROOT); }

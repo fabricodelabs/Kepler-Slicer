@@ -49,6 +49,11 @@ moving axes are separate actions that you confirm, and each command is sent once
 
 ## Bambu Lab
 
+Bambu printers connect through [open-bamboo-networking](https://github.com/ClusterM/open-bamboo-networking)
+(AGPL-3.0, commit `95d42f8`), the open replacement of the Bambu network plugin used by OrcaSlicer and Bambu Studio,
+built for Android as `libbambu_networking.so` (see `engine/obn/build-obn.ps1`). Kepler decides which endpoints are
+allowed and which messages are sent; the plugin does MQTT, FTPS and TLS.
+
 ### LAN
 
 | | |
@@ -57,7 +62,7 @@ moving axes are separate actions that you confirm, and each command is sent once
 | Discovery | Printers on the same Wi-Fi are found automatically (SSDP) |
 | Status and commands | MQTT over TLS, port 8883, user `bblp` |
 | Upload | Implicit FTPS, port 990 |
-| Certificate | Pinned on first connection (trust on first use); a changed certificate is refused until you save the printer again |
+| Certificate | Checked against the Bambu CA bundle (`resources/cert/printer.cer`) and the printer serial number |
 | Network | Private (LAN) addresses only |
 
 The printer must allow LAN access (LAN-only or developer mode, depending on the firmware). From the Device screen
@@ -100,7 +105,8 @@ pwsh tools/run_host_tests.ps1 -JsonJar <path to org.json jar>
 ```
 
 The suites (`test_bambu_lan.ps1`, `test_printer_control.ps1` and others) run every protocol against loopback
-simulators, including wrong passwords, refused certificates and cancelled uploads.
+simulators, including wrong passwords, refused certificates and cancelled uploads. Bambu messages and endpoint
+checks are tested over a recording transport; the plugin itself is tested by its own project.
 
 ## References
 

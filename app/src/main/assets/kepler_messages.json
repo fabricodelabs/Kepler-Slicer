@@ -295,7 +295,17 @@
 "слой": "layer",
 "слоя": "layers",
 "слоёв": "layers",
-"только LAN": "LAN only"
+"только LAN": "LAN only",
+"Подключение к Bambu Lab недоступно на этом устройстве.": "Bambu Lab connection is not available on this device.",
+"Bambu: облако не ответило. Проверьте интернет.": "Bambu: the cloud did not answer. Check the internet connection.",
+"Bambu: принтер не ответил. Проверьте IP-адрес и что принтер включён.": "Bambu: the printer did not answer. Check the IP address and that the printer is on.",
+"Bambu: не удалось подключиться. Проверьте серийный номер, код доступа и режим LAN.": "Bambu: could not connect. Check the serial number, access code and LAN mode.",
+"Bambu: команда не отправлена (": "Bambu: the command was not sent (",
+"Bambu: файл не отправлен (": "Bambu: the file was not sent (",
+"). Проверьте код доступа и карту памяти принтера.": "). Check the access code and the printer's storage card.",
+"Bambu: облако отклонило токен, войдите заново.": "Bambu: the cloud rejected the sign-in, sign in again.",
+"Bambu: выберите принтер аккаунта (кнопка входа в облако).": "Bambu: choose a printer of the account (cloud sign-in button).",
+"Отправка файла через облако Bambu не поддерживается. Добавьте этот принтер как Bambu Lab (LAN).": "Sending files through the Bambu cloud is not supported. Add this printer as Bambu Lab (LAN)."
 },
 "ru": {
 "Choose a bundled printer and nozzle first": "Сначала выберите принтер и сопло из библиотеки",
