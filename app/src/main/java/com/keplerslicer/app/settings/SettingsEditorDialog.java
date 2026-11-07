@@ -36,8 +36,7 @@ public final class SettingsEditorDialog {
         if (activity == null || anchor == null || option == null || changed == null)
             throw new IllegalArgumentException("Missing editor argument");
         GlassUi ui = new GlassUi(activity, anchor, reduced);
-        Dialog dialog = new Dialog(activity);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        com.keplerslicer.app.glass.SheetDialog dialog = new com.keplerslicer.app.glass.SheetDialog(activity);
         LinearLayout body = ui.vertical();
         ui.pad(body, 20, 20, 20, 16);
         TextView title = ui.heading(option.label == null || option.label.isEmpty() ? option.key : option.label);
@@ -172,76 +171,11 @@ public final class SettingsEditorDialog {
         body.addView(actions);
         View surface = ui.surface(body, ui.tokens.cardRadius);
         dialog.setContentView(surface);
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            window.setGravity(Gravity.BOTTOM);window.setWindowAnimations(com.keplerslicer.app.R.style.KeplerSheetAnim);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            WindowManager.LayoutParams attributes = window.getAttributes(); attributes.dimAmount = .45f; window.setAttributes(attributes);
-            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        }
+        int preferredDp = numericScalar || option.isBoolean() ? 0
+                : enumList ? Math.max(260, Math.min(720, 180 + option.enumValues.size() * 44))
+                : vector ? 440 : 480;
+        dialog.preferredHeight(preferredDp == 0 ? 0 : ui.dp(preferredDp)).maxFraction(.9f);
         dialog.show();
-        if (window != null) {
-            int preferredDp = numericScalar || option.isBoolean() ? 260
-                    : enumList ? Math.max(260, Math.min(720, 180 + option.enumValues.size() * 44))
-                    : vector ? 440 : 480;
-            AdaptiveHeight sizing = new AdaptiveHeight(activity, anchor, surface, window, ui.dp(preferredDp));
-            sizing.attach();
-            dialog.setOnDismissListener(ignored -> sizing.detach());
-        }
-
-    }
-
-    /** Keep the bottom actions above the IME while only the editable content scrolls. */
-    private static final class AdaptiveHeight {
-        private final Activity activity;private final View anchor,surface;private final Window window;private final int preferred;
-        private int lastHeight=-1;private boolean detached;
-        private final android.view.ViewTreeObserver.OnGlobalLayoutListener layout=this::update;
-        AdaptiveHeight(Activity activity,View anchor,View surface,Window window,int preferred){this.activity=activity;this.anchor=anchor;this.surface=surface;this.window=window;this.preferred=preferred;}
-        void attach(){surface.getViewTreeObserver().addOnGlobalLayoutListener(layout);
-            if(Build.VERSION.SDK_INT>=30)Insets30.listen(surface,this::update);
-            surface.post(this::update);
-        }
-        void detach(){detached=true;if(surface.getViewTreeObserver().isAlive())surface.getViewTreeObserver().removeOnGlobalLayoutListener(layout);if(Build.VERSION.SDK_INT>=30)Insets30.stop(surface);}
-        private void update(){if(detached||!surface.isAttachedToWindow())return;
-            Rect visible=new Rect();anchor.getWindowVisibleDisplayFrame(visible);int available=visible.height();
-            if(available<=0)available=activity.getResources().getDisplayMetrics().heightPixels;
-            if(Build.VERSION.SDK_INT>=30)available=Math.min(available,Insets30.available(activity,anchor,surface));
-            int desired=Math.max(1,Math.min(preferred,(int)(Math.max(1,available)*.8f)));
-            if(desired!=lastHeight){lastHeight=desired;window.setLayout(-1,desired);}
-            // ADJUST_RESIZE is not reliable on every edge-to-edge window. If the actual
-            // dialog still overlaps the keyboard, lift it by the measured overlap.
-            int imeTop=Build.VERSION.SDK_INT>=30?Insets30.imeTop(activity,anchor,surface):-1;
-            if(Build.VERSION.SDK_INT<30){int screen=activity.getResources().getDisplayMetrics().heightPixels;
-                if(screen-visible.bottom>Math.round(100*activity.getResources().getDisplayMetrics().density))imeTop=visible.bottom;}
-            WindowManager.LayoutParams attributes=window.getAttributes();int offset=attributes.y;
-            if(imeTop<0){if(offset!=0){attributes.y=0;window.setAttributes(attributes);}}
-            else if(surface.getHeight()>0){int[] position=new int[2];surface.getLocationOnScreen(position);
-                int correction=position[1]+surface.getHeight()-imeTop;int adjusted=Math.max(0,offset+correction);
-                if(adjusted!=offset){attributes.y=adjusted;window.setAttributes(attributes);}}
-        }
-    }
-    @android.annotation.TargetApi(30)
-    private static final class Insets30 {
-        static void listen(View surface,Runnable update){surface.setOnApplyWindowInsetsListener((view,insets)->{view.post(update);return insets;});surface.requestApplyInsets();}
-        static void stop(View surface){surface.setOnApplyWindowInsetsListener(null);}
-        static int imeTop(Activity activity,View anchor,View surface){
-            WindowManager manager=(WindowManager)activity.getSystemService(Activity.WINDOW_SERVICE);int bottom=0;
-            android.view.WindowInsets[] sources={anchor.getRootWindowInsets(),surface.getRootWindowInsets()};
-            for(android.view.WindowInsets insets:sources)if(insets!=null&&insets.isVisible(android.view.WindowInsets.Type.ime()))bottom=Math.max(bottom,insets.getInsets(android.view.WindowInsets.Type.ime()).bottom);
-            return bottom>0?manager.getCurrentWindowMetrics().getBounds().bottom-bottom:-1;
-        }
-        static int available(Activity activity,View anchor,View surface){
-            WindowManager manager=(WindowManager)activity.getSystemService(Activity.WINDOW_SERVICE);
-            int height=manager.getCurrentWindowMetrics().getBounds().height();int top=0,bottom=0;
-            android.view.WindowInsets[] sources={anchor.getRootWindowInsets(),surface.getRootWindowInsets()};
-            for(android.view.WindowInsets insets:sources)if(insets!=null){
-                android.graphics.Insets bars=insets.getInsetsIgnoringVisibility(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());
-                top=Math.max(top,bars.top);bottom=Math.max(bottom,bars.bottom);
-                if(insets.isVisible(android.view.WindowInsets.Type.ime()))bottom=Math.max(bottom,insets.getInsets(android.view.WindowInsets.Type.ime()).bottom);
-            }
-            return Math.max(1,height-top-bottom);
-        }
     }
 
     public static void help(Activity activity, View anchor, boolean reduced, SettingsSchema.Option option) {

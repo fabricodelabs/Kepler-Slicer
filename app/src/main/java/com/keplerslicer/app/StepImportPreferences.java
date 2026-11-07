@@ -153,7 +153,7 @@ final class StepImportPreferences {
         if(!GeneralPreferences.prefs(activity).getBoolean("show_step_import_settings",true)){accepted.run();return;}
         final Options options=capture(activity);
         final AtomicBoolean completed=new AtomicBoolean();
-        final Dialog dialog=new Dialog(activity);dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        final com.keplerslicer.app.glass.SheetDialog dialog=new com.keplerslicer.app.glass.SheetDialog(activity);
         GlassUi ui=new GlassUi(activity,activity.getWindow().getDecorView(),false);
         LinearLayout body=ui.vertical();ui.pad(body,20,20,20,20);body.addView(ui.heading(activity.getString(R.string.step_import_title)));ui.space(body,10);
         body.addView(ui.text(activity.getString(R.string.step_import_detail),14,400,ui.tokens.textPrimary));ui.space(body,10);
@@ -176,7 +176,7 @@ final class StepImportPreferences {
         ScrollView scroll=new ScrollView(activity);scroll.setFillViewport(false);scroll.addView(body);
         dialog.setContentView(ui.surface(scroll,ui.tokens.cardRadius));
         dialog.setOnDismissListener(ignored->{if(completed.compareAndSet(false,true))canceled.run();});
-        dialog.show();if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setWindowAnimations(com.keplerslicer.app.R.style.KeplerSheetAnim);dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);dialog.getWindow().setLayout(-1,-2);}
+        dialog.show();
     }
 
     private static File readCache(File index,File data,String sourceHash,Options options)throws IOException {

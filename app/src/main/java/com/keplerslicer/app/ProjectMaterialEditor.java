@@ -66,7 +66,7 @@ final class ProjectMaterialEditor {
         }catch(Exception e){failed(e);}
     }
     private void editColour(ReadResult expected,int slot,String current){
-        Dialog dialog=new Dialog(activity);dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        com.keplerslicer.app.glass.SheetDialog dialog=new com.keplerslicer.app.glass.SheetDialog(activity);
         GlassUi ui=new GlassUi(activity,activity.getWindow().getDecorView(),false);LinearLayout body=ui.vertical();ui.pad(body,20,20,20,20);
         body.addView(ui.heading(activity.getString(R.string.native_material_colour_title,slot+1)));ui.space(body,10);
         body.addView(ui.text(activity.getString(R.string.native_material_colour_detail),14,400,ui.tokens.textPrimary));ui.space(body,10);
@@ -92,7 +92,7 @@ final class ProjectMaterialEditor {
             if(colour.equalsIgnoreCase(current.trim())){dialog.dismiss();return;}
             dialog.dismiss();save(expected,slot,colour);
         }));ui.space(body,6);body.addView(ui.action(activity.getString(R.string.pref_cancel),false,dialog::dismiss));
-        dialog.setContentView(ui.surface(body,ui.tokens.cardRadius));dialog.show();if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setWindowAnimations(com.keplerslicer.app.R.style.KeplerSheetAnim);dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);dialog.getWindow().setLayout(-1,-2);}
+        dialog.setContentView(ui.surface(body,ui.tokens.cardRadius));dialog.show();
     }
     private static void updateSwatches(GlassUi ui,FrameLayout[] swatches,String[] colours,String value){
         for(int i=0;i<swatches.length;i++){boolean selected=colours[i].equalsIgnoreCase(value.trim());swatches[i].setSelected(selected);GradientDrawable outline=new GradientDrawable();outline.setColor(selected?0x22ffffff:Color.TRANSPARENT);outline.setCornerRadius(ui.dp(12));outline.setStroke(ui.dp(selected?2:1),selected?0xffffffff:0x44ffffff);swatches[i].setBackground(outline);}

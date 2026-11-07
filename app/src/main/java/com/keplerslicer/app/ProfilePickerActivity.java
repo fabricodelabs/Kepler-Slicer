@@ -71,6 +71,7 @@ public class ProfilePickerActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         MdUi.prepare(this); super.onCreate(state);
         kind = getIntent().getStringExtra(EXTRA_KIND);
+        setup = getIntent().getBooleanExtra(SetupFlow.EXTRA, false);
         if (!PrintProfileCatalog.PROCESS.equals(kind) && !PrintProfileCatalog.FILAMENT.equals(kind)) { finish(); return; }
         if (state != null) { query = state.getString("query", ""); showAll = state.getBoolean("showAll"); type = state.getString("type"); favouritesOnly = state.getBoolean("fav"); }
         favourites.addAll(getSharedPreferences("kepler_v3_ui", MODE_PRIVATE).getStringSet("favourites_" + kind, new HashSet<>()));
@@ -81,7 +82,7 @@ public class ProfilePickerActivity extends Activity {
         KeplerUi kui = new KeplerUi(this);
         View plus = kui.glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.kv3_new_preset), () -> screen.unavailable(getString(R.string.kv3_new_preset)));
         materialSlot = filament ? getIntent().getIntExtra(EXTRA_SLOT, 0) : 0; if (materialSlot < 2 || materialSlot > MaterialSlots.COUNT) materialSlot = 0;
-        screen = new KeplerScreen(this, materialSlot > 0 ? getString(R.string.kv3_slot, materialSlot) : getString(filament ? R.string.kv3_filament : R.string.kv3_process), this::finish, plus, 1); ui = screen.ui;
+        screen = new KeplerScreen(this, materialSlot > 0 ? getString(R.string.kv3_slot, materialSlot) : getString(filament ? R.string.kv3_filament : R.string.kv3_process), this::finish, plus, 1); ui = screen.ui; if (setup && screen.nav != null) screen.nav.setVisibility(View.GONE);
         if (printer == null || printer.imported || printer.path.isEmpty()) { screen.content.addView(ui.text(getString(R.string.l10n_fp_choose_printer_first), 14, 500, KeplerUi.SECONDARY)); return; }
 
         screen.body.removeView(screen.scroll);
@@ -102,12 +103,15 @@ public class ProfilePickerActivity extends Activity {
             }
             top.addView(slots, new LinearLayout.LayoutParams(-1, -2));
         }
+        // The search field stays outside the list: a ListView header loses focus on every refilter, which closed
+        // the keyboard and swallowed typing.
+        LinearLayout fixed = ui.column(); fixed.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), ui.dp(4));
         LinearLayout box = ui.row(); box.setBackground(ui.glass(24)); box.setPadding(ui.dp(16), 0, ui.dp(12), 0);
         box.addView(ui.image(R.drawable.kv3_search, 20, KeplerUi.WHITE));
         search = new EditText(this); search.setSingleLine(true); search.setTextSize(15); search.setTextColor(KeplerUi.WHITE); search.setHintTextColor(KeplerUi.SECONDARY);
         search.setHint(getString(R.string.kv3_search_profiles)); search.setBackground(null); search.setText(query); com.keplerslicer.app.glass.GlassTypography.apply(search, 500);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0, ui.dp(48), 1); sp.leftMargin = ui.dp(10); box.addView(search, sp);
-        top.addView(box, filament ? ui.below(14) : ui.below(12)); ((LinearLayout.LayoutParams) box.getLayoutParams()).height = ui.dp(48);
+        fixed.addView(box, ui.below(8)); ((LinearLayout.LayoutParams) box.getLayoutParams()).height = ui.dp(48);
 
         HorizontalScrollView s1 = new HorizontalScrollView(this); s1.setHorizontalScrollBarEnabled(false); s1.setOverScrollMode(View.OVER_SCROLL_NEVER);
         LinearLayout r1 = ui.row(); s1.addView(r1);
@@ -129,7 +133,7 @@ public class ProfilePickerActivity extends Activity {
         top.addView(s2, ui.below(8));
         status = ui.text(getString(R.string.l10n_fp_loading), 12, 500, KeplerUi.SECONDARY); status.setPadding(ui.dp(4), ui.dp(10), ui.dp(4), 0); top.addView(status);
 
-        top.addView(screen.takeTopBar(), 0); LinearLayout wrap = ui.column();
+        fixed.addView(screen.takeTopBar(), 0); if (setup) fixed.addView(setupBanner(filament), 1); LinearLayout wrap = ui.column(); wrap.addView(fixed, new LinearLayout.LayoutParams(-1, -2));
         ListView list = new ListView(this); list.setDivider(null); list.setClipToPadding(false); list.setSelector(new android.graphics.drawable.ColorDrawable(0));
         list.addHeaderView(top, null, false); list.setItemsCanFocus(true); list.setPadding(ui.dp(20), 0, ui.dp(28), ui.dp(16)); FrameLayout listFrame = new FrameLayout(this); listFrame.addView(list, new FrameLayout.LayoutParams(-1, -1)); listView = list;
         index = ui.column(); index.setGravity(Gravity.CENTER); FrameLayout.LayoutParams ip = new FrameLayout.LayoutParams(ui.dp(24), -2, Gravity.END | Gravity.CENTER_VERTICAL); ip.rightMargin = ui.dp(2); listFrame.addView(index, ip);
@@ -311,10 +315,23 @@ public class ProfilePickerActivity extends Activity {
                 if (currentPrinter == null || !currentPrinter.path.equals(printer.path)) throw new java.io.IOException(getString(R.string.l10n_fp_printer_changed));
                 PrintProfileCatalog.saveSelection(this, next, printer);
             });
-            setResult(RESULT_OK); finish();
+            setResult(RESULT_OK);
+            if (setup) {
+                if (PrintProfileCatalog.FILAMENT.equals(kind)) { SetupFlow.filamentChosen(this); startActivity(SetupFlow.picker(this, PrintProfileCatalog.PROCESS)); return; }
+                SetupFlow.processChosen(this); if (SetupFlow.complete(this)) { SetupFlow.backToWorkspace(this); return; }
+            }
+            finish();
         } catch (Exception e) { screen.info(getString(R.string.l10n_profile_save_failed), e.getMessage()); }
     }
 
+    private boolean setup;
+    private View setupBanner(boolean filament) {
+        LinearLayout box = ui.column(); box.setBackground(ui.shape(0x335EE0C8, 0x995EE0C8, 16)); box.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12));
+        box.addView(ui.text(getString(filament ? R.string.setup_step_filament : R.string.setup_step_process), 14, 700, KeplerUi.WHITE));
+        box.addView(ui.text(getString(R.string.setup_required), 12, 500, KeplerUi.SECONDARY), ui.below(4));
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.topMargin = ui.dp(4); p.bottomMargin = ui.dp(4); box.setLayoutParams(p);
+        return box;
+    }
     private static String profileKey(String vendor, String name) { return vendor + "\u0000" + name; }
     private static boolean sameProfile(PrintProfileCatalog.Profile a, PrintProfileCatalog.Profile b) {
         return a == null ? b == null : b != null && a.vendor.equals(b.vendor) && a.name.equals(b.name);
@@ -334,7 +351,7 @@ public class ProfilePickerActivity extends Activity {
         for (PrintProfileCatalog.Profile p : all) {
             String state = compatibility.get(profileKey(p.vendor, p.name));
             if (!showAll && !("yes".equals(state) || "printer_only".equals(state))) continue;
-            if (!q.isEmpty() && !(p.name + " " + p.vendor).toLowerCase(Locale.ROOT).contains(q)) continue;
+            if (!SearchMatch.matches(q, p.name, p.vendor)) continue;
             if (type != null && !type.equals(typeOf(p.name))) continue;
             if (favouritesOnly && !favourites.contains(profileKey(p.vendor, p.name))) continue;
             if (maker != null && !maker.equals(groupOf(p))) continue;

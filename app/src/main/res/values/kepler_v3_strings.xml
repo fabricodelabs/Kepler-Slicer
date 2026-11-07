@@ -732,4 +732,9 @@
     <string name="kv3_paint_fuzzy_brush">Paint fuzzy skin with a brush</string>
     <string name="kv3_paint_mode_brush">Brush</string>
     <string name="kv3_paint_mode_fill">Fill area</string>
+    <string name="setup_step_printer">Step 1 of 3 · Choose your printer and nozzle</string>
+    <string name="setup_step_filament">Step 2 of 3 · Choose the filament</string>
+    <string name="setup_step_process">Step 3 of 3 · Choose the layer height</string>
+    <string name="setup_required">Finish these steps to open the workspace</string>
+    <string name="setup_continue">Continue</string>
 </resources>

@@ -122,6 +122,7 @@ public class MainActivity extends Activity {
         refreshAfterResume = false;
         if (stlView != null) stlView.onResume();
         maybeOpenRequestedLayers();
+        openSetupIfNeeded();
     }
     @Override protected void onDestroy() { if(pendingPrepared!=null){pendingPrepared.discard();pendingPrepared=null;}cancelLayerWork(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
 
@@ -132,7 +133,7 @@ public class MainActivity extends Activity {
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
         if(request==REQUEST_MODEL_DETAILS){if(data!=null&&data.getBooleanExtra("paint_colour",false))pendingPaint="colour";restoreModel();return;}
-        if (request == PICK_PRINTER || request == PICK_PROCESS || request == PICK_FILAMENT) { if (result == RESULT_OK) {render();ControlPreferences.scheduleAutoSlice(this);} return; }
+        if (request == PICK_PRINTER || request == PICK_PROCESS || request == PICK_FILAMENT) { if (request == PICK_PRINTER) setupOpen = false; if (result == RESULT_OK) {render();ControlPreferences.scheduleAutoSlice(this);} return; }
         if ((request != OPEN_STL && request != REQUEST_IMPORT) || result != RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
         selected = 0; loadStl(uri);
@@ -234,14 +235,13 @@ public class MainActivity extends Activity {
             ()->cancelPreparedImport(prepared,sequence),true,remember);
     }
     private void showProjectSheet(String title,String message,String[] captions,boolean[] enabled,Runnable[] actions,Runnable cancel,boolean rememberChoice,com.keplerslicer.app.glass.GlassSwitch[] rememberOut){
-        android.app.Dialog dialog=new android.app.Dialog(this);dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        com.keplerslicer.app.glass.SheetDialog dialog=new com.keplerslicer.app.glass.SheetDialog(this);
         com.keplerslicer.app.glass.GlassUi glass=new com.keplerslicer.app.glass.GlassUi(this,root,false);
         LinearLayout body=glass.vertical();glass.pad(body,20,20,20,20);body.addView(glass.heading(title));glass.space(body,12);body.addView(glass.text(message,14,400,glass.tokens.textPrimary));
         if(rememberChoice){glass.space(body,10);com.keplerslicer.app.glass.GlassSwitch toggle=new com.keplerslicer.app.glass.GlassSwitch(this);toggle.setContentDescription(getString(R.string.general_remember_choice));rememberOut[0]=toggle;LinearLayout row=glass.horizontal();row.addView(glass.text(getString(R.string.general_remember_choice),14,400,glass.tokens.textPrimary),new LinearLayout.LayoutParams(0,-2,1));row.addView(toggle);body.addView(row);}
         for(int i=0;i<captions.length;i++){final int index=i;glass.space(body,8);TextView action=glass.action(captions[i],i==0,()->{dialog.dismiss();actions[index].run();});action.setEnabled(enabled[i]);action.setAlpha(enabled[i]?1:.45f);body.addView(action);}
         glass.space(body,8);body.addView(glass.action(getString(R.string.general_project_cancel),false,()->{dialog.dismiss();cancel.run();}));dialog.setOnCancelListener(d->cancel.run());
         ScrollView scroll=new ScrollView(this);scroll.addView(body);dialog.setContentView(glass.surface(scroll,glass.tokens.cardRadius));dialog.show();
-        if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));body.measure(View.MeasureSpec.makeMeasureSpec(getResources().getDisplayMetrics().widthPixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));dialog.getWindow().setGravity(Gravity.BOTTOM);dialog.getWindow().setWindowAnimations(com.keplerslicer.app.R.style.KeplerSheetAnim);dialog.getWindow().setLayout(-1,Math.min(body.getMeasuredHeight(),(int)(getResources().getDisplayMetrics().heightPixels*.85f)));}
     }
     private void acceptProjectMode(CurrentModelStore prepared,Uri uri,int sequence,GeneralProjectPolicy policy,ProjectSettingsSnapshot snapshot,EngineProfileSession session,int mode,Runnable afterPublished){
         if(mode>0&&(snapshot==null||session==null||!snapshot.canLoad(mode==2))){cancelPreparedImport(prepared,sequence);return;}
@@ -1348,6 +1348,13 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    private boolean setupOpen;
+    /** First launch or an unfinished printer change: printer, filament and process must be chosen before the workspace. */
+    private void openSetupIfNeeded() {
+        if (setupOpen || SetupFlow.complete(this)) return;
+        setupOpen = true;
+        startActivityForResult(new Intent(this, PrinterPickerActivity.class).putExtra(SetupFlow.EXTRA, true), PICK_PRINTER);
+    }
     private void openPrinterProfiles() {
         startActivityForResult(new Intent(this, PrinterPickerActivity.class), PICK_PRINTER);
     }

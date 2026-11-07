@@ -67,6 +67,8 @@ public class PrinterPickerActivity extends Activity {
         MdUi palette = new MdUi(this);
         INK=palette.ink; MUTED=palette.muted; BG=palette.bg; SURFACE=palette.container; LINE=palette.line; CARD=palette.surface;
         if (state != null) { query = state.getString("query", ""); restoredModel = state.getString("model"); restoredVariant = state.getString("variant"); }
+        if (state == null && PrinterProfileCatalog.loadSelection(this) == null) library = true;
+        else if (state == null && !SetupFlow.complete(this)) SetupFlow.continueFrom(this);
         getWindow().setStatusBarColor(BG); getWindow().setNavigationBarColor(BG);
         getWindow().getDecorView().setSystemUiVisibility(palette.dark ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         render();
@@ -112,8 +114,8 @@ public class PrinterPickerActivity extends Activity {
     @Override protected void onDestroy() { worker.shutdownNow(); if(android.os.Build.VERSION.SDK_INT>=33&&backCallback!=null)Api33.unregister(this,backCallback); super.onDestroy(); }
     @android.annotation.TargetApi(33) private static final class Api33 {static Object register(PrinterPickerActivity a){android.window.OnBackInvokedCallback cb=a::handleBack;a.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,cb);return cb;}static void unregister(PrinterPickerActivity a,Object cb){a.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback)cb);}}
     /** Back is intercepted only inside the library or a chosen model; at the top the system animates the gesture. */
-    private void syncBack() { boolean want = chosenModel != null || library; if (want && backCallback == null) backCallback = Api33.register(this); else if (!want && backCallback != null) { Api33.unregister(this, backCallback); backCallback = null; } }
-    private void handleBack() { if(chosenModel!=null) { chosenModel=null; chosenVariant=null; com.keplerslicer.app.glass.KeplerUi.navigate(this, -1, this::render); } else if(library) { library=false; com.keplerslicer.app.glass.KeplerUi.navigate(this, -1, this::render); } else finish(); }
+    private void syncBack() { boolean want = chosenModel != null || library || !SetupFlow.complete(this); if (want && backCallback == null) backCallback = Api33.register(this); else if (!want && backCallback != null) { Api33.unregister(this, backCallback); backCallback = null; } }
+    private void handleBack() { if(chosenModel!=null) { chosenModel=null; chosenVariant=null; com.keplerslicer.app.glass.KeplerUi.navigate(this, -1, this::render); } else if(library && PrinterProfileCatalog.loadSelection(this) != null) { library=false; com.keplerslicer.app.glass.KeplerUi.navigate(this, -1, this::render); } else if(!SetupFlow.complete(this)) moveTaskToBack(true); else if(library) { library=false; com.keplerslicer.app.glass.KeplerUi.navigate(this, -1, this::render); } else finish(); }
     @android.annotation.SuppressLint("GestureBackNavigation") @Override public void onBackPressed() { handleBack(); }
     private int dp(float n) { return (int)(n*getResources().getDisplayMetrics().density+.5f); }
     private GradientDrawable shape(int color, int radius) { GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d; }
@@ -133,9 +135,10 @@ public class PrinterPickerActivity extends Activity {
     private void render() { syncBack();
         String title = chosenModel != null ? chosenModel.name : library ? getString(R.string.kv3_printer_library) : getString(R.string.kv3_printers);
         View plus = new com.keplerslicer.app.glass.KeplerUi(this).glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.kv3_add_printer), () -> { library = true; chosenModel = null; render(); });
-        screen = new KeplerScreen(this, title, this::handleBack, library || chosenModel != null ? null : plus, 1); ui = screen.ui;
+        screen = new KeplerScreen(this, title, this::handleBack, library || chosenModel != null ? null : plus, 1); if (!SetupFlow.complete(this) && screen.nav != null) screen.nav.setVisibility(View.GONE); ui = screen.ui;
         root = screen.column; content = screen.content;
         if (models == null) { TextView state = ui.text(error == null ? getString(R.string.l10n_pp_loading) : getString(R.string.l10n_pp_load_failed) + error, 14, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY); content.addView(state); return; }
+        if ((!library || chosenModel != null) && !SetupFlow.complete(this)) content.addView(setupBanner(), 0);
         if (chosenModel != null) renderDetails(); else if (library) renderList(); else renderPrinters();
     }
 
@@ -188,6 +191,17 @@ public class PrinterPickerActivity extends Activity {
         lib.addView(ui.listRow(R.drawable.kv3_printer, getString(R.string.kv3_printer_library), getString(R.string.kv3_printer_library_detail), ui.image(R.drawable.kv3_chevron_right, 20, white), () -> { library = true; com.keplerslicer.app.glass.KeplerUi.navigate(this, 1, this::render); }));
         content.addView(lib, ui.below(10));
     }
+    /** Which setup step this is, shown while the workspace is still locked. */
+    private View setupBanner() {
+        String step = SetupFlow.missing(this);
+        int text = "printer".equals(step) ? R.string.setup_step_printer : SetupFlow.FILAMENT_STAGE.equals(step) ? R.string.setup_step_filament : R.string.setup_step_process;
+        LinearLayout box = ui.column(); box.setBackground(ui.shape(0x335EE0C8, 0x995EE0C8, 16)); box.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12));
+        box.addView(ui.text(getString(text), 14, 700, com.keplerslicer.app.glass.KeplerUi.WHITE));
+        box.addView(ui.text(getString(R.string.setup_required), 12, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY), ui.below(4));
+        if (!"printer".equals(step)) { LinearLayout go = ui.primaryButton(R.drawable.kv3_chevron_right, getString(R.string.setup_continue), () -> SetupFlow.continueFrom(this)); box.addView(go, ui.below(12)); }
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.bottomMargin = ui.dp(12); box.setLayoutParams(p);
+        return box;
+    }
     private View printerTile(Model model) {
         FrameLayout tile = new FrameLayout(this); tile.setBackground(ui.shape(com.keplerslicer.app.glass.KeplerUi.FIELD, 0, 14));
         tile.addView(ui.image(R.drawable.kv3_printer, 24, com.keplerslicer.app.glass.KeplerUi.WHITE), new FrameLayout.LayoutParams(ui.dp(24), ui.dp(24), Gravity.CENTER)); return tile;
@@ -210,6 +224,8 @@ public class PrinterPickerActivity extends Activity {
             boolean changed = previous == null || previous.imported != variant.imported || !previous.path.equals(variant.path) || !previous.name.equals(variant.name) || !previous.vendor.equals(variant.vendor);
             if (changed) ProcessOverridesStore.changeSelection(this, () -> PrinterProfileCatalog.saveSelection(this, variant));
             setResult(RESULT_OK, new Intent());
+            if (changed) SetupFlow.printerChanged(this);
+            if (!SetupFlow.complete(this)) { chosenModel = null; chosenVariant = null; library = false; render(); SetupFlow.continueFrom(this); return; }
             if (close) finish(); else render();
         } catch (Exception e) { screen.info(getString(R.string.l10n_profile_save_failed), e.getMessage()); }
     }
@@ -217,14 +233,15 @@ public class PrinterPickerActivity extends Activity {
     private void renderList() {
         final int white = com.keplerslicer.app.glass.KeplerUi.WHITE, secondary = com.keplerslicer.app.glass.KeplerUi.SECONDARY;
         screen.body.removeView(screen.scroll);
-        LinearLayout top = ui.column(); top.setPadding(0, ui.dp(8), 0, ui.dp(4)); top.addView(screen.takeTopBar());
+        LinearLayout fixed = ui.column(); fixed.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), 0); fixed.addView(screen.takeTopBar()); LinearLayout top = ui.column(); top.setPadding(0, 0, 0, ui.dp(4));
         LinearLayout searchBox = ui.row(); searchBox.setBackground(ui.field(22)); searchBox.setPadding(ui.dp(14), 0, ui.dp(12), 0);
         searchBox.addView(ui.image(R.drawable.kv3_search, 20, secondary));
         EditText input = new EditText(this); input.setSingleLine(true); input.setTextSize(14); input.setTextColor(white); input.setHintTextColor(secondary); input.setHint(getString(R.string.l10n_pp_search)); input.setBackgroundColor(Color.TRANSPARENT); input.setText(query);
         com.keplerslicer.app.glass.GlassTypography.apply(input, 500);
-        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0, ui.dp(48), 1); ip.leftMargin = ui.dp(8); searchBox.addView(input, ip); top.addView(searchBox, ui.lp(-1, 48));
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0, ui.dp(48), 1); ip.leftMargin = ui.dp(8); searchBox.addView(input, ip); fixed.addView(searchBox, ui.lp(-1, 48));
+        if (!SetupFlow.complete(this)) fixed.addView(setupBanner(), 1);
         TextView counter = ui.caption(""); counter.setPadding(ui.dp(4), ui.dp(16), ui.dp(4), ui.dp(8)); top.addView(counter);
-        LinearLayout wrap = ui.column();
+        LinearLayout wrap = ui.column(); wrap.addView(fixed, new LinearLayout.LayoutParams(-1, -2));
         ListView list = new ListView(this); list.addHeaderView(top, null, false); list.setItemsCanFocus(true); list.setDivider(null); list.setClipToPadding(false); list.setSelector(new android.graphics.drawable.ColorDrawable(0)); list.setPadding(ui.dp(20), 0, ui.dp(20), ui.dp(16)); wrap.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
         screen.body.addView(wrap, new FrameLayout.LayoutParams(-1, -1));
         BaseAdapter adapter = new BaseAdapter() {
@@ -240,7 +257,7 @@ public class PrinterPickerActivity extends Activity {
                 LinearLayout wrapper = ui.column(); wrapper.addView(item, ui.lp(-1, -2)); wrapper.addView(ui.spacer(10)); return wrapper;
             }
         }; list.setAdapter(adapter);
-        Runnable filter = () -> { String q = query.trim().toLowerCase(Locale.ROOT); visible.clear(); for (Model m : models) if (q.isEmpty() || (m.vendor + " " + m.name).toLowerCase(Locale.ROOT).contains(q)) visible.add(m); counter.setText((visible.isEmpty() ? getString(R.string.l10n_pp_no_models) : getString(R.string.l10n_pp_models) + visible.size()).toUpperCase(Locale.getDefault())); adapter.notifyDataSetChanged(); };
+        Runnable filter = () -> { String q = query.trim().toLowerCase(Locale.ROOT); visible.clear(); for (Model m : models) if (SearchMatch.matches(q, m.vendor, m.name)) visible.add(m); counter.setText((visible.isEmpty() ? getString(R.string.l10n_pp_no_models) : getString(R.string.l10n_pp_models) + visible.size()).toUpperCase(Locale.getDefault())); adapter.notifyDataSetChanged(); };
         input.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s, int a, int c, int f) {} public void onTextChanged(CharSequence s, int a, int before, int count) { query = s.toString(); filter.run(); } public void afterTextChanged(Editable e) {} });
         list.setOnItemClickListener((p, v, position, id) -> { int pos = position - list.getHeaderViewsCount(); if (pos < 0 || pos >= visible.size()) return; chosenModel = visible.get(pos); chosenVariant = null; detailScrollY = 0; PrinterProfileCatalog.Profile saved = PrinterProfileCatalog.loadSelection(this); if (saved != null) for (PrinterProfileCatalog.Profile variant : chosenModel.variants) if (variant.path.equals(saved.path)) chosenVariant = variant; ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(input.getWindowToken(), 0); com.keplerslicer.app.glass.KeplerUi.navigate(this, 1, this::render); });
         filter.run();

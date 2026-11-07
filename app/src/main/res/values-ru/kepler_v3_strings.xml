@@ -732,4 +732,9 @@
     <string name="kv3_paint_fuzzy_brush">Рисовать нечёткую кожу кистью</string>
     <string name="kv3_paint_mode_brush">Кисть</string>
     <string name="kv3_paint_mode_fill">Заливка области</string>
+    <string name="setup_step_printer">Шаг 1 из 3 · Выберите принтер и сопло</string>
+    <string name="setup_step_filament">Шаг 2 из 3 · Выберите филамент</string>
+    <string name="setup_step_process">Шаг 3 из 3 · Выберите высоту слоя</string>
+    <string name="setup_required">Завершите эти шаги, чтобы перейти к столу</string>
+    <string name="setup_continue">Продолжить</string>
 </resources>
