@@ -28,7 +28,7 @@ android {
         minSdk 33
         targetSdk 36
         versionCode gitVersionCode()
-        versionName '1.0.2'
+        versionName '1.0.3'
         // Match the built native engine. This also tells Android Studio which
         // ABI to deploy when a device supports native translation.
         ndk { abiFilters 'arm64-v8a' }
