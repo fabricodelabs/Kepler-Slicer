@@ -79,6 +79,9 @@ final class TabletSidebar extends LinearLayout {
         fill = ui.column(); fill.setVisibility(GONE);
         panel.addView(fill, new LayoutParams(-1, 0, 1));
         scroll = new ScrollView(context); scroll.setFillViewport(true); scroll.setClipChildren(true);
+        // Glass cards draw through render nodes; clip to the outline so scrolled content never covers the header.
+        scroll.setOutlineProvider(android.view.ViewOutlineProvider.BOUNDS); scroll.setClipToOutline(true);
+        fill.setOutlineProvider(android.view.ViewOutlineProvider.BOUNDS); fill.setClipToOutline(true);
         content = ui.column(); content.setPadding(0, 0, 0, ui.dp(12));
         scroll.addView(content, new FrameLayout.LayoutParams(-1, -2));
         panel.addView(scroll, new LayoutParams(-1, 0, 1));

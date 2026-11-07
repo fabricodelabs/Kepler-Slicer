@@ -12,13 +12,21 @@ The mobile interface stays the default and is unchanged.
 other app preferences (`app_preferences`) and survives restarts. The app never picks the tablet mode by itself: the
 screen size, density and orientation only adapt the layout the user chose. Both modes work on any device.
 
+**Orientation is fixed by the mode:** the tablet interface runs in landscape only, the mobile interface in portrait
+only (each either way up), on every screen of the app (`InterfaceMode.applyOrientation`, applied from
+`KeplerApplication` to every activity and again as soon as the mode is changed).
+
 Switching is applied when the workspace is shown again (`MainActivity.onResume` → `render()`): the model, project,
 printer/filament/process selection, plate and camera are kept, because they live in the shared workspace state and
 storage, not in the layout. Nothing is restarted, and the native engine is not reloaded.
 
-| Preference | Mobile | Tablet on a phone |
-|:---:|:---:|:---:|
-| <img src="tablet-workspace/preference.jpg" width="240"> | <img src="tablet-workspace/mobile-mode.jpg" width="240"> | <img src="tablet-workspace/phone-tablet-mode.jpg" width="240"> |
+| Preference | Mobile (portrait) |
+|:---:|:---:|
+| <img src="tablet-workspace/preference.jpg" width="240"> | <img src="tablet-workspace/mobile-mode.jpg" width="240"> |
+
+Tablet mode on a phone (landscape):
+
+<img src="tablet-workspace/phone-tablet-mode.jpg" width="700">
 
 ## Layout
 
@@ -48,7 +56,7 @@ State, width and section are saved (`tablet_sidebar_state`, `tablet_sidebar_widt
 Changing them moves the 3D view with a margin; the GL surface is resized, never recreated. The resize handle takes
 its own touches, so dragging it never rotates the camera.
 
-| Expanded | Collapsed | Hidden |
+| Expanded (before the landscape-only rule) | Collapsed | Hidden |
 |:---:|:---:|:---:|
 | <img src="tablet-workspace/portrait-expanded.jpg" width="240"> | <img src="tablet-workspace/portrait-collapsed.jpg" width="240"> | <img src="tablet-workspace/portrait-hidden.jpg" width="240"> |
 
@@ -58,6 +66,7 @@ its own touches, so dragging it never rotates the camera.
 - If an expanded panel would leave less than 360 dp of 3D area, it floats over the scene instead of docking.
 - Below 900 dp the tabs show icons only; below 1100 dp Export and Send are icon buttons; below 600 dp Slice too.
 - The panel width is clamped to the window on every layout.
+- Windows under 700 dp high (phones): the whole Prepare column scrolls and the settings editor gets a screen of height.
 
 ## Keyboard
 
@@ -89,6 +98,8 @@ The mouse wheel zooms the 3D view (existing behaviour).
 | Settings names in Russian in an English interface | Translation table applied only to Russian |
 | Search keyboard stayed open over the printer details | Closed when the details open |
 | Phone width: Slice covered the tabs | Icon-only buttons on narrow windows |
+| Phone landscape: settings editor squeezed to zero height | Prepare column scrolls on short windows |
+| Scrolled glass cards drew over the panel header | Panel content clipped to its outline |
 
 ## Results
 
@@ -104,7 +115,8 @@ The mouse wheel zooms the 3D view (existing behaviour).
 - Objects shows the object list; per-object settings open the existing model details screen. No object tree yet.
 - Undo/redo is not implemented in the app, so it is not offered in either mode.
 - Right-click context menu and stylus-specific input are not implemented.
+- Portrait shots of the panel states above were taken before the landscape-only rule.
+- The emulator lost its graphics twice after `adb reboot` (white screens, System UI not responding); a cold boot fixed it. These were emulator faults, not app crashes.
 - Not run: 7–8" and 12–14" tablets, foldables, split screen, freeform/desktop windows, large system fonts in tablet
   mode, process death while the panel is open, a real printer connection.
-- An ANR dialog seen earlier during testing was left over from a previous build and cleared after an emulator restart;
-  start-up is still heavy (~60–100 skipped frames) in both modes and needs separate profiling.
+- Start-up is heavy (~60–100 skipped frames) in both modes and needs separate profiling.

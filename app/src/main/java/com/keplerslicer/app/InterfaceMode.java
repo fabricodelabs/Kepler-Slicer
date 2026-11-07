@@ -18,6 +18,12 @@ final class InterfaceMode {
 
     static boolean tablet(Context c) { return TABLET.equals(prefs(c).getString(KEY_MODE, MOBILE)); }
 
+    /** Tablet mode runs in landscape only, the mobile interface in portrait only (either way up). */
+    static void applyOrientation(android.app.Activity a) {
+        int want = tablet(a) ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;
+        if (a.getRequestedOrientation() != want) a.setRequestedOrientation(want);
+    }
+
     static TabletLayout.State state(Context c) { return TabletLayout.state(prefs(c).getString(KEY_STATE, null)); }
     static void state(Context c, TabletLayout.State s) { prefs(c).edit().putString(KEY_STATE, TabletLayout.name(s)).apply(); }
 

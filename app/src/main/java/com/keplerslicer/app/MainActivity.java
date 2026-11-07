@@ -384,6 +384,7 @@ public class MainActivity extends Activity {
     // It shares every action with the mobile layout. ----
     private boolean tabletMode, renderedMode;
     private TabletSidebar sidebar;
+    private boolean tabletPrepareScrolls;
     private FrameLayout tabletViewport, tabletSliceSlot;
     private View restoreButton, tabletPrepareExtras, tabletObjects, tabletDevice, tabletHead;
     private final java.util.Map<String, TextView> tabletTabs = new java.util.HashMap<>();
@@ -417,7 +418,8 @@ public class MainActivity extends Activity {
 
     private void showTabletSection(String section) {
         boolean prepare = "prepare".equals(section);
-        if (sidebar != null) sidebar.showFill(prepare);
+        if (sidebar != null) sidebar.showFill(prepare && !tabletPrepareScrolls);
+        if (tabletPrepareScrolls && tabletPrepareExtras != null) tabletPrepareExtras.setVisibility(prepare ? View.VISIBLE : View.GONE);
         if (tabletObjects != null) tabletObjects.setVisibility("objects".equals(section) ? View.VISIBLE : View.GONE);
         if (tabletDevice != null) tabletDevice.setVisibility("device".equals(section) ? View.VISIBLE : View.GONE);
         if (panelHost != null) panelHost.setVisibility("tools".equals(section) || "preview".equals(section) ? View.VISIBLE : View.GONE);
@@ -545,7 +547,11 @@ public class MainActivity extends Activity {
     /** Prepare column, Objects and Device blocks; tools and the layer preview live in the shared panel host. */
     private void buildTabletSections(LinearLayout side) {
         final com.keplerslicer.app.glass.KeplerUi ui = kui; final int white = com.keplerslicer.app.glass.KeplerUi.WHITE;
-        LinearLayout fill = sidebar.fill;
+        // Short windows (phones in landscape): the whole Prepare column scrolls and the editor gets a screen of height.
+        int heightDp = Math.round(getWindowManager().getCurrentWindowMetrics().getBounds().height() / getResources().getDisplayMetrics().density);
+        tabletPrepareScrolls = heightDp < 700;
+        LinearLayout fill = tabletPrepareScrolls ? vertical() : sidebar.fill;
+        if (tabletPrepareScrolls) side.addView(fill, lp(-1, -2));
         // Printer: name, nozzle and material line (the workspace header), plate.
         LinearLayout printer = tabletBlock(fill, R.drawable.kv3_printer, getString(R.string.phase2_settings_printer),
                 tabletIcon(R.drawable.kv3_wifi, getString(R.string.tablet_connection), () -> startActivity(new Intent(this, DeviceActivity.class))),
@@ -572,9 +578,9 @@ public class MainActivity extends Activity {
         if (PrinterProfileCatalog.loadSelection(this) != null && process != null && modelProjectMode <= 0) {
             tabletSettings = new ProcessSettingsPanel(this, () -> ControlPreferences.scheduleAutoSlice(this));
             View editor = tabletSettings.view(); editor.setBackgroundColor(0);
-            LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(-1, 0, 1); ep.setMargins(dp(4), 0, dp(4), 0);
+            LinearLayout.LayoutParams ep = tabletPrepareScrolls ? new LinearLayout.LayoutParams(-1, dp(Math.max(320, heightDp - 140))) : new LinearLayout.LayoutParams(-1, 0, 1); ep.setMargins(dp(4), 0, dp(4), 0);
             fill.addView(editor, ep);
-        } else fill.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1));
+        } else if (!tabletPrepareScrolls) fill.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1));
         tabletPrepareExtras = fill;
 
         LinearLayout objects = vertical();
