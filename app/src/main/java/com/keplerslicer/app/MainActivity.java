@@ -565,7 +565,8 @@ public class MainActivity extends Activity {
     private String plateKey() { return (meshFileName == null ? "" : meshFileName) + "#" + selectedPlate(); }
     private android.content.SharedPreferences plates() { return getSharedPreferences("kepler_plates", MODE_PRIVATE); }
     /** A locked plate keeps its models where they are: no tools, no arranging (desktop OrcaSlicer behaviour). */
-    boolean plateLocked() { return meshFileName != null && plates().getBoolean("lock:" + plateKey(), false); }
+    // Plate tools exist only in the tablet workspace, so a lock set there does not affect the mobile interface.
+    boolean plateLocked() { return tabletMode && meshFileName != null && plates().getBoolean("lock:" + plateKey(), false); }
     private void togglePlateLock() { plates().edit().putBoolean("lock:" + plateKey(), !plateLocked()).apply(); if (plateLocked() && toolsMode) { setToolsMode(false); showPreparation(); } render(); }
     String plateName() { return meshFileName == null ? "" : plates().getString("name:" + plateKey(), ""); }
 
@@ -574,8 +575,20 @@ public class MainActivity extends Activity {
         if (plateLocked()) { dialog(getString(title), getString(R.string.plate_locked)); return; }
         runEdit(getString(title), op, 0, 0, null);
     }
-    private void deletePlate() { dialog(getString(R.string.plate_delete), getString(plateCount() < 2 ? R.string.plate_single : R.string.plate_multi_pending)); }
-    private void movePlateFirst() { dialog(getString(R.string.plate_first), getString(plateCount() < 2 ? R.string.plate_single : R.string.plate_multi_pending)); }
+    private void deletePlate() {
+        final int count = plateCount();
+        if (count < 2) { dialog(getString(R.string.plate_delete), getString(R.string.plate_single)); return; }
+        if (plateLocked()) { dialog(getString(R.string.plate_delete), getString(R.string.plate_locked)); return; }
+        MdUi.alert(this).setTitle(R.string.plate_delete).setMessage(getString(R.string.plate_delete_confirm, selectedPlate() + 1))
+            .setNegativeButton(R.string.general_project_cancel, null)
+            .setPositiveButton(R.string.plate_delete, (d, w) -> runEdit(getString(R.string.plate_delete), NativePreferenceActions.EDIT_PLATE_DELETE, count, 0, null)).show();
+    }
+    private void movePlateFirst() {
+        final int count = plateCount();
+        if (count < 2 || selectedPlate() == 0) { dialog(getString(R.string.plate_first), getString(R.string.plate_single)); return; }
+        if (plateLocked()) { dialog(getString(R.string.plate_first), getString(R.string.plate_locked)); return; }
+        runEdit(getString(R.string.plate_first), NativePreferenceActions.EDIT_PLATE_FIRST, count, 0, null);
+    }
 
     /** Plate settings (OrcaSlicer: name, bed type, print sequence, vase mode, filament order) in the shared editor. */
     private void plateSettings() {

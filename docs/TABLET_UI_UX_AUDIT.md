@@ -106,11 +106,28 @@ Hide in the strip), `glass/SheetDialog.java` (safe dismiss), `AndroidManifest.xm
 - Plate settings: name (stored on the device, shown in the plate chip), print sequence, spiral vase through the same
   validated overrides as the editor. Bed type and the first/other-layer filament order are not exposed by the engine's
   process metadata, so they are not in the sheet yet.
-- Delete plate and Move to the front are disabled with one plate (as in OrcaSlicer). For multi-plate projects they
-  explain that the engine lacks OrcaSlicer's plate layout (`PartPlateList` lives in the desktop GUI code) — open item.
+- Delete plate and Move to the front are disabled with one plate (as in OrcaSlicer). For multi-plate projects the
+  engine now does them on the whole project (`kepler::edit_project_plates`, `editModel` ops 7 and 8): the plate list
+  is reordered or shortened, every kept instance moves with its plate to the new place of the desktop plate grid
+  (`plate_grid_origin`, the `PartPlateList` formula), and the project is written back with each plate's name, lock and
+  own settings. Deleting asks for confirmation; the neighbouring plate stays open.
 - Fixed while checking: glass cards drew past scroll bounds (rows under the Reset/Save buttons, tool bar past the
   edge); scrollers now clip to their outline.
 
 <img src="tablet-audit/unified-design.jpg" width="640">
 
 <img src="tablet-audit/plate-locked.jpg" width="320"> <img src="tablet-audit/plate-settings.jpg" width="320">
+
+### Multi-plate actions (verified on the Pixel_Tablet emulator, Android 16, 2560×1600)
+
+Fixture `tools/tests/fixtures/ThreePlates.3mf` (OrcaSlicer badge split into plates "Logo", "Vertical", "Horizontal").
+
+| Step | Result |
+|---|---|
+| Open plate 2 ("Vertical"), **Move plate to the front** | Plates became Vertical, Logo, Horizontal; plate 1 opened with its model on the bed; the button is disabled on plate 1 |
+| **Delete plate** on plate 1 (confirmation shown) | Two plates left (Logo, Horizontal); Logo moved onto the bed; plate names kept |
+| Crashes / ANR during the run | 0 |
+
+All plate tools exist only in the tablet workspace; the plate lock is ignored in the mobile interface.
+
+<img src="tablet-audit/plate2-before.jpg" width="300"> <img src="tablet-audit/plate-moved-first.jpg" width="300"> <img src="tablet-audit/plate-deleted.jpg" width="300">

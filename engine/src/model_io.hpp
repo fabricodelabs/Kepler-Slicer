@@ -26,4 +26,6 @@ std::pair<double,double> plate_grid_origin(int plate_index, int plate_count, con
 Slic3r::Model load_project_plate(const std::string &path, int plate_index, const Slic3r::DynamicPrintConfig &bed);
 int project_plate_count(const std::string &path);
 void move_plate_to_origin(Slic3r::Model &model, int plate_index, int plate_count, const Slic3r::DynamicPrintConfig &bed);
+// op 7 deletes the plate, op 8 moves it to the front; writes the whole project to output and returns it.
+std::string edit_project_plates(const std::string &path, int op, int plate_index, const Slic3r::DynamicPrintConfig &bed, const std::string &output);
 }

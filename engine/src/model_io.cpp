@@ -218,3 +218,49 @@ Slic3r::Model load_plate_model(const std::string &path,int plate,const Slic3r::D
     return model;
 }
 }
+
+namespace kepler {
+// Desktop plate actions on a whole multi-plate project (PartPlateList::delete_plate / move plate): the plate grid is
+// laid out again for the new plate count and every kept instance moves with its plate.
+std::string edit_project_plates(const std::string &path,int op,int plate_index,const Slic3r::DynamicPrintConfig &bed,const std::string &output) {
+    if(op!=7&&op!=8)throw std::invalid_argument("Unknown plate action");
+    auto project=inspect_project_3mf(path);
+    const auto &plates=project.plates();const int count=static_cast<int>(plates.size());
+    if(count<2)throw std::runtime_error(op==7?"The last plate cannot be deleted":"The project has one plate");
+    int chosen=-1;for(int i=0;i<count;++i)if(plates[i]&&plates[i]->plate_index==plate_index){chosen=i;break;}
+    if(chosen<0)throw std::runtime_error("Requested 3MF plate was not found");
+    Slic3r::Model model=project.model();
+    // Which plate (by its position) owns each instance; read before anything is moved or deleted.
+    std::map<const Slic3r::ModelInstance *,int> owner;
+    for(int i=0;i<count;++i){int index=plates[i]->plate_index;Selection selected=selected_instances(model,plates,index);
+        for(const auto &pair:selected)owner[model.objects[pair.first]->instances[pair.second]]=i;}
+    std::vector<int> order;
+    if(op==8)order.push_back(chosen);
+    for(int i=0;i<count;++i)if(i!=chosen)order.push_back(i);
+    if(op==8&&chosen==0)throw std::runtime_error("The plate is already the first one");
+    const int kept=static_cast<int>(order.size());std::map<int,int> position;for(int j=0;j<kept;++j)position[order[j]]=j;
+    for(size_t oi=model.objects.size();oi-->0;){auto *object=model.objects[oi];
+        for(size_t ii=object->instances.size();ii-->0;){auto *instance=object->instances[ii];auto it=owner.find(instance);if(it==owner.end())continue;
+            auto moved=position.find(it->second);
+            if(moved==position.end()){owner.erase(it);object->delete_instance(ii);continue;}
+            const auto from=plate_grid_origin(it->second,count,bed),to=plate_grid_origin(moved->second,kept,bed);
+            instance->set_offset(instance->get_offset()+Slic3r::Vec3d(to.first-from.first,to.second-from.second,0));}
+        object->invalidate_bounding_box();
+        if(object->instances.empty())model.delete_object(oi);}
+    std::vector<std::set<std::pair<int,int>>> members(kept);
+    for(size_t oi=0;oi<model.objects.size();++oi)for(size_t ii=0;ii<model.objects[oi]->instances.size();++ii){
+        auto it=owner.find(model.objects[oi]->instances[ii]);if(it!=owner.end())members[position.at(it->second)].insert({static_cast<int>(oi),static_cast<int>(ii)});}
+    Slic3r::PlateDataPtrs out;
+    try{
+        for(int j=0;j<kept;++j){const auto *source=plates[order[j]];auto *plate=new Slic3r::PlateData(j,members[j],source->locked);out.push_back(plate);
+            plate->plate_name=source->plate_name;plate->config=source->config;plate->printer_model_id=source->printer_model_id;
+            plate->nozzle_diameters=source->nozzle_diameters;plate->filament_maps=source->filament_maps;}
+        Slic3r::DynamicPrintConfig config=project.project_config();Slic3r::BBLProject meta=project.project_metadata();
+        Slic3r::StoreParams params;params.path=output;params.model=&model;params.config=&config;params.plate_data_list=out;
+        params.project_presets=project.embedded_presets();params.project=&meta;params.strategy=Slic3r::SaveStrategy::Zip64|Slic3r::SaveStrategy::Silence;
+        if(!Slic3r::store_bbs_3mf(params)||!std::filesystem::is_regular_file(output)||std::filesystem::file_size(output)==0)throw std::runtime_error("Cannot write the project 3MF");
+    }catch(...){Slic3r::release_PlateData_list(out);throw;}
+    Slic3r::release_PlateData_list(out);
+    return output;
+}
+}

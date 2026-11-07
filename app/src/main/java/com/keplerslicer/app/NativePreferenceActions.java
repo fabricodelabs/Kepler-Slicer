@@ -227,7 +227,7 @@ final class NativePreferenceActions {
         catch (LinkageError | RuntimeException e) { throw new IOException(message(e), e); }
     }
 
-    static final int EDIT_CUT = 1, EDIT_TEXT = 2, EDIT_ASSEMBLY = 3, EDIT_MATERIALS = 4, EDIT_DROP = 5, EDIT_ARRANGE = 6;
+    static final int EDIT_CUT = 1, EDIT_TEXT = 2, EDIT_ASSEMBLY = 3, EDIT_MATERIALS = 4, EDIT_DROP = 5, EDIT_ARRANGE = 6, EDIT_PLATE_DELETE = 7, EDIT_PLATE_FIRST = 8;
 
     /** Model name without the marks of earlier edits, in either language and anywhere in the name. */
     static String baseName(Context app, String name) {
@@ -303,13 +303,17 @@ final class NativePreferenceActions {
             String base = source.name == null ? "Model" : source.name; int dot = base.lastIndexOf('.'); if (dot > 0) base = base.substring(0, dot);
             // Drop suffixes left by earlier edits, so repeated edits do not grow the name.
             base = baseName(app, base);
-            final String name = app.getString(op == EDIT_CUT ? R.string.kv3_cut_name : op == EDIT_TEXT ? R.string.kv3_text_name : op == EDIT_MATERIALS ? R.string.kv3_materials_name : R.string.kv3_assembly_name, base);
+            final String name = op == EDIT_PLATE_DELETE || op == EDIT_PLATE_FIRST || op == EDIT_DROP || op == EDIT_ARRANGE ? source.name : app.getString(op == EDIT_CUT ? R.string.kv3_cut_name : op == EDIT_TEXT ? R.string.kv3_text_name : op == EDIT_MATERIALS ? R.string.kv3_materials_name : R.string.kv3_assembly_name, base);
             // The multi-material project is loaded with its own settings, checked like a project import.
             org.json.JSONObject projectSnapshot = null;
-            if (op == EDIT_MATERIALS) {
+            // Plate actions keep the whole project; the plate next to a deleted one (or the moved one) stays open.
+            final boolean plateAction = op == EDIT_PLATE_DELETE || op == EDIT_PLATE_FIRST;
+            final int openPlate = op == EDIT_PLATE_FIRST ? 0 : op == EDIT_PLATE_DELETE ? Math.max(0, Math.min(source.plateIndex, (int) a - 2)) : -1;
+            final int projectMode = op == EDIT_MATERIALS || plateAction && source.projectMode > 0 ? 1 : 0;
+            if (projectMode == 1) {
                 ProjectSettingsSnapshot snapshot = ProjectSettingsSnapshot.parse(ExperimentalSlicer.projectSettingsSnapshot(
                     id.printer.vendor, id.process.vendor, id.filament.vendor, id.printerName, id.processName, id.filamentName,
-                    session.resources.getAbsolutePath(), session.data.getAbsolutePath(), session.selection.overrides, "{}", derived.getAbsolutePath(), -1));
+                    session.resources.getAbsolutePath(), session.data.getAbsolutePath(), session.selection.overrides, "{}", derived.getAbsolutePath(), plateAction ? openPlate : -1));
                 if (!snapshot.canLoad(false)) throw new IOException(EngineText.clean(snapshot.validationError(false)));
                 projectSnapshot = snapshot.json();
             }
@@ -318,7 +322,7 @@ final class NativePreferenceActions {
                 interrupted(app);
                 if (!session.stillCurrent(app)) throw new IOException(app.getString(R.string.native_actions_profiles_changed));
                 // A multi-material result is a full project: its slots and flushing come from project_settings.config.
-                CurrentModelStore.replaceDerived(app, derived, name, expected, op == EDIT_MATERIALS ? 1 : 0, checkedSnapshot);
+                CurrentModelStore.replaceDerived(app, derived, name, expected, projectMode, checkedSnapshot, plateAction ? openPlate : -1);
             });
             return name;
         } catch (LinkageError e) {

@@ -748,6 +748,7 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_editModel(JNIEnv *env,jclass,
         auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
         std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
         auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
+        if(op==7||op==8){const auto job=create_job_directory(job_name,data);return env->NewStringUTF(kepler::edit_project_plates(path,op,plate,config,(job/"project.3mf").string()).c_str());}
         Slic3r::Model source=load_editable_model(path,transform,config,plate);
         Slic3r::Model edited;
         if(op==1){const int keep=static_cast<int>(b);edited=kepler::cut_model_at_z(source,config,a,(keep&1)!=0,(keep&2)!=0);}

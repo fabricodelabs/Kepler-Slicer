@@ -775,5 +775,5 @@
     <string name="plate_name">Plate name</string>
     <string name="plate_locked">The plate is locked. Unlock it to edit the models.</string>
     <string name="plate_single">The project has one plate.</string>
-    <string name="plate_multi_pending">Removing and reordering plates of a multi-plate project needs the plate layout of OrcaSlicer in the engine; it is not available yet.</string>
+    <string name="plate_delete_confirm">Delete plate %1$d with its models? The other plates move up to fill the gap.</string>
 </resources>
