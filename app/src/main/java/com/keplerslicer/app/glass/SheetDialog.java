@@ -74,6 +74,8 @@ public class SheetDialog extends android.app.Dialog {
             w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
             w.setLayout(-1, -1);
             w.setDecorFitsSystemWindows(false);
+            // Dialog windows are fitted inside the system bars by default; the sheet handles them itself.
+            WindowManager.LayoutParams a = w.getAttributes(); a.setFitInsetsTypes(0); a.setFitInsetsSides(0); a.setFitInsetsIgnoringVisibility(true); a.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS; w.setAttributes(a);
             w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
                     | (w.getAttributes().softInputMode & WindowManager.LayoutParams.SOFT_INPUT_MASK_STATE));
             w.setWindowAnimations(0);
@@ -146,10 +148,30 @@ public class SheetDialog extends android.app.Dialog {
             });
         }
 
+        private int sheetBasePadding = -1, sheetExtra = -1;
+
+        /** The view that paints the sheet card: the sheet itself, or its last child with a background (glass surfaces). */
+        private View backgroundHolder() {
+            if (sheet == null) return null;
+            if (sheet.getBackground() == null && sheet instanceof ViewGroup) {
+                ViewGroup g = (ViewGroup) sheet;
+                for (int i = g.getChildCount() - 1; i >= 0; i--) if (g.getChildAt(i).getBackground() != null) return g.getChildAt(i);
+            }
+            return sheet;
+        }
+
+        /** Above the keyboard the sheet sits on it; otherwise its background runs under the gesture bar. */
         private void applyBottom(int ime) {
-            int bottom = Math.max(bars.bottom, ime);
+            boolean keyboard = ime > bars.bottom;
+            int bottom = keyboard ? ime : 0, extra = keyboard ? 0 : bars.bottom;
             if (getPaddingLeft() != bars.left || getPaddingTop() != bars.top || getPaddingRight() != bars.right || getPaddingBottom() != bottom)
                 setPadding(bars.left, bars.top, bars.right, bottom);
+            View card = backgroundHolder();
+            if (card != null && extra != sheetExtra) {
+                if (sheetBasePadding < 0) sheetBasePadding = card.getPaddingBottom();
+                sheetExtra = extra;
+                card.setPadding(card.getPaddingLeft(), card.getPaddingTop(), card.getPaddingRight(), sheetBasePadding + extra);
+            }
         }
 
         @Override protected void onMeasure(int widthSpec, int heightSpec) {
