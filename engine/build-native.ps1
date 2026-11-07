@@ -55,7 +55,7 @@ foreach ($nativeRequired in @('sliceModelWithSettings','processSettingsMetadata'
     }
 }
 foreach ($nativeClass in @('ExperimentalSlicer','NativeModelIO')) {
-    $nativeDeclarationFile = Join-Path $nativeProjectRoot ('app/src/main/java/com/keplerslicer/engine/'+$nativeClass+'.java')
+    $nativeDeclarationFile = Join-Path $nativeProjectRoot ('engine/java/com/keplerslicer/engine/'+$nativeClass+'.java')
     $nativeDeclarations = [regex]::Matches((Get-Content -LiteralPath $nativeDeclarationFile -Raw),'public\s+static\s+native\s+[\w\[\]]+\s+(\w+)\s*\(')
     if ($nativeDeclarations.Count -eq 0) { throw "No JNI declarations found for $nativeClass" }
     foreach ($nativeDeclaration in $nativeDeclarations) {
