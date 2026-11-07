@@ -233,3 +233,14 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
 - History rewritten again (not pushed): AGENTS.md/CLAUDE.md removed from every commit, agent names removed from
   messages; 187 commits, all by Rodion. Backup: `outputs/Kepler-history-backup-2026-11-05b.bundle`.
   Rule: no agent names or co-author lines in commits; merge with `git merge --no-edit -m "Merge branch 'ui'" claude/ui`.
+
+## 2026-11-07: UI/UX audit round 1 (branch ui-ux-audit, merged into master)
+
+- Report: docs/UI_UX_AUDIT.md (problems, causes, fixes, before/after shots, tests, what is not covered yet).
+- New shared pieces: glass/SheetDialog (every modal editor), SetupFlow (printer → filament → layer height before the
+  workspace), core SearchMatch (word search, JUnit), glass/TouchTarget (48dp touch areas, Host for the 3D viewport).
+- CI fails because the GitHub account is locked for billing; the workflow now runs only on master/PRs.
+- Pushes and releases go through the bot account FabribotLabs from the PowerShell tool; commits are authored by
+  Rodion with no agent names.
+- Paused: Google Play promo screenshots and trailer. Tools in promo/ (ignored by git): Models.java generates a
+  twisted vase and a gear; a.sh has adb helpers.
