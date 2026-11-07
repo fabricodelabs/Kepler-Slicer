@@ -90,3 +90,27 @@ Branch `fix/tablet-ui-ux-audit`. Emulator: Pixel API 37, set to 1600×2560 @ 320
 `MainActivity.java` (draft carry-over, restore, tool bar layout, tab highlight), `TabletSidebar.java` (restore,
 Hide in the strip), `glass/SheetDialog.java` (safe dismiss), `AndroidManifest.xml` (API 36 opt-out),
 `assets/kepler_messages.json` (string), `docs/TABLET_UI_UX_AUDIT.md`, `docs/tablet-audit/*`.
+
+## Round 2: unified design and plate tools (2026-11-07)
+
+| Owner remark | Change |
+|---|---|
+| Elements stuck together in the panel | Blocks of the Prepare column: 16–20 dp around headers, 40 dp header buttons 8 dp apart, 52 dp selectors, 12 dp between cards |
+| Design must match the mobile interface; input fields differ | The embedded settings editor now uses the mobile Glass UI: glass chips, grouped glass cards, label left and the value in the 40 dp field pill with its unit (as in the mobile settings rows), glass switches, mobile buttons |
+| Plate tools beside the plate, as in OrcaSlicer | Column at the right of the 3D area: delete plate, put models on the plate, arrange, lock plate, plate settings, move plate to the front; object tools stay in the bar above the plate |
+
+- Engine: `editModel` op 5 puts every object on the plate (`ensure_on_bed`), op 6 arranges with OrcaSlicer
+  `arrange_objects` on the printer's printable area, 6 mm apart. No JNI signature change; `build-native.ps1` verified
+  the exports. Checked: Arrange on the vase ran without errors and rewrote the model as 3MF.
+- Lock: per plate (model file + plate index); tools and plate edits refuse with a message while locked.
+- Plate settings: name (stored on the device, shown in the plate chip), print sequence, spiral vase through the same
+  validated overrides as the editor. Bed type and the first/other-layer filament order are not exposed by the engine's
+  process metadata, so they are not in the sheet yet.
+- Delete plate and Move to the front are disabled with one plate (as in OrcaSlicer). For multi-plate projects they
+  explain that the engine lacks OrcaSlicer's plate layout (`PartPlateList` lives in the desktop GUI code) — open item.
+- Fixed while checking: glass cards drew past scroll bounds (rows under the Reset/Save buttons, tool bar past the
+  edge); scrollers now clip to their outline.
+
+<img src="tablet-audit/unified-design.jpg" width="640">
+
+<img src="tablet-audit/plate-locked.jpg" width="320"> <img src="tablet-audit/plate-settings.jpg" width="320">

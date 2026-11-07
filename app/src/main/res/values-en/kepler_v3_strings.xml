@@ -765,4 +765,15 @@
     <string name="tablet_network">Network printers</string>
     <string name="tablet_network_detail">Add or edit printer connections</string>
     <string name="tablet_send_detail">Upload the sliced G-code to the printer</string>
+    <string name="plate_delete">Delete plate</string>
+    <string name="plate_drop">Put models on the plate</string>
+    <string name="plate_arrange">Arrange models</string>
+    <string name="plate_lock">Lock plate</string>
+    <string name="plate_unlock">Unlock plate</string>
+    <string name="plate_settings">Plate settings</string>
+    <string name="plate_first">Move plate to the front</string>
+    <string name="plate_name">Plate name</string>
+    <string name="plate_locked">The plate is locked. Unlock it to edit the models.</string>
+    <string name="plate_single">The project has one plate.</string>
+    <string name="plate_multi_pending">Removing and reordering plates of a multi-plate project needs the plate layout of OrcaSlicer in the engine; it is not available yet.</string>
 </resources>

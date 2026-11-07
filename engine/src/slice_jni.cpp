@@ -15,6 +15,7 @@
 #include <array>
 
 #include "libslic3r/Model.hpp"
+#include "libslic3r/ModelArrange.hpp"
 #include "libslic3r/BuildVolume.hpp"
 #include "libslic3r/ClipperUtils.hpp"
 #include "libslic3r/Print.hpp"
@@ -737,7 +738,7 @@ Slic3r::Model load_editable_model(const std::string &path,const kepler::ModelTra
 }
 
 // op 1: cut at height a (mm), b = 1 keep upper | 2 keep lower; op 2: text (a = letter height, b = depth, text, font);
-// op 3: join all objects into one assembly. Writes job/model.3mf and returns its path; the source is never changed.
+// op 3: join all objects into one assembly; op 5: put every object on the plate; op 6: arrange on the printable area (op 4 is assignMaterials in the app). Writes job/model.3mf and returns its path; the source is never changed.
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_keplerslicer_engine_ExperimentalSlicer_editModel(JNIEnv *env,jclass,
     jstring pv,jstring qv,jstring fv,jstring pn,jstring qn,jstring fn,jstring model_path,jstring resources_path,jstring data_path,
@@ -752,6 +753,17 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_editModel(JNIEnv *env,jclass,
         if(op==1){const int keep=static_cast<int>(b);edited=kepler::cut_model_at_z(source,config,a,(keep&1)!=0,(keep&2)!=0);}
         else if(op==2){if(!text||!font_path)throw std::invalid_argument("Text and font are required");edited=kepler::add_text_object(source,config,standard_utf8(env,text),standard_utf8(env,font_path),a,b);}
         else if(op==3)edited=kepler::assemble_objects(source);
+        else if(op==5){edited=source;for(auto *object:edited.objects)object->ensure_on_bed();}
+        else if(op==6){
+            // Arrange on the printable area of the printer, 6 mm apart (the desktop default for PLA-class prints).
+            edited=source;const auto *area=config.option<Slic3r::ConfigOptionPoints>("printable_area");
+            if(!area||area->values.size()<3)throw std::invalid_argument("The printer has no printable area");
+            Slic3r::BoundingBoxf box;for(const auto &p:area->values)box.merge(p);
+            Slic3r::BoundingBox bed(Slic3r::Point(Slic3r::scaled(box.min.x()),Slic3r::scaled(box.min.y())),Slic3r::Point(Slic3r::scaled(box.max.x()),Slic3r::scaled(box.max.y())));
+            Slic3r::arrangement::ArrangeParams params;params.min_obj_distance=Slic3r::scaled(6.0);
+            for(auto *object:edited.objects)object->ensure_on_bed();
+            if(!Slic3r::arrange_objects(edited,bed,params,[](Slic3r::arrangement::ArrangePolygon &){}))throw std::runtime_error("The models do not fit on the plate");
+        }
         else throw std::invalid_argument("Unknown model edit");
         const auto job=create_job_directory(job_name,data),output=job/"model.3mf";
         if(!Slic3r::store_3mf(output.string().c_str(),&edited,nullptr,false)||!std::filesystem::is_regular_file(output))throw std::runtime_error("Cannot export the edited model");

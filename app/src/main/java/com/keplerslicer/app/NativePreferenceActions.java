@@ -227,7 +227,7 @@ final class NativePreferenceActions {
         catch (LinkageError | RuntimeException e) { throw new IOException(message(e), e); }
     }
 
-    static final int EDIT_CUT = 1, EDIT_TEXT = 2, EDIT_ASSEMBLY = 3, EDIT_MATERIALS = 4;
+    static final int EDIT_CUT = 1, EDIT_TEXT = 2, EDIT_ASSEMBLY = 3, EDIT_MATERIALS = 4, EDIT_DROP = 5, EDIT_ARRANGE = 6;
 
     /** Model name without the marks of earlier edits, in either language and anywhere in the name. */
     static String baseName(Context app, String name) {

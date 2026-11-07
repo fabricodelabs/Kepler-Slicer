@@ -765,4 +765,15 @@
     <string name="tablet_network">Сетевые принтеры</string>
     <string name="tablet_network_detail">Добавить или изменить подключения</string>
     <string name="tablet_send_detail">Загрузить нарезанный G-code на принтер</string>
+    <string name="plate_delete">Удалить стол</string>
+    <string name="plate_drop">Положить модели на стол</string>
+    <string name="plate_arrange">Расставить модели</string>
+    <string name="plate_lock">Заблокировать стол</string>
+    <string name="plate_unlock">Разблокировать стол</string>
+    <string name="plate_settings">Настройки стола</string>
+    <string name="plate_first">Переместить стол в начало</string>
+    <string name="plate_name">Имя стола</string>
+    <string name="plate_locked">Стол заблокирован. Разблокируйте его, чтобы менять модели.</string>
+    <string name="plate_single">В проекте один стол.</string>
+    <string name="plate_multi_pending">Удаление и перестановка столов многостольного проекта требуют раскладки столов OrcaSlicer в движке; пока это недоступно.</string>
 </resources>
