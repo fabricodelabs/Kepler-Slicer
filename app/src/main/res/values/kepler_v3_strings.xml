@@ -776,4 +776,5 @@
     <string name="plate_locked">The plate is locked. Unlock it to edit the models.</string>
     <string name="plate_single">The project has one plate.</string>
     <string name="plate_delete_confirm">Delete plate %1$d with its models? The other plates move up to fill the gap.</string>
+    <string name="tablet_more_tools">More tools</string>
 </resources>

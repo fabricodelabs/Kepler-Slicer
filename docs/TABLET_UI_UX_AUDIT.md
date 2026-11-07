@@ -131,3 +131,22 @@ Fixture `tools/tests/fixtures/ThreePlates.3mf` (OrcaSlicer badge split into plat
 All plate tools exist only in the tablet workspace; the plate lock is ignored in the mobile interface.
 
 <img src="tablet-audit/plate2-before.jpg" width="300"> <img src="tablet-audit/plate-moved-first.jpg" width="300"> <img src="tablet-audit/plate-deleted.jpg" width="300">
+
+## Round 3: owner videos 1–3 (2026-11-08, Pixel_Tablet emulator)
+
+| # | Problem (video) | Root cause | Fix |
+|---|---|---|---|
+| 1 | Settings list jumped back to the top; "Loading profile settings" after returning from Preferences (1, 2) | Every workspace rebuild (return from any screen, bed or model update) created a new `ProcessSettingsPanel`, which reloaded the profile and started at the top | The editor outlives rebuilds: the same view is moved into the new layout; it reloads only when the printer/filament/process fingerprint changed (`reloadIfStale`); row rebuilds keep the scroll position, a new category starts at the top |
+| 2 | Printer/Filament/Print settings took most of the panel (1, 3) | Mobile header card plus a separate title row and card per block | One-line selectors with the section caption (desktop combos); Objects is a collapsible block, collapsed by default |
+| 3 | Category tabs cut ("Multi-mat") (1, 3) | No scroll to the selected chip | 44dp chips, the selected one is scrolled into view |
+| 4 | Reset/Save always active (1) | No link to the change count | Enabled only when something differs from the saved profile |
+| 5 | Mobile tab bar over Preferences rows (2) | `GlassNavigation` added by every screen | Hidden in tablet mode; Preferences uses a desktop two-pane layout (categories left, settings right, max width 760dp) |
+| 6 | Previous screen showing through on transitions (2) | Fade-in over a held screen | Tablet mode switches screens without the overlay animation |
+| 7 | Objects duplicated as a workspace tab and in the side strip; three panel states (3) | Mobile-style navigation | Workspaces: Prepare, Preview, Device; Objects lives in the Prepare panel; panel is expanded or hidden (no icon strip) |
+| 8 | Tool bar cut off at the right (3) | Fixed set of buttons in a wrap-content bar | Tools that do not fit move to a "More tools" menu, recomputed when the panel width changes; tooltips for mouse |
+
+Plate settings now include bed type and filament order (first / other layers) from the engine (`process_settings.cpp`,
+category Plate). Checked: tab auto-scroll, scroll kept across Preferences, plate settings sheet, Preferences without the tab bar.
+
+<img src="tablet-audit/tablet-prepare-compact.jpg" width="440"> <img src="tablet-audit/tablet-preferences.jpg" width="440">
+<img src="tablet-audit/scroll-kept.jpg" width="440"> <img src="tablet-audit/plate-settings-full.jpg" width="440">

@@ -50,7 +50,8 @@ final class TabletSidebar extends LinearLayout {
         super(context);
         this.ui = ui; this.host = host;
         setOrientation(HORIZONTAL);
-        state = InterfaceMode.state(context);
+        // Two states, as the desktop sidebar: expanded or hidden (the old icon strip duplicated the top tabs).
+        state = InterfaceMode.state(context) == TabletLayout.State.EXPANDED ? TabletLayout.State.EXPANDED : TabletLayout.State.HIDDEN;
         section = InterfaceMode.section(context);
         panelDp = InterfaceMode.width(context);
 
@@ -72,11 +73,10 @@ final class TabletSidebar extends LinearLayout {
         addView(rail, new LayoutParams(ui.dp(TabletLayout.RAIL_DP), -1));
 
         panel = ui.column(); panel.setBackgroundColor(0xFF323741); panel.setClipChildren(true);
-        LinearLayout head = ui.row(); head.setPadding(ui.dp(16), ui.dp(6), ui.dp(6), ui.dp(2));
-        title = ui.text("", 18, 800, KeplerUi.WHITE);
+        LinearLayout head = ui.row(); head.setPadding(ui.dp(16), ui.dp(2), ui.dp(6), 0);
+        title = ui.text("", 16, 800, KeplerUi.WHITE);
         head.addView(title, new LayoutParams(0, -2, 1));
-        head.addView(iconButton(R.drawable.kv3_back, context.getString(R.string.tablet_collapse), () -> setState(TabletLayout.State.COLLAPSED)), new LayoutParams(ui.dp(48), ui.dp(48)));
-        head.addView(iconButton(R.drawable.kv3_fullscreen, context.getString(R.string.tablet_hide), () -> setState(TabletLayout.State.HIDDEN)), new LayoutParams(ui.dp(48), ui.dp(48)));
+        head.addView(iconButton(R.drawable.kv3_back, context.getString(R.string.tablet_hide), () -> setState(TabletLayout.State.HIDDEN)), new LayoutParams(ui.dp(48), ui.dp(48)));
         panel.addView(head, new LayoutParams(-1, -2));
         fill = ui.column(); fill.setVisibility(GONE);
         panel.addView(fill, new LayoutParams(-1, 0, 1));
@@ -178,11 +178,12 @@ final class TabletSidebar extends LinearLayout {
     }
 
     /** Brings a hidden panel back the way it was before hiding (expanded or collapsed). */
-    void restore() { setState(state == TabletLayout.State.HIDDEN ? lastShown : state); }
+    void restore() { setState(TabletLayout.State.EXPANDED); }
 
-    void toggleCollapsed() { setState(state == TabletLayout.State.EXPANDED ? TabletLayout.State.COLLAPSED : TabletLayout.State.EXPANDED); }
+    void toggleCollapsed() { setState(state == TabletLayout.State.EXPANDED ? TabletLayout.State.HIDDEN : TabletLayout.State.EXPANDED); }
 
     void setState(TabletLayout.State next) {
+        if (next == TabletLayout.State.COLLAPSED) next = TabletLayout.State.HIDDEN;
         if (next == state) return;
         if (state != TabletLayout.State.HIDDEN) lastShown = state;
         state = next; InterfaceMode.state(getContext(), next);

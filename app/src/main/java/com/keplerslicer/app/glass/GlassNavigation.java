@@ -55,6 +55,8 @@ public final class GlassNavigation extends LinearLayout {
 
     public GlassNavigation(Context context, int selected, boolean reduced, Listener listener) {
         super(context);
+        // The mobile tab bar is not part of the tablet interface (Preferences > Interface > Display mode).
+        if ("tablet".equals(context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE).getString("interface_mode", "mobile"))) setVisibility(GONE);
         tokens = GlassTokens.get(context);
         pillPaint.setColor(Color.WHITE);
         this.listener = listener;

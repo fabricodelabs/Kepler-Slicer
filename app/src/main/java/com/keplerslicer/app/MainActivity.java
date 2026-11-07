@@ -352,7 +352,7 @@ public class MainActivity extends Activity {
         workspace();
         if (tabletMode && sidebar != null) {
             // Tools and the layer preview need a ready model, so a restored session starts on Prepare.
-            String section = sidebar.section(); if ("tools".equals(section) || "preview".equals(section)) section = "prepare";
+            String section = sidebar.section(); if ("tools".equals(section) || "preview".equals(section) || "objects".equals(section)) section = "prepare";
             sidebar.select(section, false); showTabletSection(section); applyTabletLayout();
         }
         navBar = new com.keplerslicer.app.glass.GlassNavigation(this, 0, false, index -> {
@@ -458,9 +458,10 @@ public class MainActivity extends Activity {
         bar.addView(ui.glassButton(R.drawable.kv3_sliders, 44, 22, getString(R.string.tablet_settings), tabletHost::openSettings), sp);
         android.widget.HorizontalScrollView tabsScroll = new android.widget.HorizontalScrollView(this); tabsScroll.setHorizontalScrollBarEnabled(false);
         LinearLayout tabs = horizontal(); tabs.setGravity(Gravity.CENTER_VERTICAL); tabsScroll.addView(tabs);
-        String[] sections = {"prepare", "preview", "device", "objects"};
-        int[] titles = {R.string.tablet_prepare, R.string.tablet_preview, R.string.tablet_device, R.string.tablet_objects};
-        int[] icons = {R.drawable.kv3_cube, R.drawable.kv3_layers, R.drawable.kv3_printer, R.drawable.kv3_assembly};
+        // Workspaces of desktop OrcaSlicer; Objects is a block of the Prepare sidebar, not a workspace.
+        String[] sections = {"prepare", "preview", "device"};
+        int[] titles = {R.string.tablet_prepare, R.string.tablet_preview, R.string.tablet_device};
+        int[] icons = {R.drawable.kv3_cube, R.drawable.kv3_layers, R.drawable.kv3_printer};
         tabletTabs.clear();
         for (int i = 0; i < sections.length; i++) {
             final String section = sections[i];
@@ -514,14 +515,33 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams dv = new LinearLayout.LayoutParams(Math.max(1, dp(1)), dp(28)); dv.setMargins(dp(10), 0, dp(10), 0); bar.addView(divider, dv);
         int[] icons = {R.drawable.kv3_move, R.drawable.kv3_refresh, R.drawable.kv3_scale, R.drawable.kv3_lay_on_face, R.drawable.kv3_cut, R.drawable.kv3_support_paint, R.drawable.kv3_seam_paint, R.drawable.kv3_fuzzy_skin, R.drawable.kv3_text, R.drawable.kv3_measure, R.drawable.kv3_assembly, R.drawable.kv3_brim_ears};
         int[] labels = {R.string.kv3_tool_move, R.string.kv3_tool_rotate, R.string.kv3_tool_scale, R.string.kv3_tool_lay_on_face, R.string.kv3_tool_cut, R.string.kv3_tool_support_paint, R.string.kv3_tool_seam_paint, R.string.kv3_tool_fuzzy_skin, R.string.kv3_tool_text, R.string.kv3_tool_measure, R.string.kv3_tool_assembly, R.string.kv3_tool_brim_ears};
+        final View[] toolButtons = new View[icons.length]; final String[] toolNames = new String[icons.length]; final Runnable[] toolActions = new Runnable[icons.length];
         for (int i = 0; i < icons.length; i++) {
-            final int index = i;
-            View b = ui.glassButton(icons[i], 44, 22, getString(labels[i]), () -> {
+            final int index = i; toolNames[i] = getString(labels[i]);
+            toolActions[i] = () -> {
                 if (!toolsMode) openTools();
                 if (toolsMode && toolTiles != null && index < toolTiles.length && toolTiles[index] != null) toolTiles[index].performClick();
-            });
+            };
+            View b = ui.glassButton(icons[i], 44, 22, toolNames[i], toolActions[i]); b.setTooltipText(toolNames[i]); toolButtons[i] = b;
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(dp(44), dp(44)); if (i > 0) p.leftMargin = dp(8); bar.addView(b, p);
         }
+        // Tools that do not fit go to a "more" menu instead of being cut off at the right edge.
+        final View more = ui.glassButton(R.drawable.kv3_more, 44, 22, getString(R.string.tablet_more_tools), null); more.setTooltipText(getString(R.string.tablet_more_tools));
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(dp(44), dp(44)); mp.leftMargin = dp(8); bar.addView(more, mp); more.setVisibility(View.GONE);
+        more.setOnClickListener(v -> {
+            java.util.List<Integer> hidden = new java.util.ArrayList<>(); for (int i = 0; i < toolButtons.length; i++) if (toolButtons[i].getVisibility() != View.VISIBLE) hidden.add(i);
+            String[] names = new String[hidden.size()]; for (int i = 0; i < names.length; i++) names[i] = toolNames[hidden.get(i)];
+            com.keplerslicer.app.glass.GlassBottomSheet.choose(this, viewport, false, getString(R.string.tablet_more_tools), names, -1, which -> toolActions[hidden.get(which)].run());
+        });
+        for (View t : new View[]{toggle, add}) t.setTooltipText(t.getContentDescription());
+        viewport.addOnLayoutChangeListener((v, l, t, r, btm, ol, ot, or, ob) -> {
+            if (r - l == or - ol) return;
+            int room = (r - l) - dp(132) - dp(88) - dp(12) - dp(44 + 8 + 44 + 21);   // chip, plate column, padding, toggle + add + divider
+            int fit = Math.max(0, room / dp(52));
+            boolean overflow = fit < toolButtons.length; if (overflow) fit = Math.max(0, (room - dp(52)) / dp(52));
+            for (int i = 0; i < toolButtons.length; i++) toolButtons[i].setVisibility(i < fit ? View.VISIBLE : View.GONE);
+            more.setVisibility(overflow ? View.VISIBLE : View.GONE);
+        });
         // Scroller between the plate chip and the plate column; the bar is centred and scrolls when it does not fit.
         // The glass pill belongs to the scroller, so a bar that does not fit scrolls inside rounded ends.
         android.widget.HorizontalScrollView holder = new android.widget.HorizontalScrollView(this); holder.setHorizontalScrollBarEnabled(false);
@@ -614,29 +634,68 @@ public class MainActivity extends Activity {
     }
 
 
-    /** One titled block of the Prepare column (OrcaSlicer: Printer, Material, Settings) with optional header icons. */
-    private LinearLayout tabletBlock(LinearLayout parent, int icon, String title, View... headerIcons) {
+    /**
+     * One block of the Prepare column (OrcaSlicer: Printer, Filament, Objects, Process): a compact 44dp header with an
+     * optional collapse chevron and header icons, then a glass card. Collapsed state is remembered per block.
+     */
+    private LinearLayout tabletBlock(LinearLayout parent, int icon, String title, String collapseKey, View... headerIcons) {
         final com.keplerslicer.app.glass.KeplerUi ui = kui;
-        LinearLayout head = horizontal(); head.setGravity(Gravity.CENTER_VERTICAL); head.setPadding(dp(20), dp(16), dp(12), dp(8));
+        LinearLayout head = horizontal(); head.setGravity(Gravity.CENTER_VERTICAL); head.setPadding(dp(16), dp(2), dp(8), dp(2)); head.setMinimumHeight(dp(44));
         head.addView(ui.image(icon, 18, com.keplerslicer.app.glass.KeplerUi.WHITE), new LinearLayout.LayoutParams(dp(18), dp(18)));
         TextView t = ui.line(title, 15, 800, com.keplerslicer.app.glass.KeplerUi.WHITE); LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1); tp.leftMargin = dp(10); head.addView(t, tp);
-        for (View v : headerIcons) { LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(40), dp(40)); ip.leftMargin = dp(8); head.addView(v, ip); }
+        for (View v : headerIcons) { LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(40), dp(40)); ip.leftMargin = dp(6); ip.topMargin = dp(2); ip.bottomMargin = dp(2); head.addView(v, ip); }
         parent.addView(head, lp(-1, -2));
-        LinearLayout body = ui.card(20); LinearLayout.LayoutParams bp = lp(-1, -2); bp.setMargins(dp(12), 0, dp(12), dp(4)); parent.addView(body, bp);
+        LinearLayout body = ui.card(16); LinearLayout.LayoutParams bp = lp(-1, -2); bp.setMargins(dp(12), 0, dp(12), dp(4)); parent.addView(body, bp);
+        if (collapseKey != null) {
+            final android.content.SharedPreferences prefs = getSharedPreferences("app_preferences", MODE_PRIVATE);
+            final String key = "tablet_block_" + collapseKey;
+            final android.widget.ImageView chevron = ui.image(R.drawable.kv3_chevron_down, 18, com.keplerslicer.app.glass.KeplerUi.SECONDARY);
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(dp(18), dp(18)); cp.leftMargin = dp(8); head.addView(chevron, 2, cp);
+            Runnable apply = () -> { boolean open = prefs.getBoolean(key, !"objects".equals(collapseKey)); body.setVisibility(open ? View.VISIBLE : View.GONE); chevron.setRotation(open ? 0 : -90);
+                head.setContentDescription(title + ", " + getString(open ? R.string.tablet_collapse : R.string.tablet_expand)); };
+            apply.run();
+            kui.pressable(head, null, 12);
+            head.setOnClickListener(v -> { prefs.edit().putBoolean(key, !prefs.getBoolean(key, !"objects".equals(collapseKey))).apply(); apply.run(); });
+        }
         return body;
+    }
+
+    /**
+     * One-line block (OrcaSlicer combo with its section caption): icon, caption over the chosen preset, chevron, then
+     * header icons. Used for Printer, Filament and Process so the settings editor keeps most of the height.
+     */
+    private void tabletInline(LinearLayout parent, int icon, String caption, String value, Runnable action, View... icons) {
+        final com.keplerslicer.app.glass.KeplerUi ui = kui;
+        LinearLayout row = horizontal(); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(dp(8), dp(4), dp(6), dp(4));
+        LinearLayout pick = horizontal(); pick.setGravity(Gravity.CENTER_VERTICAL); pick.setPadding(dp(8), dp(4), dp(8), dp(4)); pick.setMinimumHeight(dp(48));
+        pick.addView(ui.image(icon, 18, com.keplerslicer.app.glass.KeplerUi.WHITE), new LinearLayout.LayoutParams(dp(18), dp(18)));
+        LinearLayout labels = vertical(); LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(0, -2, 1); lp2.leftMargin = dp(12);
+        labels.addView(ui.line(caption, 12, 600, com.keplerslicer.app.glass.KeplerUi.SECONDARY));
+        TextView v = ui.line(value, 14, 700, com.keplerslicer.app.glass.KeplerUi.WHITE); v.setMaxLines(1); v.setEllipsize(android.text.TextUtils.TruncateAt.END); labels.addView(v);
+        pick.addView(labels, lp2);
+        pick.addView(ui.image(R.drawable.kv3_chevron_down, 18, com.keplerslicer.app.glass.KeplerUi.WHITE), new LinearLayout.LayoutParams(dp(18), dp(18)));
+        ui.pressable(pick, null, 14); pick.setContentDescription(caption + ": " + value); pick.setOnClickListener(x -> action.run());
+        row.addView(pick, new LinearLayout.LayoutParams(0, -2, 1));
+        for (View b : icons) { LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(40), dp(40)); ip.leftMargin = dp(6); row.addView(b, ip); }
+        row.setBackground(ui.glass(16));
+        LinearLayout.LayoutParams p = lp(-1, -2); p.setMargins(dp(12), dp(4), dp(12), dp(4)); parent.addView(row, p);
     }
 
     private View tabletIcon(int icon, String description, Runnable action) { return kui.glassButton(icon, 40, 20, description, action); }
 
-    /** Compact selector row (OrcaSlicer combo box): label and a chevron, 48dp tall. */
-    private View tabletSelector(String label, Runnable action) {
-        LinearLayout row = horizontal(); row.setGravity(Gravity.CENTER_VERTICAL); row.setMinimumHeight(dp(52)); row.setPadding(dp(16), 0, dp(14), 0);
-        TextView t = kui.line(label, 14, 500, com.keplerslicer.app.glass.KeplerUi.WHITE); row.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
+    /** Compact selector row (OrcaSlicer combo box): label, optional detail and a chevron, 48dp tall. */
+    private View tabletSelector(String label, Runnable action) { return tabletSelector(label, null, action); }
+    private View tabletSelector(String label, String detail, Runnable action) {
+        LinearLayout row = horizontal(); row.setGravity(Gravity.CENTER_VERTICAL); row.setMinimumHeight(dp(48)); row.setPadding(dp(14), dp(4), dp(12), dp(4));
+        LinearLayout labels = vertical();
+        TextView t = kui.line(label, 14, 600, com.keplerslicer.app.glass.KeplerUi.WHITE); labels.addView(t);
+        if (detail != null && !detail.isEmpty()) labels.addView(kui.line(detail, 12, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY));
+        row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
         row.addView(kui.image(R.drawable.kv3_chevron_down, 18, com.keplerslicer.app.glass.KeplerUi.WHITE), new LinearLayout.LayoutParams(dp(18), dp(18)));
-        kui.pressable(row, null, 16); row.setContentDescription(label); row.setOnClickListener(v -> action.run()); return row;
+        kui.pressable(row, null, 14); row.setContentDescription(label); row.setOnClickListener(v -> action.run()); return row;
     }
 
-    /** Prepare column, Objects and Device blocks; tools and the layer preview live in the shared panel host. */
+    /** Prepare column (Printer, Filament, Objects, Process with the embedded editor) and the Device block. */
     private void buildTabletSections(LinearLayout side) {
         final com.keplerslicer.app.glass.KeplerUi ui = kui; final int white = com.keplerslicer.app.glass.KeplerUi.WHITE;
         // Short windows (phones in landscape): the whole Prepare column scrolls and the editor gets a screen of height.
@@ -644,56 +703,53 @@ public class MainActivity extends Activity {
         tabletPrepareScrolls = heightDp < 700;
         LinearLayout fill = tabletPrepareScrolls ? vertical() : sidebar.fill;
         if (tabletPrepareScrolls) side.addView(fill, lp(-1, -2));
-        // Printer: name, nozzle and material line (the workspace header), plate.
-        LinearLayout printer = tabletBlock(fill, R.drawable.kv3_printer, getString(R.string.phase2_settings_printer),
+        PrinterProfileCatalog.Profile printerProfile = PrinterProfileCatalog.loadSelection(this);
+        // Printer, filament and process are one line each (caption over the chosen preset), as the desktop combos.
+        String printerLabel = printerProfile == null ? getString(R.string.kv3_choose_printer) : (printerProfile.model == null || printerProfile.model.isEmpty() ? printerProfile.name : printerProfile.model);
+        if (printerProfile != null && printerProfile.variant != null && !printerProfile.variant.isEmpty()) printerLabel += " · " + getString(R.string.kv3_nozzle, printerProfile.variant);
+        if (modelProjectMode == 2) printerLabel = projectOptionCaption("printer_settings_id", getString(R.string.native_project_title));
+        tabletInline(fill, R.drawable.kv3_printer, getString(R.string.phase2_settings_printer), printerLabel, modelProjectMode == 2 ? this::openSettingsPanel : this::openPrinterProfiles,
                 tabletIcon(R.drawable.kv3_wifi, getString(R.string.tablet_connection), () -> startActivity(new Intent(this, DeviceActivity.class))),
                 tabletIcon(R.drawable.kv3_sliders, getString(R.string.kv3_edit_printer), () -> com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, SettingsActivity.class).putExtra("kepler_kind", "printer"), false)));
-        if (tabletHead != null) { if (tabletHead.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) tabletHead.getParent()).removeView(tabletHead); tabletHead.setPadding(dp(10), dp(10), dp(10), dp(10)); printer.addView(tabletHead, lp(-1, -2)); }
-        // Material: the filament of each loaded slot.
-        LinearLayout material = tabletBlock(fill, R.drawable.kv3_spool, getString(R.string.phase2_settings_filament),
-                tabletIcon(R.drawable.kv3_sliders, getString(R.string.phase2_settings_filament), () -> com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, SettingsActivity.class).putExtra("kepler_kind", "filament"), false)));
         PrintProfileCatalog.Profile filament = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.FILAMENT);
-        material.addView(tabletSelector("1 · " + (filament == null ? getString(R.string.kv3_choose_material) : filament.name), () -> openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT)));
         MaterialSlots.Slot[] slots = MaterialSlots.load(this);
-        for (int i = 1; i < slots.length; i++) if (slots[i].filled()) {
-            material.addView(ui.hairline());
-            material.addView(tabletSelector((i + 1) + " · " + EngineText.clean(slots[i].name), () -> openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT)));
-        }
-        // Settings: process preset and the embedded process editor (category tabs, inline values, save).
-        PrintProfileCatalog.Profile process = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.PROCESS);
-        LinearLayout settings = tabletBlock(fill, R.drawable.kv3_layers, getString(R.string.tablet_print_settings),
-                tabletIcon(R.drawable.kv3_assembly, getString(R.string.tablet_object_details), this::openModelDetails),
-                tabletIcon(R.drawable.kv3_sliders, getString(R.string.kv3_process), () -> com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, SettingsActivity.class).putExtra("kepler_kind", "process"), false)));
-        settings.addView(tabletSelector(process == null ? getString(R.string.kv3_choose_process) : process.name, () -> openPrintProfile(PrintProfileCatalog.PROCESS, PICK_PROCESS)));
-        // The workspace is rebuilt on every return to it: carry unsaved edits of the embedded editor into the new one.
-        if (tabletSettings != null) { tabletDraft = tabletSettings.saveDraft(); tabletSettings.dispose(); }
-        tabletSettings = null;
-        if (PrinterProfileCatalog.loadSelection(this) != null && process != null && modelProjectMode <= 0) {
-            tabletSettings = new ProcessSettingsPanel(this, () -> ControlPreferences.scheduleAutoSlice(this));
-            View editor = tabletSettings.view(); editor.setBackgroundColor(0);
-            if (tabletDraft != null) { tabletSettings.restoreDraft(tabletDraft); tabletDraft = null; }
-            LinearLayout.LayoutParams ep = tabletPrepareScrolls ? new LinearLayout.LayoutParams(-1, dp(Math.max(320, heightDp - 140))) : new LinearLayout.LayoutParams(-1, 0, 1); ep.setMargins(0, dp(12), 0, 0);
-            fill.addView(editor, ep);
-        } else if (!tabletPrepareScrolls) fill.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1));
-        tabletPrepareExtras = fill;
-
-        LinearLayout objects = vertical();
-        LinearLayout list = ui.card(20);
+        StringBuilder more = new StringBuilder();
+        for (int i = 1; i < slots.length; i++) if (slots[i].filled()) more.append(" · ").append(i + 1).append(": ").append(EngineText.clean(slots[i].name));
+        String filamentLabel = (filament == null ? getString(R.string.kv3_choose_material) : (more.length() > 0 ? "1: " : "") + filament.name) + more;
+        tabletInline(fill, R.drawable.kv3_spool, getString(R.string.phase2_settings_filament), filamentLabel, () -> openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT),
+                tabletIcon(R.drawable.kv3_sliders, getString(R.string.phase2_settings_filament), () -> com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, SettingsActivity.class).putExtra("kepler_kind", "filament"), false)));
+        // Objects of the plate (OrcaSlicer keeps the object list in the Prepare sidebar, not in a workspace tab).
+        LinearLayout objects = tabletBlock(fill, R.drawable.kv3_assembly, getString(R.string.tablet_objects), "objects",
+                tabletIcon(R.drawable.kv3_sliders, getString(R.string.tablet_object_details), this::openModelDetails));
         org.json.JSONArray items = modelMetadata == null ? null : modelMetadata.optJSONArray("objects");
-        if (mesh == null || loadingMesh) list.addView(ui.listRow(R.drawable.kv3_info, getString(R.string.tablet_no_objects), null, null, this::chooseStl));
-        else if (items == null || items.length() == 0) list.addView(ui.listRow(R.drawable.kv3_cube, meshName, modelDetails(), ui.image(R.drawable.kv3_chevron_right, 20, white), modelMetadata == null ? this::openTools : this::openModelDetails));
+        if (mesh == null || loadingMesh) objects.addView(tabletSelector(getString(R.string.tablet_no_objects), this::chooseStl));
+        else if (items == null || items.length() == 0) objects.addView(tabletSelector(meshName, modelDetails(), modelMetadata == null ? this::openTools : this::openModelDetails));
         else for (int i = 0; i < items.length(); i++) {
             org.json.JSONObject o = items.optJSONObject(i); String name = o == null ? "" : o.optString("name", "");
-            if (i > 0) list.addView(ui.hairline());
-            list.addView(ui.listRow(R.drawable.kv3_cube, name.isEmpty() ? getString(R.string.tablet_objects) + " " + (i + 1) : name, null, ui.image(R.drawable.kv3_chevron_right, 20, white), this::openModelDetails));
+            if (i > 0) objects.addView(ui.hairline());
+            objects.addView(tabletSelector(name.isEmpty() ? getString(R.string.tablet_objects) + " " + (i + 1) : name, this::openModelDetails));
         }
-        objects.addView(list, tabletCardParams());
-        if (mesh != null && !loadingMesh && modelMetadata != null) {
-            LinearLayout more = ui.card(20);
-            more.addView(ui.listRow(R.drawable.kv3_sliders, getString(R.string.tablet_object_details), null, ui.image(R.drawable.kv3_chevron_right, 20, white), this::openModelDetails));
-            objects.addView(more, tabletCardParams());
+        tabletObjects = null;
+        // Process: preset and the embedded editor, which takes the rest of the height and scrolls by itself.
+        PrintProfileCatalog.Profile process = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.PROCESS);
+        tabletInline(fill, R.drawable.kv3_layers, getString(R.string.tablet_print_settings), process == null ? getString(R.string.kv3_choose_process) : process.name, () -> openPrintProfile(PrintProfileCatalog.PROCESS, PICK_PROCESS),
+                tabletIcon(R.drawable.kv3_sliders, getString(R.string.kv3_process), () -> com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, SettingsActivity.class).putExtra("kepler_kind", "process"), false)));
+        if (printerProfile != null && process != null && modelProjectMode <= 0) {
+            // The editor outlives workspace rebuilds: same view, same scroll position and unsaved edits; it reloads
+            // only when the printer, filament or process really changed.
+            if (tabletSettings == null) {
+                tabletSettings = new ProcessSettingsPanel(this, () -> ControlPreferences.scheduleAutoSlice(this));
+                if (tabletDraft != null) { tabletSettings.restoreDraft(tabletDraft); tabletDraft = null; }
+            } else tabletSettings.reloadIfStale();
+            View editor = tabletSettings.view(); editor.setBackgroundColor(0);
+            if (editor.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) editor.getParent()).removeView(editor);
+            LinearLayout.LayoutParams ep = tabletPrepareScrolls ? new LinearLayout.LayoutParams(-1, dp(Math.max(320, heightDp - 140))) : new LinearLayout.LayoutParams(-1, 0, 1); ep.setMargins(0, dp(4), 0, 0);
+            fill.addView(editor, ep);
+        } else {
+            if (tabletSettings != null) { tabletSettings.dispose(); tabletSettings = null; }
+            if (!tabletPrepareScrolls) fill.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1));
         }
-        side.addView(objects, lp(-1, -2)); tabletObjects = objects;
+        tabletPrepareExtras = fill;
 
         LinearLayout device = vertical();
         LinearLayout rows = ui.card(20);

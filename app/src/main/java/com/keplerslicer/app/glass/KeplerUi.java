@@ -209,7 +209,10 @@ public final class KeplerUi {
         // Tabs dissolve into each other (iOS 26 tab bar): the new screen fades in over the old one, no slide.
         from.startActivity(intent);
         if (finish) from.finish();
-        from.overridePendingTransition(com.keplerslicer.app.R.anim.kv_tab_in, com.keplerslicer.app.R.anim.kv_tab_hold);
+        // Tablet interface: screens replace each other at once; the fade over the held screen let both show through.
+        boolean tablet = "tablet".equals(from.getSharedPreferences("app_preferences", android.content.Context.MODE_PRIVATE).getString("interface_mode", "mobile"));
+        if (tablet) from.overridePendingTransition(0, 0);
+        else from.overridePendingTransition(com.keplerslicer.app.R.anim.kv_tab_in, com.keplerslicer.app.R.anim.kv_tab_hold);
     }
     private static void padScrollables(View v, int navTop, int fallback) {
         if (v.getVisibility() == View.GONE) return;

@@ -51,6 +51,7 @@ public final class PreferencesActivity extends Activity {
     private String s(int id){return getString(id);}
     private void render(){
         final int scrollY=renderedSection==section&&bodyScroll!=null?bodyScroll.getScrollY():restoreScroll;restoreScroll=0;renderedSection=section;
+        if(InterfaceMode.tablet(this)){renderTablet(scrollY);return;}
         root=new FrameLayout(this);root.setBackground(com.keplerslicer.app.glass.SettingsHubUi.backdrop(this));setContentView(root);
         getWindow().setStatusBarColor(Color.rgb(74,79,89));getWindow().setNavigationBarColor(Color.rgb(74,79,89));getWindow().getDecorView().setSystemUiVisibility(0);
         ui=new GlassUi(this,root,false);LinearLayout page=ui.vertical();ui.pad(page,20,8,20,0);LinearLayout column=new LinearLayout(this);column.setOrientation(LinearLayout.VERTICAL);root.addView(column,new FrameLayout.LayoutParams(-1,-1));column.addView(page,new LinearLayout.LayoutParams(-1,0,1));
@@ -66,6 +67,35 @@ public final class PreferencesActivity extends Activity {
         int navInset=ui.dp(ui.tokens.navInset);
         np.setMargins(navInset,ui.dp(8),navInset,ui.dp(ui.tokens.navBottom));
         column.addView(nav,np);com.keplerslicer.app.glass.KeplerUi.floatNavigation(root,column,nav,navInset,ui.dp(ui.tokens.navBottom));com.keplerslicer.app.glass.KeplerUi.edgeToEdge(root,ui.dp(ui.tokens.navBottom));
+    }
+    /**
+     * Tablet interface: the layout of the desktop OrcaSlicer preferences (category list on the left, the settings of the
+     * chosen category on the right) in the Kepler glass design. No mobile tab bar; content keeps a readable width.
+     */
+    private void renderTablet(int scrollY){
+        root=new FrameLayout(this);root.setBackground(com.keplerslicer.app.glass.SettingsHubUi.backdrop(this));setContentView(root);
+        getWindow().setStatusBarColor(Color.rgb(74,79,89));getWindow().setNavigationBarColor(Color.rgb(56,61,70));getWindow().getDecorView().setSystemUiVisibility(0);
+        ui=new GlassUi(this,root,false);com.keplerslicer.app.glass.KeplerUi kv=new com.keplerslicer.app.glass.KeplerUi(this);
+        LinearLayout panes=ui.horizontal();root.addView(panes,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout side=ui.vertical();side.setPadding(ui.dp(16),ui.dp(12),ui.dp(12),ui.dp(16));side.setBackgroundColor(0xFF2B2F36);
+        LinearLayout head=ui.horizontal();head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(kv.glassButton(R.drawable.kv3_back,44,22,s(R.string.phase2_preferences_back),this::finish),new LinearLayout.LayoutParams(ui.dp(44),ui.dp(44)));
+        TextView title=kv.text(s(R.string.phase2_preferences_title),20,800,com.keplerslicer.app.glass.KeplerUi.WHITE);LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,-2,1);tp.leftMargin=ui.dp(12);head.addView(title,tp);
+        side.addView(head,new LinearLayout.LayoutParams(-1,-2));ui.space(side,16);
+        for(int i=0;i<SECTIONS.length;i++){final int target=i;TextView item=kv.line(s(SECTIONS[i]),15,section==i?700:500,section==i?com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE:com.keplerslicer.app.glass.KeplerUi.WHITE);
+            item.setGravity(Gravity.CENTER_VERTICAL);item.setPadding(ui.dp(16),0,ui.dp(12),0);item.setMinHeight(ui.dp(48));
+            kv.pressable(item,section==i?kv.shape(com.keplerslicer.app.glass.KeplerUi.WHITE,0,14):null,14);item.setSelected(section==i);
+            item.setOnClickListener(v->{if(section==target)return;section=target;render();});
+            LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(-1,ui.dp(48));ip.topMargin=ui.dp(4);side.addView(item,ip);}
+        panes.addView(side,new LinearLayout.LayoutParams(ui.dp(260),-1));
+        ScrollView scroll=new ScrollView(this);bodyScroll=scroll;scroll.setVerticalScrollBarEnabled(true);scroll.setClipToPadding(false);
+        FrameLayout centre=new FrameLayout(this);content=ui.vertical();ui.pad(content,24,12,24,32);
+        TextView sectionTitle=kv.text(s(SECTIONS[section]),22,800,com.keplerslicer.app.glass.KeplerUi.WHITE);content.addView(sectionTitle);
+        centre.addView(content,new FrameLayout.LayoutParams(Math.min(ui.dp(760),getResources().getDisplayMetrics().widthPixels-ui.dp(260)),-2,Gravity.CENTER_HORIZONTAL));
+        scroll.addView(centre,new FrameLayout.LayoutParams(-1,-2));panes.addView(scroll,new LinearLayout.LayoutParams(0,-1,1));
+        switch(section){case 0:general();break;case 1:control();break;case 2:online();break;case 3:associate();break;default:developer();break;}
+        scroll.post(()->scroll.scrollTo(0,scrollY));
+        com.keplerslicer.app.glass.KeplerUi.edgeToEdge(root,0);
     }
     private void heading(int title){TextView v=ui.section(s(title));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(ui.dp(4),ui.dp(12),ui.dp(4),ui.dp(6));content.addView(v,p);}
     private LinearLayout card(){return ui.vertical();}

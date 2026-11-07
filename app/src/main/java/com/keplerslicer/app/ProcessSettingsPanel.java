@@ -54,11 +54,11 @@ final class ProcessSettingsPanel {
     ProcessSettingsPanel(Activity activity, Runnable onSaved) {
         this.activity=activity;this.onSaved=onSaved;ui=new MdUi(activity);
         root=new LinearLayout(activity);root.setOrientation(LinearLayout.VERTICAL);
-        status=text(L.t("Загружаем настройки профиля…"),12,com.keplerslicer.app.glass.KeplerUi.SECONDARY,false);status.setPadding(dp(16),dp(4),dp(16),dp(10));com.keplerslicer.app.glass.GlassTypography.apply(status,500);status.setMaxLines(2);status.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        status=text(L.t("Загружаем настройки профиля…"),12,com.keplerslicer.app.glass.KeplerUi.SECONDARY,false);status.setPadding(dp(16),dp(2),dp(16),dp(6));com.keplerslicer.app.glass.GlassTypography.apply(status,500);status.setMaxLines(2);status.setEllipsize(android.text.TextUtils.TruncateAt.END);
         status.setOnClickListener(v->{if(statusDetail!=null)MdUi.alert(activity).setTitle(L.t("Проверьте параметры")).setMessage(statusDetail).setPositiveButton(L.t("Закрыть"),null).show();});root.addView(status);
         HorizontalScrollView strip=new HorizontalScrollView(activity);strip.setHorizontalScrollBarEnabled(false);
         tabs=new LinearLayout(activity);tabs.setOrientation(LinearLayout.HORIZONTAL);tabs.setPadding(dp(12),0,dp(12),dp(8));strip.addView(tabs);root.addView(strip);
-        ScrollView scroll=new ScrollView(activity);scroll.setFillViewport(false);scroll.setOutlineProvider(android.view.ViewOutlineProvider.BOUNDS);scroll.setClipToOutline(true);strip.setOutlineProvider(android.view.ViewOutlineProvider.BOUNDS);strip.setClipToOutline(true);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        ScrollView scroll=new ScrollView(activity);bodyScroll=scroll;scroll.setFillViewport(false);scroll.setOutlineProvider(android.view.ViewOutlineProvider.BOUNDS);scroll.setClipToOutline(true);strip.setOutlineProvider(android.view.ViewOutlineProvider.BOUNDS);strip.setClipToOutline(true);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(12),dp(4),dp(12),dp(16));scroll.addView(body);
         actions=new LinearLayout(activity);actions.setPadding(dp(12),dp(12),dp(12),dp(12));actions.setBackgroundColor(0xFF2E333C);root.addView(actions);
         reload();
@@ -84,6 +84,13 @@ final class ProcessSettingsPanel {
             }catch(Exception e){error(e);}});
         }catch(Throwable e){activity.runOnUiThread(()->{if(!stale(token))error(e);});}},"kepler-panel-metadata").start();
     }
+    /** Reloads only when the printer, filament or process changed since the editor was filled (no reload on screen returns). */
+    void reloadIfStale(){
+        if(disposed||identity==null)return;final String shown=identity.fingerprint;final android.content.Context app=activity.getApplicationContext();
+        new Thread(()->{try{String now=ProcessOverridesStore.snapshotForSlice(app).identity.fingerprint;
+            if(!now.equals(shown))activity.runOnUiThread(()->{if(!disposed&&identity!=null&&shown.equals(identity.fingerprint))reload();});}
+            catch(Exception ignored){}},"kepler-panel-check").start();
+    }
     Bundle saveDraft() {
         if(identity==null) return pendingDraft==null?new Bundle():new Bundle(pendingDraft);
         capture();Bundle b=new Bundle();b.putString("fingerprint",identity.fingerprint);b.putString("category",selected);
@@ -103,16 +110,23 @@ final class ProcessSettingsPanel {
     // label on the left and the value in a 36dp field pill (mobile SettingsOptionAdapter), glass switches and buttons.
     private com.keplerslicer.app.glass.KeplerUi glass(){if(kui==null)kui=new com.keplerslicer.app.glass.KeplerUi(activity);return kui;}
     private com.keplerslicer.app.glass.KeplerUi kui;
-    private void renderTabs(){tabs.removeAllViews();com.keplerslicer.app.glass.KeplerUi g=glass();
-        for(int i=0;i<CATEGORIES.length;i++){final String page=CATEGORIES[i];TextView t=g.chip(NAMES[i],page.equals(selected),()->{if(saving)return;capture();selected=page;render();});
-            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(36));if(i>0)p.leftMargin=dp(8);tabs.addView(t,p);}}
-    private void renderBody(){body.removeAllViews();controls.clear();com.keplerslicer.app.glass.KeplerUi g=glass();String section=null;int n=0;LinearLayout card=null;
+    private ScrollView bodyScroll;private boolean scrollToTop;private View resetButton,saveButton;
+    /** Reset and Save only act when something differs from the saved profile. */
+    private void actionsFor(int changed){boolean on=changed>0&&!saving;for(View b:new View[]{resetButton,saveButton})if(b!=null){b.setEnabled(on);b.setAlpha(on?1f:.45f);}}
+    private void renderTabs(){tabs.removeAllViews();com.keplerslicer.app.glass.KeplerUi g=glass();TextView active=null;
+        for(int i=0;i<CATEGORIES.length;i++){final String page=CATEGORIES[i];TextView t=g.chip(NAMES[i],page.equals(selected),()->{if(saving)return;capture();selected=page;scrollToTop=true;render();});t.setMinHeight(dp(44));t.setSingleLine(true);
+            if(page.equals(selected))active=t;LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(44));if(i>0)p.leftMargin=dp(8);tabs.addView(t,p);}
+        // Keep the chosen category visible in the strip (Multi-material and Others sit off screen on a narrow panel).
+        final TextView shown=active;if(shown!=null&&tabs.getParent() instanceof HorizontalScrollView){HorizontalScrollView strip=(HorizontalScrollView)tabs.getParent();strip.post(()->{int l=shown.getLeft()-dp(12),r=shown.getRight()+dp(12);if(l<strip.getScrollX())strip.smoothScrollTo(l,0);else if(r>strip.getScrollX()+strip.getWidth())strip.smoothScrollTo(r-strip.getWidth(),0);});}}
+    private void renderBody(){final int keepY=scrollToTop||bodyScroll==null?0:bodyScroll.getScrollY();scrollToTop=false;body.removeAllViews();controls.clear();com.keplerslicer.app.glass.KeplerUi g=glass();String section=null;int n=0;LinearLayout card=null;
         for(ProcessOption o:options){if(onlyKeys!=null?!onlyKeys.contains(o.key):!selected.equals(o.category))continue;n++;
             if(onlyKeys!=null?card==null:!o.section.equals(section)){section=o.section;TextView h=g.caption(onlyKeys!=null?"":tr(section));if(onlyKeys!=null)h.setVisibility(View.GONE);h.setPadding(dp(4),dp(n==1?4:20),dp(4),dp(8));body.addView(h);
                 card=g.card(20);body.addView(card,new LinearLayout.LayoutParams(-1,-2));}
             else card.addView(g.hairline());
             card.addView(optionRow(o));
         }if(n==0)body.addView(g.text(L.t("Нет параметров для выбранного профиля."),13,500,com.keplerslicer.app.glass.KeplerUi.SECONDARY));
+        // Rebuilding the rows (save, reload, draft restore) keeps the reading position; a new category starts at the top.
+        if(bodyScroll!=null)bodyScroll.post(()->bodyScroll.scrollTo(0,keepY));
     }
     private View optionRow(ProcessOption o){com.keplerslicer.app.glass.KeplerUi g=glass();
         LinearLayout row=g.row();row.setPadding(dp(16),dp(10),dp(14),dp(10));row.setMinimumHeight(dp(56));
@@ -147,8 +161,8 @@ final class ProcessSettingsPanel {
     }
     private void capture(){if(options==null||rebuilding)return;for(ProcessOption o:options){View v=controls.get(o.key);if(v==null)continue;String value;if(v instanceof android.widget.CompoundButton)value=Boolean.toString(((android.widget.CompoundButton)v).isChecked());else if(v instanceof Spinner){int i=((Spinner)v).getSelectedItemPosition();value=i>=0&&i<o.choices.size()?o.choices.get(i).value:"";}else value=((EditText)v).getText().toString();raw.put(o.key,value);}}
     private void renderActions(){actions.removeAllViews();com.keplerslicer.app.glass.KeplerUi g=glass();
-        View reset=g.secondaryButton(0,L.t("Сбросить"),48,24,()->{if(!saving){raw.clear();render();}});
-        View save=g.primaryButton(R.drawable.kv3_check,L.t("Сохранить"),()->{if(saving)return;try{capture();Map<String,Object> changes=changes();validateAndSave(ProcessOption.encodeOverrides(changes));}catch(Exception e){error(e);}});
+        View reset=resetButton=g.secondaryButton(0,L.t("Сбросить"),48,24,()->{if(!saving){raw.clear();render();}});
+        View save=saveButton=g.primaryButton(R.drawable.kv3_check,L.t("Сохранить"),()->{if(saving)return;try{capture();Map<String,Object> changes=changes();validateAndSave(ProcessOption.encodeOverrides(changes));}catch(Exception e){error(e);}});
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(48),1);p.rightMargin=dp(8);actions.addView(reset,p);actions.addView(save,new LinearLayout.LayoutParams(0,dp(48),1));actions.setAlpha(saving?.5f:1f);}
     private Map<String,Object> changes(){Map<String,Object> changes=new LinkedHashMap<>();for(ProcessOption o:options)if(o.editable&&raw.containsKey(o.key)){String input=raw.get(o.key);if(input.equals(String.valueOf(o.value)))continue;try{Object value=o.parseInput(input);if(!same(o,value,o.value))changes.put(o.key,value);}catch(IllegalArgumentException e){throw new IllegalArgumentException(tr(o.label.isEmpty()?o.key:o.label)+": "+e.getMessage(),e);}}return changes;}
     private static boolean same(ProcessOption o,Object a,Object b){if(a instanceof Number&&b instanceof Number)return Double.compare(((Number)a).doubleValue(),((Number)b).doubleValue())==0;if(o.type.equals("float_or_percent")){String x=String.valueOf(a),y=String.valueOf(b);boolean xp=x.endsWith("%"),yp=y.endsWith("%");if(xp!=yp)return false;try{return Double.compare(Double.parseDouble(xp?x.substring(0,x.length()-1):x),Double.parseDouble(yp?y.substring(0,y.length()-1):y))==0;}catch(NumberFormatException e){return false;}}return a.equals(b);}
@@ -162,7 +176,7 @@ final class ProcessSettingsPanel {
             finally{synchronized(SAVE_LOCK){if(pendingSave==operation)pendingSave=null;}operation.countDown();}},"kepler-panel-save").start();
     }
     private void setInputsEnabled(boolean enabled){for(View v:controls.values())v.setEnabled(enabled);}
-    private void updateStatus(String note){if(rebuilding||options==null)return;statusDetail=null;capture();int count=0;for(ProcessOption o:options)if(o.editable&&raw.containsKey(o.key)){try{Object v=o.parseInput(raw.get(o.key));if(!same(o,v,o.value))count++;}catch(Exception e){count++;}}status.setText((note==null?"":note+" · ")+L.t("Изменено параметров: ")+count);}
+    private void updateStatus(String note){if(rebuilding||options==null)return;statusDetail=null;capture();int count=0;for(ProcessOption o:options)if(o.editable&&raw.containsKey(o.key)){try{Object v=o.parseInput(raw.get(o.key));if(!same(o,v,o.value))count++;}catch(Exception e){count++;}}status.setText((note==null?"":note+" · ")+L.t("Изменено параметров: ")+count);actionsFor(count);}
     private void error(Throwable e){String m=EngineText.clean(e.getMessage());statusDetail=m==null?e.getClass().getSimpleName():m;status.setText(L.t("Ошибка: ")+statusDetail);}
     private int dp(float n){return (int)(activity.getResources().getDisplayMetrics().density*n+.5f);}
     private TextView text(String s,int size,int color,boolean bold){TextView t=new TextView(activity);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setTypeface(android.graphics.Typeface.create("sans-serif",bold?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL));return t;}
