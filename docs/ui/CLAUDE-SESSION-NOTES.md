@@ -259,3 +259,12 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
   (SheetDialog dismiss on a recreated activity), panel restore to the previous state, tool bar overflow.
 - Emulator note: Android 16 ignores orientation locks on large displays; for landscape tests run
   `adb shell wm set-ignore-orientation-request false`. After `adb reboot` the emulator lost graphics twice; cold boot helps.
+
+## 2026-11-07 (late): WIP on branch feature/plate-settings-bambu (commit 5a90bfb, not merged)
+
+- Plate settings sheet: engine exposes curr_bed_type, first/other_layers_sequence_choice and filament orders as
+  "int_list" (category Plate) in process_settings.cpp; app parses "1,2,3". NOT yet built or tested: run
+  engine/build-native.ps1, check the sheet on the Pixel_Tablet AVD, add the 2 strings to kepler_messages.json
+  ("Укажите номера филаментов…", "Авто"; the wrap.py helper failed), then merge.
+- Next task from the owner: replace the in-house Bambu plugin (BambuLan/BambuCloud) with
+  https://github.com/ClusterM/open-bamboo-networking (check license, Android build). Not started.
