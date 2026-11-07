@@ -32,7 +32,16 @@ const std::unordered_map<std::string, std::pair<std::string, std::string>> &grou
     return map;
 }
 
+// Plate settings of the desktop plate dialog: bed type and filament order. They are slicing options outside
+// Preset::print_options(); the filament orders are integer lists edited as "1,2,3".
+const std::set<std::string> &plate_keys() {
+    static const std::set<std::string> keys{"curr_bed_type", "first_layer_sequence_choice", "first_layer_print_sequence", "other_layers_sequence_choice", "other_layers_print_sequence"};
+    return keys;
+}
+bool int_list(const ConfigOptionDef &def) { return def.type == coInts && plate_keys().count(def.opt_key); }
+
 bool editable(const ConfigOptionDef &def) {
+    if (int_list(def)) return true;
     if (!def.is_scalar() || def.nullable || def.readonly) return false;
     switch (def.type) {
     case coFloat: case coPercent: case coFloatOrPercent: case coInt: case coBool: return true;
@@ -45,7 +54,7 @@ bool editable(const ConfigOptionDef &def) {
 
 const ConfigOptionDef &definition(const DynamicPrintConfig &config, const std::string &key) {
     const auto &process_keys = Preset::print_options();
-    if (std::find(process_keys.begin(), process_keys.end(), key) == process_keys.end())
+    if (!plate_keys().count(key) && std::find(process_keys.begin(), process_keys.end(), key) == process_keys.end())
         throw std::invalid_argument("Unsupported process setting: " + key);
     const ConfigOptionDef *def = config.def()->get(key);
     const ConfigOption *value = config.option(key);
@@ -56,6 +65,7 @@ const ConfigOptionDef &definition(const DynamicPrintConfig &config, const std::s
 
 const char *type_name(ConfigOptionType type) {
     switch (type) {
+    case coInts: return "int_list";
     case coFloat: return "float"; case coPercent: return "percent";
     case coInt: return "integer"; case coBool: return "boolean";
     case coEnum: return "enum"; case coFloatOrPercent: return "float_or_percent";
@@ -65,6 +75,13 @@ const char *type_name(ConfigOptionType type) {
 
 json option_value(const ConfigOption *v, const ConfigOptionDef &def) {
     if (!v || v->type() != def.type) throw std::runtime_error("Invalid option value: " + def.opt_key);
+    if (int_list(def)) {
+        // Other layers: one range for all layers (2 .. end), so only its filament order is shown.
+        std::vector<int> values = static_cast<const ConfigOptionInts *>(v)->values;
+        if (def.opt_key == "other_layers_print_sequence") values = values.size() > 2 ? std::vector<int>(values.begin() + 2, values.end()) : std::vector<int>{};
+        std::string text; for (int x : values) if (x > 0) { if (!text.empty()) text += ","; text += std::to_string(x); }
+        return text;
+    }
     switch (def.type) {
     case coFloat: case coPercent: {
         const double number = static_cast<const ConfigOptionFloat *>(v)->value;
@@ -121,6 +138,7 @@ std::string process_settings_metadata_json(const Slic3r::DynamicPrintConfig &res
         if (allowed.count(row.key) && seen.insert(row.key).second) ordered.emplace_back(row.key);
     for (const auto &key : process_keys)
         if (seen.insert(key).second) ordered.push_back(key);
+    for (const auto &key : plate_keys()) if (seen.insert(key).second) ordered.push_back(key);
     for (const auto &key : ordered) {
         const ConfigOptionDef *definition = resolved.def()->get(key);
         const ConfigOption *value = resolved.option(key);
@@ -130,8 +148,8 @@ std::string process_settings_metadata_json(const Slic3r::DynamicPrintConfig &res
         if (def.type == coEnum && can_edit && (def.enum_values.empty() ? !def.enum_keys_map->count(value->serialize()) : !def.has_enum_value(value->serialize()))) can_edit = false;
         auto group = groups().find(key);
         json row = {{"key", key}, {"type", type_name(def.type)}, {"label", def.label},
-                    {"category", group == groups().end() ? "Others" : group->second.first},
-                    {"section", group == groups().end() ? "Other settings" : group->second.second},
+                    {"category", plate_keys().count(key) ? "Plate" : group == groups().end() ? "Others" : group->second.first},
+                    {"section", plate_keys().count(key) ? "Plate" : group == groups().end() ? "Other settings" : group->second.second},
                     {"tooltip", def.tooltip}, {"unit", def.sidetext}, {"editable", can_edit},
                     {"mode", static_cast<int>(def.mode)}, {"value", option_value(value, def)},
                     {"default", def.default_value && def.default_value->type() == def.type ? option_value(def.default_value.get(), def) : option_value(value, def)},
@@ -216,6 +234,24 @@ Slic3r::DynamicPrintConfig apply_process_overrides(const Slic3r::DynamicPrintCon
                 throw std::invalid_argument("Invalid enum value for " + it.key());
             candidate.set_deserialize_strict(it.key(), choice);
             if (candidate.option(it.key())->serialize() != choice) throw std::runtime_error("Enum did not round-trip for " + it.key());
+            break;
+        }
+        case coInts: {
+            if (!int_list(def) || !value.is_string()) throw std::invalid_argument("Expected a filament order for " + it.key());
+            const std::string input = value.get<std::string>(); if (input.size() > 256) throw std::invalid_argument("Filament order is too long");
+            std::vector<int> order; std::string token;
+            for (std::size_t i = 0; i <= input.size(); ++i) {
+                const char c = i < input.size() ? input[i] : ',';
+                if (c == ',' || c == ' ') { if (!token.empty()) { const int n = std::stoi(token); if (n < 1 || n > 16) throw std::invalid_argument("Filament number outside 1..16 in " + it.key()); order.push_back(n); token.clear(); } }
+                else if (c >= '0' && c <= '9' && token.size() < 3) token += c;
+                else throw std::invalid_argument("Invalid filament order for " + it.key());
+            }
+            if (it.key() == "other_layers_print_sequence") {
+                if (!order.empty()) order.insert(order.begin(), {2, 1000000});
+                if (auto *nums = candidate.option<ConfigOptionInt>("other_layers_print_sequence_nums")) nums->value = order.empty() ? 0 : 1;
+            }
+            if (order.empty()) order.push_back(0);
+            candidate.option<ConfigOptionInts>(it.key())->values = order;
             break;
         }
         default: throw std::invalid_argument("Unsupported scalar type for " + it.key());

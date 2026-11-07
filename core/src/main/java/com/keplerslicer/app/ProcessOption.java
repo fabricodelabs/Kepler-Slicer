@@ -28,7 +28,7 @@ final class ProcessOption {
         ArrayList<Choice> list = new ArrayList<>(); JSONArray a = row.getJSONArray("choices");
         for (int i = 0; i < a.length(); i++) { JSONObject c = a.getJSONObject(i); list.add(new Choice(c.getString("value"), c.getString("label"))); }
         choices = Collections.unmodifiableList(list);
-        if (!type.equals("float") && !type.equals("percent") && !type.equals("integer") && !type.equals("boolean") && !type.equals("enum") && !type.equals("float_or_percent") && !type.equals("string") && !type.equals("readonly"))
+        if (!type.equals("float") && !type.equals("percent") && !type.equals("integer") && !type.equals("boolean") && !type.equals("enum") && !type.equals("float_or_percent") && !type.equals("string") && !type.equals("int_list") && !type.equals("readonly"))
             throw new JSONException("Unsupported option type " + type);
     }
     static List<ProcessOption> parseMetadata(String source) throws JSONException {
@@ -45,6 +45,12 @@ final class ProcessOption {
     /** Parse a field/switch/enum input into a correctly typed JSON value. Native validates again. */
     Object parseInput(String text) {
         if (!editable) throw new IllegalArgumentException(L.t("Этот параметр доступен только для просмотра."));
+        if (type.equals("int_list")) {
+            // Filament order "1,2,3": numbers 1..16 separated by commas or spaces; empty means automatic.
+            String clean = text.trim().replaceAll("[\s,;]+", ",").replaceAll("^,|,$", "");
+            if (!clean.isEmpty() && !clean.matches("([1-9]|1[0-6])(,([1-9]|1[0-6]))*")) throw new IllegalArgumentException(L.t("Укажите номера филаментов от 1 до 16 через запятую."));
+            return clean;
+        }
         if (type.equals("string")) {
             if (text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 4096 || text.indexOf('\n') >= 0 || text.indexOf('\r') >= 0 || text.indexOf('\0') >= 0)
                 throw new IllegalArgumentException(L.t("Текст слишком длинный или содержит недопустимые символы."));

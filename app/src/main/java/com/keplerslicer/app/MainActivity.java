@@ -604,7 +604,7 @@ public class MainActivity extends Activity {
         nameRow.addView(pill);
         LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, -2); np.topMargin = dp(16); body.addView(nameRow, np);
         ProcessSettingsPanel editor = new ProcessSettingsPanel(this, () -> ControlPreferences.scheduleAutoSlice(this),
-                new java.util.HashSet<>(java.util.Arrays.asList("curr_bed_type", "print_sequence", "spiral_mode", "first_layer_print_sequence", "other_layers_print_sequence")));
+                new java.util.HashSet<>(java.util.Arrays.asList("curr_bed_type", "print_sequence", "spiral_mode", "first_layer_sequence_choice", "first_layer_print_sequence", "other_layers_sequence_choice", "other_layers_print_sequence")));
         LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(-1, dp(420)); ep.topMargin = dp(12); body.addView(editor.view(), ep);
         View close = ui.secondaryButton(0, getString(R.string.glass_dismiss), 48, 24, sheet::dismiss);
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, dp(48)); cp.topMargin = dp(4); body.addView(close, cp);
