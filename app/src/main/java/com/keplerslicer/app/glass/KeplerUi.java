@@ -308,13 +308,19 @@ public final class KeplerUi {
         thumb.addView(image(R.drawable.kv3_printer, 26, WHITE), new FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER));
         left.addView(thumb, lp(52, 52));
         LinearLayout info = column(); LinearLayout.LayoutParams ip = weight(); ip.leftMargin = dp(12); left.addView(info, ip);
-        LinearLayout top = row(); info.addView(top);
+        LinearLayout top = row(); info.addView(top, new LinearLayout.LayoutParams(-1, -2));
         TextView name = line("", 17, 700, WHITE); top.addView(name, new LinearLayout.LayoutParams(-2, -2, 1));
-        ((LinearLayout.LayoutParams) name.getLayoutParams()).weight = 0; name.setMaxWidth(dp(190));
+        ((LinearLayout.LayoutParams) name.getLayoutParams()).weight = 0; name.setMaxWidth(dp(190)); name.setEllipsize(android.text.TextUtils.TruncateAt.END);
         TextView nozzle = line("", 11, 600, WHITE); nozzle.setGravity(Gravity.CENTER); nozzle.setPadding(dp(6), 0, dp(6), 0);
         GradientDrawable badge = new GradientDrawable(); badge.setCornerRadius(dp(6)); badge.setStroke(Math.round(1.5f * density), WHITE); nozzle.setBackground(badge);
-        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, dp(20)); np.leftMargin = dp(6); top.addView(nozzle, np); nozzle.setVisibility(View.GONE);
+        nozzle.setEllipsize(null); nozzle.setMinHeight(dp(20)); nozzle.setPadding(dp(6), dp(1), dp(6), dp(1));
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, -2); np.leftMargin = dp(6); top.addView(nozzle, np); nozzle.setVisibility(View.GONE);
         LinearLayout.LayoutParams cp = lp(18, 18); cp.leftMargin = dp(6); top.addView(image(R.drawable.kv3_chevron_down, 18, WHITE), cp);
+        // The printer name gives way to the nozzle badge and chevron (large fonts used to cut the badge to "0.4…").
+        top.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            int room = (r - l) - (nozzle.getVisibility() == View.GONE ? 0 : nozzle.getMeasuredWidth() + dp(6)) - dp(24);
+            if (room > 0 && name.getMaxWidth() != room) name.post(() -> name.setMaxWidth(room));
+        });
         LinearLayout bottom = row(); LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, -2); bp.topMargin = dp(2); info.addView(bottom, bp);
         View swatch = new View(context); swatch.setBackground(shape(0xFFE9EEF5, 0, 3)); bottom.addView(swatch, lp(10, 10));
         TextView material = line("", 12, 500, SECONDARY); LinearLayout.LayoutParams mp = weight(); mp.leftMargin = dp(6); bottom.addView(material, mp);

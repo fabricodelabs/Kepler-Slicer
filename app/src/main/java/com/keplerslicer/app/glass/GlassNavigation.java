@@ -291,10 +291,11 @@ public final class GlassNavigation extends LinearLayout {
         // Frosted glass: Figma glass/fill over a blurred backdrop (Android 12+). Without blur the fill stays nearly
         // opaque so content scrolling under the floating bar does not fight with the labels.
         boolean blur = !reduced && backdropSource != null && Backdrop.supported();
-        bar.setColor(reduced ? tokens.reduceTransparencyFill : blur ? 0x3A3A3F48 : clearGlass ? 0x4D3A3F48 : 0xE64E535A);
+        // Transparency only where it helps: clear over the 3D plate, nearly opaque over scrolling lists so labels stay legible.
+        bar.setColor(reduced ? tokens.reduceTransparencyFill : clearGlass ? (blur ? 0x3A3A3F48 : 0x4D3A3F48) : blur ? 0xD93A3F48 : 0xF24E535A);
         bar.setCornerRadius(tokens.dp(tokens.navRadius));
         bar.setStroke(Math.max(1, tokens.dp(tokens.navStrokeWidth)), tokens.navStroke);
-        setBackground(blur ? Backdrop.behind(this, backdropSource, tokens.dp(3), tokens.dp(tokens.navRadius), bar) : bar);
+        setBackground(blur ? Backdrop.behind(this, backdropSource, tokens.dp(clearGlass ? 3 : 16), tokens.dp(tokens.navRadius), bar) : bar);
 
         for (int index = 0; index < items.length; index++) {
             boolean active = index == selected;

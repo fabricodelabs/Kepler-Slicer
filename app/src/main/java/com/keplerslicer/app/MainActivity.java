@@ -361,7 +361,8 @@ public class MainActivity extends Activity {
             }
         };
         navShell.addView(navBar, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
-        if (compactLandscape) { LinearLayout.LayoutParams np = lp(-1, -2); np.bottomMargin = dp(8); root.addView(navShell, np); }
+        // Landscape: the tab bar goes to the bottom of the side column (added below) so the 3D view keeps the full height.
+        if (compactLandscape && landscapeSide != null) { LinearLayout.LayoutParams np = lp(-1, -2); np.bottomMargin = dp(8); landscapeSide.addView(navShell, np); }
         else {
             // Portrait: the tab bar floats over the 3D view as clear glass, like on the other tabs.
             floatingNav = navShell; navBar.setClearGlass(true);
@@ -371,6 +372,8 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Side column of the landscape workspace; the tab bar is added to its bottom. */
+    private LinearLayout landscapeSide;
     private View floatingNav; private int navBottomInset; private float sceneLift;
     /** Keeps the floating tab bar above the gesture bar and the bottom panels above the tab bar. */
     private void layoutFloatingNav() {
@@ -394,6 +397,7 @@ public class MainActivity extends Activity {
     }
 
     private void workspace() {
+        landscapeSide = null;
         PrinterProfileCatalog.Profile printer = PrinterProfileCatalog.loadSelection(this);
         PrintProfileCatalog.Profile material = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.FILAMENT);
         final com.keplerslicer.app.glass.KeplerUi ui = kui;
@@ -409,6 +413,7 @@ public class MainActivity extends Activity {
         }
         TextView materialLabel = head.material;
         materialLabel.setText(material == null ? getString(R.string.kv3_choose_material) : material.name);
+        if (material != null && modelProjectMode <= 0) { PrintProfileCatalog.Profile process = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.PROCESS); java.util.regex.Matcher layer = process == null ? null : java.util.regex.Pattern.compile("^([0-9]+(?:[.,][0-9]+)?[ ]*mm)").matcher(process.name); if (layer != null && layer.find()) materialLabel.setText(material.name + " · " + layer.group(1)); }
         if (modelProjectMode>0) materialLabel.setText(projectOptionCaption("filament_settings_id", getString(R.string.phase2_settings_filament)));
         head.printer.setContentDescription(getString(R.string.kv3_printer_header, printerName.getText()));
         { View materialRow = (View) materialLabel.getParent(); materialRow.setMinimumHeight(dp(24)); materialRow.setContentDescription(getString(R.string.kv3_choose_material) + ": " + materialLabel.getText()); click(materialRow, () -> { if (modelProjectMode > 0) openSettingsPanel(); else openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT); }); }
@@ -460,7 +465,7 @@ public class MainActivity extends Activity {
         else root.addView(viewport, new LinearLayout.LayoutParams(-1,0,1));
 
         LinearLayout host = vertical(); panelHost = host;
-        if (compactLandscape) { side.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1)); LinearLayout.LayoutParams hostLp = lp(-1,-2); hostLp.setMargins(dp(4), 0, dp(4), dp(8)); side.addView(host, hostLp); }
+        if (compactLandscape) { side.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1)); LinearLayout.LayoutParams hostLp = lp(-1,-2); hostLp.setMargins(dp(4), 0, dp(4), dp(8)); side.addView(host, hostLp); landscapeSide = side; }
         else {
             FrameLayout.LayoutParams hostLp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM); hostLp.bottomMargin = dp(96) + navBottomInset;
             viewport.addView(host, hostLp);
