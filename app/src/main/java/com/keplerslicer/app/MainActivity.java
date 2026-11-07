@@ -416,7 +416,7 @@ public class MainActivity extends Activity {
         if (material != null && modelProjectMode <= 0) { PrintProfileCatalog.Profile process = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.PROCESS); java.util.regex.Matcher layer = process == null ? null : java.util.regex.Pattern.compile("^([0-9]+(?:[.,][0-9]+)?[ ]*mm)").matcher(process.name); if (layer != null && layer.find()) materialLabel.setText(material.name + " · " + layer.group(1)); }
         if (modelProjectMode>0) materialLabel.setText(projectOptionCaption("filament_settings_id", getString(R.string.phase2_settings_filament)));
         head.printer.setContentDescription(getString(R.string.kv3_printer_header, printerName.getText()));
-        { View materialRow = (View) materialLabel.getParent(); materialRow.setMinimumHeight(dp(24)); materialRow.setContentDescription(getString(R.string.kv3_choose_material) + ": " + materialLabel.getText()); click(materialRow, () -> { if (modelProjectMode > 0) openSettingsPanel(); else openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT); }); }
+        { View materialRow = (View) materialLabel.getParent(); materialRow.setMinimumHeight(dp(24)); com.keplerslicer.app.glass.TouchTarget.ensure(materialRow); materialRow.setContentDescription(getString(R.string.kv3_choose_material) + ": " + materialLabel.getText()); click(materialRow, () -> { if (modelProjectMode > 0) openSettingsPanel(); else openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT); }); }
         if (modelProjectMode<=0) loadUserPresetNames(printerName, materialLabel, new TextView(this));
         LinearLayout.LayoutParams hp = lp(-1, -2); hp.setMargins(dp(20), dp(8), dp(20), 0);
 
@@ -428,7 +428,7 @@ public class MainActivity extends Activity {
             root.addView(wideBody, new LinearLayout.LayoutParams(-1,0,1));
         } else root.addView(head.view, hp);
 
-        FrameLayout viewport = new FrameLayout(this);
+        FrameLayout viewport = new com.keplerslicer.app.glass.TouchTarget.Host(this);
         // Returning to the workspace rebuilds the 3D view: keep the camera where the user left it (same model only).
         if (stlView != null && java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = stlView.camera();
         else if (!java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = null;

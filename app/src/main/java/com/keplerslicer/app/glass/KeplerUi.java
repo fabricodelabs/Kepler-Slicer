@@ -271,7 +271,7 @@ public final class KeplerUi {
         FrameLayout f = new FrameLayout(context);
         f.addView(image(iconRes, iconDp, WHITE), new FrameLayout.LayoutParams(dp(iconDp), dp(iconDp), Gravity.CENTER));
         pressable(f, glass(sizeDp / 2), sizeDp / 2); f.setContentDescription(description);
-        if (action != null) f.setOnClickListener(v -> action.run()); f.setMinimumWidth(dp(sizeDp)); f.setMinimumHeight(dp(sizeDp)); return f;
+        if (action != null) { f.setOnClickListener(v -> action.run()); TouchTarget.ensure(f); } f.setMinimumWidth(dp(sizeDp)); f.setMinimumHeight(dp(sizeDp)); return f;
     }
     /** Adds the 8dp mint status dot used on the Wi-Fi button (frame x28 y8 of 44). */
     public View statusDot(FrameLayout button) {
@@ -284,7 +284,7 @@ public final class KeplerUi {
     public TextView chip(String label, boolean active, Runnable action) {
         TextView t = line(label, 13, 600, active ? ON_ACTIVE : WHITE); t.setGravity(Gravity.CENTER); t.setPadding(dp(14), 0, dp(14), 0);
         t.setMinHeight(dp(36)); t.setMinimumHeight(dp(36));
-        if (action != null) { pressable(t, active ? shape(WHITE, 0, 18) : glass(18), 18); t.setOnClickListener(v -> action.run()); }
+        if (action != null) { pressable(t, active ? shape(WHITE, 0, 18) : glass(18), 18); t.setOnClickListener(v -> action.run()); TouchTarget.ensure(t); }
         else t.setBackground(active ? shape(WHITE, 0, 18) : glass(18));
         t.setSelected(active); return t;
     }
@@ -351,7 +351,7 @@ public final class KeplerUi {
             if (i == 2) { View d = new View(context); d.setBackgroundColor(DIVIDER); LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(28), Math.max(1, dp(1))); dp1.topMargin = dp(4); bar.addView(d, dp1); }
             FrameLayout f = new FrameLayout(context); ImageView art = image(icons[i], 22, WHITE);
             f.addView(art, new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER)); f.setContentDescription(descriptions[i]);
-            final Runnable a = actions[i]; f.setOnClickListener(v -> { if (a != null) a.run(); });
+            final Runnable a = actions[i]; f.setOnClickListener(v -> { if (a != null) a.run(); }); TouchTarget.ensure(f);
             LinearLayout.LayoutParams p = lp(44, 44); if (i > 0) p.topMargin = dp(4); bar.addView(f, p); items[i] = f;
         }
         ModeToolbar t = new ModeToolbar(this, bar, items, icons); t.select(0); return t;
