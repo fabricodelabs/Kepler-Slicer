@@ -37,7 +37,6 @@ pwsh -File engine/build-native.ps1 -Build <build dir> -Cmake <cmake.exe> -Ndk <a
 publishes; the previous library is kept next to the build. If Gradle holds the old library open, run
 `./gradlew --stop` first.
 
-Details of the settings and STEP contracts: [NATIVE-PREFERENCES-BUILD.md](NATIVE-PREFERENCES-BUILD.md).
 
 ## License
 
