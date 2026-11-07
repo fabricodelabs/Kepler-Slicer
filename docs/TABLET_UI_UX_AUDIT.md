@@ -150,3 +150,20 @@ category Plate). Checked: tab auto-scroll, scroll kept across Preferences, plate
 
 <img src="tablet-audit/tablet-prepare-compact.jpg" width="440"> <img src="tablet-audit/tablet-preferences.jpg" width="440">
 <img src="tablet-audit/scroll-kept.jpg" width="440"> <img src="tablet-audit/plate-settings-full.jpg" width="440">
+
+## Round 4: tablet = desktop OrcaSlicer, no mobile elements (2026-11-08)
+
+| Problem (owner) | Cause | Fix |
+|---|---|---|
+| "Tools" sidebar with a tool grid duplicates the tool bar | tools reused the mobile tools sheet in the sidebar | tablet: no grid; the tool's values float on the plate under the bar (desktop gizmo panel, close ×); sidebar stays Prepare; active tool highlighted in the bar |
+| "More tools" opens a bottom sheet | GlassBottomSheet | anchored drop-down menu (PopupWindow, 48 dp rows) |
+| Dialogs see-through, full-width buttons, slide from the bottom | phone SheetDialog/AlertDialog styling | glass/Desktop.java: opaque compact window, centred, buttons on the right, fade; mobile unchanged |
+| Slicing opens a separate "Slice model" screen | MainActivity started SliceActivity | SliceActivity.start(context) + Progress listener: progress strip on the plate, then Preview opens; auto-slice too |
+| Preview: "slice again first" alert / "wait for the bed" alert | phone flow | Preview slices first, then waits for the plate silently |
+| Preview panel duplicates Print/Export and the layer slider | phone preview sheet | tablet keeps legend and stats only; object tool bar hidden in Preview |
+| Bambu printers failed to slice ("G92 E0") and showed no layers | headless engine never set is_BBL_printer; parser knew only ";LAYER_CHANGE" | engine sets it from printer_model; parser reads "; CHANGE_LAYER", "; FEATURE:"; time from the header |
+
+Screenshots: tablet-audit/tablet-move-panel.jpg, tablet-slice-on-plate.jpg, tablet-preview-desktop.jpg,
+tablet-dialog-desktop.jpg. Tests: core GcodeAnalysisTest (Bambu markers), host suites, control_stubs for inline
+auto-slice. Not covered: DeviceActivity, full settings editor, pickers and export screens are still the mobile
+screens; mouse/stylus input; other tablet sizes.

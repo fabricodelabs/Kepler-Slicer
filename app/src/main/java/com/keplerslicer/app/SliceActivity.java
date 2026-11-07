@@ -198,25 +198,34 @@ public final class SliceActivity extends Activity {
             });
         },"kepler-result-action").start();
     }
-    private static void update(String text) { synchronized (LOCK) { status = text; } MAIN.post(() -> { SliceActivity a; synchronized (LOCK) { a = observer.get(); } if (a != null && !a.isFinishing()) a.refresh(); }); }
+    /** Follower of a running slice (the tablet workspace): status text, still working, and whether it succeeded. */
+    interface Progress { void changed(String status, boolean working, boolean success); }
+    static volatile Progress progress;
+    static String status() { synchronized (LOCK) { return status; } }
+    private static void update(String text) { synchronized (LOCK) { status = text; } MAIN.post(() -> { SliceActivity a; synchronized (LOCK) { a = observer.get(); } if (a != null && !a.isFinishing()) a.refresh(); Progress p = progress; if (p != null) p.changed(text, true, false); }); }
 
-    private void startSlice(long autoRequest) {
-        synchronized (LOCK) { if (working) return; working = true; }
-        refresh();
-        final android.content.Context context = getApplicationContext();
+    private void startSlice(long autoRequest) { start(getApplicationContext(), autoRequest); refresh(); }
+
+    /**
+     * Slices the current plate on a background thread. The slice screen and the tablet workspace (which slices on the
+     * plate, as desktop OrcaSlicer) both follow it through {@link #progress}. Returns false while a slice is running.
+     */
+    static boolean start(final android.content.Context context, long autoRequest) {
+        synchronized (LOCK) { if (working) return false; working = true; }
+        update(context.getString(R.string.l10n_sl_checking));
         new Thread(() -> {
-            String stage = getString(R.string.l10n_sl_phase_snapshot);
+            String stage = context.getString(R.string.l10n_sl_phase_snapshot);
             File data = null;
             boolean success = false;
             try {
-                if(autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))throw new IOException(getString(R.string.l10n_sl_auto_cancelled));
+                if(autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))throw new IOException(context.getString(R.string.l10n_sl_auto_cancelled));
                 final ProcessOverridesStore.Snapshot selection=ProcessOverridesStore.snapshotForSlice(context);
                 final boolean allowMixed=GeneralPreferences.prefs(context).getBoolean("allow_mixed_temperatures",false);
                 final PrinterProfileCatalog.Profile printer=selection.identity.printer;
                 final PrintProfileCatalog.Profile process=selection.identity.process;
                 final PrintProfileCatalog.Profile filament=selection.identity.filament;
-                stage=getString(R.string.l10n_sl_phase_model);
-                update(getString(R.string.l10n_sl_checking));
+                stage=context.getString(R.string.l10n_sl_phase_model);
+                update(context.getString(R.string.l10n_sl_checking));
                 File root = new File(context.getFilesDir(), "slicer-engine"); ensureDirectory(root);
                 data = new File(root, "run-" + UUID.randomUUID()); ensureDirectory(data);
                 // Snapshot the bytes and transform together before the model can be changed.
@@ -224,14 +233,14 @@ public final class SliceActivity extends Activity {
                 ObjectSettingsStore.Snapshot objectSettings=selection.identity.objectSettings;
                 String sourceFile=model.selectionKey.substring(0,model.selectionKey.indexOf('\n'));
                 if(!objectSettings.modelFileName.equals(sourceFile)||objectSettings.plateIndex!=model.plateIndex)
-                    throw new IOException(getString(R.string.l10n_sl_changed_prepare));
+                    throw new IOException(context.getString(R.string.l10n_sl_changed_prepare));
                 File input = model.file;
                 String jobFingerprint = ResultFingerprint.of(model.selectionKey, selection.identity.fingerprint, selection.overrides);
                 if(autoRequest>=0&&hasSavedResult(context,jobFingerprint)&&ControlPreferences.currentAutoRequest(context,autoRequest)
                         &&jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context))){
-                    update(getString(R.string.l10n_sl_already));return;
+                    update(context.getString(R.string.l10n_sl_already));return;
                 }
-                File resources = EngineResources.prepare(context, count -> update(getString(R.string.l10n_sl_preparing) + count + L.t(" файлов…")));
+                File resources = EngineResources.prepare(context, count -> update(context.getString(R.string.l10n_sl_preparing) + count + L.t(" файлов…")));
                 File system = new File(data, "system"); ensureDirectory(system);
                 LinkedHashSet<String> vendors = new LinkedHashSet<>();
                 vendors.add(printer.vendor); vendors.add(process.vendor); vendors.add(filament.vendor); vendors.add("OrcaFilamentLibrary");
@@ -241,7 +250,7 @@ public final class SliceActivity extends Activity {
                     File from = new File(resources, "profiles");
                     needed += treeSize(new File(from, vendor + ".json")) + treeSize(new File(from, vendor));
                 }
-                if (root.getUsableSpace() < needed) throw new IOException(getString(R.string.l10n_sl_no_space));
+                if (root.getUsableSpace() < needed) throw new IOException(context.getString(R.string.l10n_sl_no_space));
                 for (String vendor : vendors) {
                     File from = new File(resources, "profiles");
                     copyTree(new File(from, vendor + ".json"), new File(system, vendor + ".json"));
@@ -253,9 +262,9 @@ public final class SliceActivity extends Activity {
                 java.util.Iterator<String> objectKeys=objectSettings.changes().keys();
                 while(objectKeys.hasNext())nativeOverrides.remove(objectKeys.next());
                 if((autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))||!jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context)))
-                    throw new IOException(getString(R.string.l10n_sl_changed_before));
-                stage = getString(R.string.l10n_sl_phase_engine);
-                update(getString(R.string.l10n_sl_slicing));
+                    throw new IOException(context.getString(R.string.l10n_sl_changed_before));
+                stage = context.getString(R.string.l10n_sl_phase_engine);
+                update(context.getString(R.string.l10n_sl_slicing));
                 File job = new File(data, "job-" + UUID.randomUUID());
                 ProjectSettingsSnapshot projectDetails=null;
                 if(model.projectMode==1||model.projectMode==2)projectDetails=ProjectSettingsSnapshot.parse(ExperimentalSlicer.projectSettingsSnapshot(
@@ -265,9 +274,9 @@ public final class SliceActivity extends Activity {
                 String result = ExperimentalSlicer.sliceProjectWithSettings(printer.vendor, process.vendor, filament.vendor,
                         printer.name, process.name, filament.name, input.getAbsolutePath(), resources.getAbsolutePath(), data.getAbsolutePath(), job.getAbsolutePath(), model.transform.toNativeArguments(), nativeOverrides.toString(),model.materialEdits,model.plateIndex,model.projectMode,allowMixed);
                 File output = result == null ? null : new File(result);
-                if (output == null || !output.isFile() || output.length() == 0 || !output.getCanonicalFile().getParentFile().equals(job.getCanonicalFile())) throw new IOException(getString(R.string.l10n_sl_no_gcode));
+                if (output == null || !output.isFile() || output.length() == 0 || !output.getCanonicalFile().getParentFile().equals(job.getCanonicalFile())) throw new IOException(context.getString(R.string.l10n_sl_no_gcode));
                 if((autoRequest>=0&&!ControlPreferences.currentAutoRequest(context,autoRequest))||!jobFingerprint.equals(ProcessOverridesStore.currentResultFingerprint(context)))
-                    throw new IOException(getString(R.string.l10n_sl_changed_during));
+                    throw new IOException(context.getString(R.string.l10n_sl_changed_during));
                 if(allowMixed!=GeneralPreferences.prefs(context).getBoolean("allow_mixed_temperatures",false))throw new IOException("Material compatibility policy changed during slicing; stale result was not saved");
                 success = true;
                 ModelTransform transform = model.transform;
@@ -284,20 +293,24 @@ public final class SliceActivity extends Activity {
                 boolean saved = prefs.edit().putString(RESULT_PATH, output.getCanonicalPath()).putString(RESULT_DETAILS, details).putString(RESULT_MODEL, model.name).putString(RESULT_OVERRIDES, selection.overrides).putString(RESULT_FINGERPRINT, jobFingerprint).commit();
                 // A failed commit may still change the in-memory preference map.
                 if (!saved) prefs.edit().putString(RESULT_PATH, previousPath).putString(RESULT_DETAILS, previousDetails).putString(RESULT_MODEL, previousModel).putString(RESULT_OVERRIDES, previousOverrides).putString(RESULT_FINGERPRINT, previousFingerprint).apply();
-                update(getString(R.string.l10n_sl_last_run) + details + L.t("\n\nНарезка завершена: ") + android.text.format.Formatter.formatShortFileSize(this, output.length()) + getString(R.string.l10n_sl_done_bytes).replaceFirst("^\\s*\\S+", "") + (saved ? "" : L.t("\nНе удалось сохранить ссылку на результат для просмотра и экспорта.")));
+                update(context.getString(R.string.l10n_sl_last_run) + details + L.t("\n\nНарезка завершена: ") + android.text.format.Formatter.formatShortFileSize(context, output.length()) + context.getString(R.string.l10n_sl_done_bytes).replaceFirst("^\\s*\\S+", "") + (saved ? "" : L.t("\nНе удалось сохранить ссылку на результат для просмотра и экспорта.")));
             } catch (Throwable error) {
+                android.util.Log.w("KeplerSlice", "slice stopped", error);
                 String message = error.getMessage();
                 String diagnostic = error instanceof LinkageError ? nativeDiagnostic(context) : "";
-                update(getString(R.string.l10n_sl_last_stopped) + stage + ".\n" + error.getClass().getSimpleName() + (message == null ? "" : ": " + message) + diagnostic);
+                update(context.getString(R.string.l10n_sl_last_stopped) + stage + ".\n" + error.getClass().getSimpleName() + (message == null ? "" : ": " + message) + diagnostic);
             } finally {
                 if (data != null) {
                     if (success) { deleteTree(new File(data, "system")); File[] files=data.listFiles(); if(files!=null) for (File source : files) if (source.isFile() && source.getName().startsWith("model.")) source.delete(); }
                     else deleteTree(data);
                 }
                 synchronized (LOCK) { working = false; }
+                final boolean ok = success; final String last; synchronized (LOCK) { last = status; }
+                MAIN.post(() -> { Progress p = progress; if (p != null) p.changed(last, false, ok); });
                 MAIN.post(() -> { SliceActivity a; synchronized (LOCK) { a = observer.get(); } if (a != null && !a.isFinishing()) a.requestResultRefresh(); });
             }
         }, "kepler-slicing").start();
+        return true;
     }
     private static void ensureDirectory(File dir) throws IOException { if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException(KeplerApplication.str(R.string.l10n_sl_mkdir_failed) + dir.getName()); }
     private static File lastResult(android.content.Context context) {

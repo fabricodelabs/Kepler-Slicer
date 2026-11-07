@@ -69,11 +69,12 @@ final class GcodeAnalysis {
                 if (Thread.currentThread().isInterrupted()) throw new IOException(L.t("Чтение отменено."));
                 if (line.length() > 8192) throw new IOException(L.t("Слишком длинная строка G-code."));
                 String trimmed = line.trim();
-                if (trimmed.startsWith(";LAYER_CHANGE")) {
+                if (trimmed.startsWith(";LAYER_CHANGE") || trimmed.startsWith("; CHANGE_LAYER")) { // OrcaSlicer / Bambu Lab G-code
                     if (out.layers.size() >= MAX_LAYERS) throw new IOException(L.t("Слишком много слоёв для просмотра."));
                     layer = new Layer(); out.layers.add(layer); continue;
                 }
                 if (trimmed.startsWith(";TYPE:")) { out.currentType = featureOf(trimmed.substring(6)); continue; }
+                if (trimmed.startsWith("; FEATURE:")) { out.currentType = featureOf(trimmed.substring(10).trim()); continue; }
                 if (layer != null && (trimmed.startsWith(";Z:") || trimmed.startsWith("; Z_HEIGHT:"))) {
                     int colon = trimmed.indexOf(':');
                     try { double value = Double.parseDouble(trimmed.substring(colon + 1).trim()); if (Double.isFinite(value)) layer.z = value; } catch (NumberFormatException ignored) { out.malformedLines++; }

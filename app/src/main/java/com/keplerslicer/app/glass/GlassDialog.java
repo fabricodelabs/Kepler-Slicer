@@ -45,8 +45,11 @@ public final class GlassDialog {
         float d = c.getResources().getDisplayMetrics().density;
         Window window = dialog.getWindow();
         GradientDrawable card = new GradientDrawable();
-        card.setColor(0xF22E323A); card.setCornerRadius(28 * d); card.setStroke(Math.max(1, Math.round(d)), 0x33FFFFFF);
+        boolean desktop = Desktop.is(c);
+        card.setColor(desktop ? 0xFF2E323A : 0xF22E323A); card.setCornerRadius((desktop ? 14 : 28) * d); card.setStroke(Math.max(1, Math.round(d)), 0x33FFFFFF);
         window.setBackgroundDrawable(new InsetDrawable(card, Math.round(16 * d), 0, Math.round(16 * d), 0));
+        // Tablet: a compact desktop window, not a stretched phone alert.
+        if (desktop) { window.setLayout(Math.min(Math.round(512 * d), c.getResources().getDisplayMetrics().widthPixels - Math.round(64 * d)), ViewGroup.LayoutParams.WRAP_CONTENT); window.setWindowAnimations(0); }
         Typeface bold = font(c, R.font.manrope_bold), semibold = font(c, R.font.manrope_semibold), regular = font(c, R.font.manrope_medium);
         int titleId = c.getResources().getIdentifier("alertTitle", "id", "android");
         TextView title = titleId == 0 ? null : dialog.findViewById(titleId);
@@ -83,8 +86,10 @@ public final class GlassDialog {
         float width = 0; android.graphics.Paint paint = new android.graphics.Paint(); paint.setTypeface(face); paint.setTextSize(15 * c.getResources().getDisplayMetrics().scaledDensity);
         for (Button b : shown) width = Math.max(width, paint.measureText(b.getText().toString()) + 40 * d);
         int available = c.getResources().getDisplayMetrics().widthPixels - Math.round(32 * d) - Math.round(40 * d);
-        boolean row = shown.size() <= 2 && width * shown.size() + 10 * d <= available;
+        boolean desktop = Desktop.is(c);
+        boolean row = desktop ? shown.size() <= 3 : shown.size() <= 2 && width * shown.size() + 10 * d <= available;
         LinearLayout box = new LinearLayout(c); box.setOrientation(row ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        if (desktop) box.setGravity(android.view.Gravity.END); // desktop: compact buttons on the right
         box.setPadding(Math.round(20 * d), Math.round(12 * d), Math.round(20 * d), Math.round(20 * d));
         java.util.List<Button> order = new java.util.ArrayList<>(shown);
         if (row) java.util.Collections.reverse(order); // secondary on the left, primary on the right
@@ -93,7 +98,8 @@ public final class GlassDialog {
             Button copy = new Button(c); copy.setText(source.getText()); copy.setContentDescription(source.getText());
             pill(copy, source == positive, face, d); copy.setEnabled(source.isEnabled());
             copy.setOnClickListener(v -> source.performClick());
-            LinearLayout.LayoutParams lp = row ? new LinearLayout.LayoutParams(0, Math.round(48 * d), 1) : new LinearLayout.LayoutParams(-1, Math.round(48 * d));
+            LinearLayout.LayoutParams lp = desktop ? new LinearLayout.LayoutParams(-2, Math.round(44 * d)) : row ? new LinearLayout.LayoutParams(0, Math.round(48 * d), 1) : new LinearLayout.LayoutParams(-1, Math.round(48 * d));
+            if (desktop) copy.setMinWidth(Math.round(112 * d));
             if (i > 0) { if (row) lp.leftMargin = Math.round(10 * d); else lp.topMargin = Math.round(10 * d); }
             box.addView(copy, lp);
         }

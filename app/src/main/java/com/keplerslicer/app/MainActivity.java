@@ -110,6 +110,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         visibleWorkspace = true;
+        if (tabletMode) { SliceActivity.progress = sliceProgress; if (SliceActivity.isSlicing()) showSliceProgress(SliceActivity.status(), true, false); }
         if (navBar != null) navBar.setSelectedItem(0, false);
         String storedFile=getSharedPreferences("current_model",0).getString("file","");
         if(!loadingMesh&&!storedFile.isEmpty()&&!storedFile.equals(meshFileName)){restoreModel();}
@@ -125,7 +126,7 @@ public class MainActivity extends Activity {
         maybeOpenRequestedLayers();
         openSetupIfNeeded();
     }
-    @Override protected void onDestroy() { if (tabletSettings != null) { tabletSettings.dispose(); tabletSettings = null; } if(pendingPrepared!=null){pendingPrepared.discard();pendingPrepared=null;}cancelLayerWork(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
+    @Override protected void onDestroy() { if (SliceActivity.progress == sliceProgress) SliceActivity.progress = null; if (tabletSettings != null) { tabletSettings.dispose(); tabletSettings = null; } if(pendingPrepared!=null){pendingPrepared.discard();pendingPrepared=null;}cancelLayerWork(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
 
     private void chooseStl() {
         startActivityForResult(new Intent(this, ImportActivity.class), REQUEST_IMPORT);
@@ -387,6 +388,8 @@ public class MainActivity extends Activity {
     private TabletSidebar sidebar;
     private boolean tabletPrepareScrolls;
     private View tabletToolColumn;
+    private ScrollView tabletFloating; private View tabletToolBar;
+    private View[] tabletToolButtons;
     private FrameLayout tabletViewport, tabletSliceSlot;
     private View restoreButton, tabletPrepareExtras, tabletObjects, tabletDevice, tabletHead;
     private final java.util.Map<String, TextView> tabletTabs = new java.util.HashMap<>();
@@ -402,11 +405,13 @@ public class MainActivity extends Activity {
     /** Section chosen in the tab bar or the strip: tools and preview use the same workspace modes as the mobile toolbar. */
     private void openTabletSection(String section) {
         if ("tools".equals(section)) openTools();
+        else if ("preview".equals(section) && lastResult() == null && !layersMode) { openSlice(); return; } // as on desktop: Preview slices the plate first
         else if ("preview".equals(section)) openLayerPreview();
         else if (layersMode || toolsMode) { showPreparation(); setToolsMode(false); }
         // A mode that could not open (no model yet, not sliced) leaves the panel on Prepare.
         String shown = "tools".equals(section) && !toolsMode || "preview".equals(section) && !layersMode ? "prepare" : section;
-        if (sidebar != null && !shown.equals(sidebar.section())) sidebar.select(shown, false);
+        String side = "tools".equals(shown) || "preview".equals(shown) ? "prepare" : shown; // tools and preview keep the Prepare sidebar
+        if (sidebar != null && !side.equals(sidebar.section())) sidebar.select(side, false);
         showTabletSection(shown);
     }
 
@@ -415,19 +420,21 @@ public class MainActivity extends Activity {
         if (sidebar == null) return;
         String current = sidebar.section();
         String next = mode == 1 ? "preview" : mode == 2 ? "tools" : "objects".equals(current) || "device".equals(current) ? current : "prepare";
-        if (!next.equals(current)) sidebar.select(next, false);
+        String side = mode == 0 ? next : "prepare";
+        if (!side.equals(current)) sidebar.select(side, false);
         showTabletSection(next);
     }
 
     private void showTabletSection(String section) {
-        boolean prepare = "prepare".equals(section);
+        boolean prepare = "prepare".equals(section) || "tools".equals(section) || "preview".equals(section); // same sidebar, as in OrcaSlicer
         if (sidebar != null) sidebar.showFill(prepare && !tabletPrepareScrolls);
         if (tabletPrepareScrolls && tabletPrepareExtras != null) tabletPrepareExtras.setVisibility(prepare ? View.VISIBLE : View.GONE);
         if (tabletObjects != null) tabletObjects.setVisibility("objects".equals(section) ? View.VISIBLE : View.GONE);
         if (tabletDevice != null) tabletDevice.setVisibility("device".equals(section) ? View.VISIBLE : View.GONE);
-        if (panelHost != null) panelHost.setVisibility("tools".equals(section) || "preview".equals(section) ? View.VISIBLE : View.GONE);
+        if (tabletFloating != null) tabletFloating.setVisibility(toolsMode || layersMode || paint != null ? View.VISIBLE : View.GONE);
         // The layer slider takes the right side in Preview.
         if (tabletToolColumn != null) tabletToolColumn.setVisibility("preview".equals(section) ? View.GONE : View.VISIBLE);
+        if (tabletToolBar != null) tabletToolBar.setVisibility("preview".equals(section) ? View.GONE : View.VISIBLE); // no object tools in Preview
         for (java.util.Map.Entry<String, TextView> e : tabletTabs.entrySet()) {
             boolean on = e.getKey().equals("tools".equals(section) ? "prepare" : section); // tools belong to Prepare, as in OrcaSlicer
             e.getValue().setTextColor(on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : com.keplerslicer.app.glass.KeplerUi.WHITE);
@@ -531,9 +538,11 @@ public class MainActivity extends Activity {
         more.setOnClickListener(v -> {
             java.util.List<Integer> hidden = new java.util.ArrayList<>(); for (int i = 0; i < toolButtons.length; i++) if (toolButtons[i].getVisibility() != View.VISIBLE) hidden.add(i);
             String[] names = new String[hidden.size()]; for (int i = 0; i < names.length; i++) names[i] = toolNames[hidden.get(i)];
-            com.keplerslicer.app.glass.GlassBottomSheet.choose(this, viewport, false, getString(R.string.tablet_more_tools), names, -1, which -> toolActions[hidden.get(which)].run());
+            int[] menuIcons = new int[names.length]; for (int i = 0; i < names.length; i++) menuIcons[i] = icons[hidden.get(i)];
+            dropdown(v, menuIcons, names, which -> toolActions[hidden.get(which)].run());
         });
         for (View t : new View[]{toggle, add}) t.setTooltipText(t.getContentDescription());
+        tabletToolButtons = toolButtons;
         viewport.addOnLayoutChangeListener((v, l, t, r, btm, ol, ot, or, ob) -> {
             if (r - l == or - ol) return;
             int room = (r - l) - dp(132) - dp(88) - dp(12) - dp(44 + 8 + 44 + 21);   // chip, plate column, padding, toggle + add + divider
@@ -548,7 +557,7 @@ public class MainActivity extends Activity {
         holder.setBackground(ui.shape(0xE62B2F36, 0x33FFFFFF, 28)); holder.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND); holder.setClipToOutline(true);
         holder.addView(bar);
         FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START); hp.topMargin = dp(16); hp.leftMargin = dp(132); hp.rightMargin = dp(88);
-        viewport.addView(holder, hp);
+        viewport.addView(holder, hp); tabletToolBar = holder;
 
         LinearLayout plate = vertical(); plate.setGravity(Gravity.CENTER_HORIZONTAL); plate.setPadding(dp(6), dp(6), dp(6), dp(6)); plate.setBackground(ui.shape(0xE62B2F36, 0x33FFFFFF, 26));
         int count = plateCount(); boolean locked = plateLocked();
@@ -866,7 +875,7 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams plus = new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.END|Gravity.BOTTOM); plus.setMargins(0, 0, dp(20), dp(12)); viewport.addView(add, plus);
 
         TextView hint = ui.text(loadingMesh ? getString(R.string.kv3_reading_model) : mesh == null ? getString(R.string.kv3_no_model_detail) : mesh.vertices.length==0 ? getString(R.string.l10n_ws_plate_empty) : modelMetadata!=null && modelMetadata.optBoolean("mapping_unresolved",false) ? getString(R.string.l10n_ws_plate_unknown_all) : getString(R.string.l10n_ws_grid_loading), 10, 600, com.keplerslicer.app.glass.KeplerUi.SECONDARY);
-        hint.setAlpha(.6f); hint.setMaxLines(2); bedHint = hint;
+        hint.setAlpha(tabletMode ? 0f : .6f); hint.setMaxLines(2); bedHint = hint; // tablet: no mobile caption over the plate
         FrameLayout.LayoutParams hintPosition = new FrameLayout.LayoutParams(-2,-2,Gravity.START|Gravity.BOTTOM); hintPosition.setMargins(dp(20), 0, dp(92), dp(18)); viewport.addView(hint, hintPosition);
 
         statusPill = ui.statusPill(com.keplerslicer.app.glass.KeplerUi.MINT, getString(R.string.kv3_sliced_plate, 1));
@@ -882,7 +891,13 @@ public class MainActivity extends Activity {
         else root.addView(viewport, new LinearLayout.LayoutParams(-1,0,1));
 
         LinearLayout host = vertical(); panelHost = host;
-        if (tabletMode) { buildTabletSections(side); LinearLayout.LayoutParams hostLp = lp(-1,-2); hostLp.setMargins(0, 0, 0, dp(8)); side.addView(host, hostLp); }
+        if (tabletMode) {
+            buildTabletSections(side);
+            // Tool values, paint and layer preview panels float over the plate (desktop gizmo panels), not in the sidebar.
+            ScrollView floating = new ScrollView(this); floating.setVerticalScrollBarEnabled(false); floating.addView(host); tabletFloating = floating;
+            FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(dp(380), -2, Gravity.TOP | Gravity.START); fl.topMargin = dp(80); fl.leftMargin = dp(4); fl.bottomMargin = dp(16);
+            viewport.addView(floating, fl);
+        }
         else if (compactLandscape) { side.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1)); LinearLayout.LayoutParams hostLp = lp(-1,-2); hostLp.setMargins(dp(4), 0, dp(4), dp(8)); side.addView(host, hostLp); landscapeSide = side; }
         else {
             FrameLayout.LayoutParams hostLp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM); hostLp.bottomMargin = dp(96) + navBottomInset;
@@ -968,7 +983,11 @@ public class MainActivity extends Activity {
         LinearLayout sheet = ui.sheet();
         LinearLayout title = ui.row(); title.setPadding(dp(4), 0, dp(4), 0);
         toolTitle = ui.line(getString(R.string.kv3_tool_move), 16, 700, com.keplerslicer.app.glass.KeplerUi.WHITE); title.addView(toolTitle, ui.weight());
-        TextView file = ui.line(meshName == null ? "" : meshName, 12, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY); file.setMaxWidth(dp(180)); title.addView(file);
+        if (tabletMode) {
+            // Desktop: the tool bar above the plate picks the tool; this floating panel only holds its values.
+            FrameLayout close = ui.glassButton(R.drawable.kv3_plus, 36, 18, getString(R.string.glass_dismiss), () -> { setToolsMode(false); tabletModeChanged(0); });
+            close.getChildAt(0).setRotation(45); close.setTooltipText(getString(R.string.glass_dismiss)); title.addView(close, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        } else { TextView file = ui.line(meshName == null ? "" : meshName, 12, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY); file.setMaxWidth(dp(180)); title.addView(file); }
         sheet.addView(title, lp(-1,-2));
         int[] icons = {R.drawable.kv3_move, R.drawable.kv3_refresh, R.drawable.kv3_scale, R.drawable.kv3_lay_on_face, R.drawable.kv3_cut, R.drawable.kv3_support_paint, R.drawable.kv3_seam_paint, R.drawable.kv3_fuzzy_skin, R.drawable.kv3_text, R.drawable.kv3_measure, R.drawable.kv3_assembly, R.drawable.kv3_brim_ears};
         int[] labels = {R.string.kv3_tool_move, R.string.kv3_tool_rotate, R.string.kv3_tool_scale, R.string.kv3_tool_lay_on_face, R.string.kv3_tool_cut, R.string.kv3_tool_support_paint, R.string.kv3_tool_seam_paint, R.string.kv3_tool_fuzzy_skin, R.string.kv3_tool_text, R.string.kv3_tool_measure, R.string.kv3_tool_assembly, R.string.kv3_tool_brim_ears};
@@ -988,7 +1007,7 @@ public class MainActivity extends Activity {
                 else if (index == 10) assemblyTool(label);
             });
         }
-        sheet.addView(ui.grid(toolTiles, 4), ui.below(10));
+        if (!tabletMode) sheet.addView(ui.grid(toolTiles, 4), ui.below(10));
         LinearLayout fields = ui.row(); fields.setGravity(Gravity.TOP);
         String[] axes = {"X", "Y", "Z"}; int[] colors = {com.keplerslicer.app.glass.KeplerUi.AXIS_X, com.keplerslicer.app.glass.KeplerUi.AXIS_Y, com.keplerslicer.app.glass.KeplerUi.AXIS_Z};
         axisFields = new com.keplerslicer.app.glass.KeplerUi.AxisField[3];
@@ -1051,6 +1070,7 @@ public class MainActivity extends Activity {
         click(layerCaption, () -> { if (layerAnalysis!=null) dialog(getString(R.string.l10n_ws_about_layers),getString(R.string.l10n_ws_layer_note)+layerAnalysis.skippedUnknown+getString(R.string.l10n_ws_moves_unsupported)+layerAnalysis.unsupportedMoves+getString(R.string.l10n_ws_arcs_hidden)+layerAnalysis.arcMoves+"."); });
         scrubber.addView(layerCaption);
         sheet.addView(scrubber, ui.below(10));
+        if (tabletMode) { scrubber.setVisibility(View.GONE); return sheet; } // tablet: the layer slider at the right and Export/Send on top, as on desktop
         LinearLayout actions = ui.row();
         LinearLayout print = ui.primaryButton(R.drawable.kv3_print, getString(R.string.kv3_print), () -> { Intent intent = new Intent(); intent.setClassName(this, getPackageName()+".NetworkActivity"); startActivity(intent); });
         print.setMinimumHeight(dp(48)); ui.pressable(print, ui.shape(white, 0, 24), 24);
@@ -1114,7 +1134,9 @@ public class MainActivity extends Activity {
     /** Which bottom panel and overlays are visible for Prepare, Preview and Tools. */
     private void syncPanels() {
         boolean preview = layersMode && layerPanel != null && layerPanel.getVisibility() == View.VISIBLE;
-        if (prepareGroup != null) prepareGroup.setVisibility(toolsMode || preview ? View.GONE : View.VISIBLE);
+        if (prepareGroup != null) prepareGroup.setVisibility(tabletMode || toolsMode || preview ? View.GONE : View.VISIBLE); // tablet: Prepare is the sidebar
+        if (tabletFloating != null) tabletFloating.setVisibility(toolsMode || preview || paint != null || layersMode ? View.VISIBLE : View.GONE);
+        markTabletTools();
         if (toolsSheet != null) toolsSheet.setVisibility(toolsMode && paint == null ? View.VISIBLE : View.GONE);
         if (paintPanel != null) paintPanel.setVisibility(paint != null ? View.VISIBLE : View.GONE);
         if (addButton != null) addButton.setVisibility(tabletMode || toolsMode || layersMode ? View.GONE : View.VISIBLE); // tablet: "+" is in the canvas toolbar
@@ -1132,11 +1154,12 @@ public class MainActivity extends Activity {
             String time = null, grams = null, cost = null;
             try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(file, "r")) {
                 long start = Math.max(0, in.length() - 96 * 1024); in.seek(start); byte[] buffer = new byte[(int) (in.length() - start)]; in.readFully(buffer);
-                for (String line : new String(buffer, java.nio.charset.StandardCharsets.UTF_8).split("\n")) {
+                byte[] head = new byte[(int) Math.min(4096, in.length())]; in.seek(0); in.readFully(head); // Bambu G-code keeps the time in its header
+                for (String line : (new String(buffer, java.nio.charset.StandardCharsets.UTF_8) + "\n" + new String(head, java.nio.charset.StandardCharsets.UTF_8)).split("\n")) {
                     String l = line.trim().toLowerCase(java.util.Locale.ROOT); if (!l.startsWith(";")) continue;
                     String value = l.contains("=") ? l.substring(l.indexOf('=') + 1).trim() : l.contains(":") ? l.substring(l.lastIndexOf(':') + 1).trim() : "";
                     if (value.isEmpty()) continue;
-                    if (time == null && l.contains("estimated printing time")) time = PrintTime.localize(this, value);
+                    if (time == null && (l.contains("estimated printing time") || l.contains("total estimated time"))) time = PrintTime.localize(this, value);
                     else if (grams == null && l.contains("filament") && l.contains("[g]") && value.matches("[0-9.,]+.*")) grams = value.split("[ ,]")[0] + " " + getString(R.string.kv3_unit_g);
                     else if (cost == null && l.contains("filament cost") && value.matches("[0-9.,]+.*")) cost = value.split("[ ,]")[0];
                 }
@@ -1513,6 +1536,39 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Desktop drop-down menu under its button (tablet mode): icon and name per row, 48 dp tall for touch. */
+    private void dropdown(View anchor, int[] menuIcons, String[] names, java.util.function.IntConsumer chosen) {
+        LinearLayout list = vertical(); list.setPadding(dp(6), dp(6), dp(6), dp(6));
+        list.setBackground(com.keplerslicer.app.glass.Desktop.surface(this, 12));
+        final android.widget.PopupWindow popup = new android.widget.PopupWindow(list, -2, -2, true);
+        for (int i = 0; i < names.length; i++) {
+            final int index = i;
+            LinearLayout row = horizontal(); row.setGravity(Gravity.CENTER_VERTICAL); row.setMinimumHeight(dp(48)); row.setMinimumWidth(dp(220)); row.setPadding(dp(12), 0, dp(16), 0);
+            row.addView(kui.image(menuIcons[i], 20, com.keplerslicer.app.glass.KeplerUi.WHITE), new LinearLayout.LayoutParams(dp(20), dp(20)));
+            TextView t = kui.line(names[i], 14, 600, com.keplerslicer.app.glass.KeplerUi.WHITE); LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2); tp.leftMargin = dp(12); row.addView(t, tp);
+            kui.pressable(row, null, 8); row.setContentDescription(names[i]);
+            row.setOnClickListener(x -> { popup.dismiss(); chosen.accept(index); });
+            list.addView(row, lp(-1, -2));
+        }
+        popup.setElevation(dp(8)); popup.setOutsideTouchable(true); popup.setAnimationStyle(0);
+        list.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        popup.showAsDropDown(anchor, anchor.getWidth() - list.getMeasuredWidth(), dp(8));
+    }
+
+    /** Tablet tool bar: the active tool is highlighted, as the selected gizmo on desktop. */
+    private void markTabletTools() {
+        if (tabletToolButtons == null) return;
+        int[] icons = {R.drawable.kv3_move, R.drawable.kv3_refresh, R.drawable.kv3_scale};
+        for (int i = 0; i < tabletToolButtons.length; i++) {
+            if (!(tabletToolButtons[i] instanceof FrameLayout)) continue;
+            boolean on = toolsMode && paint == null && i == activeTool && i < icons.length; FrameLayout b = (FrameLayout) tabletToolButtons[i];
+            if (b.isSelected() == on) continue;
+            b.setSelected(on);
+            kui.pressable(b, on ? kui.shape(com.keplerslicer.app.glass.KeplerUi.MINT, 0, 22) : kui.glass(22), 22);
+            if (i < icons.length && b.getChildAt(0) instanceof ImageView) ((ImageView) b.getChildAt(0)).setImageDrawable(kui.icon(icons[i], on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : com.keplerslicer.app.glass.KeplerUi.WHITE));
+        }
+    }
+
     private void openTools() {
         if (plateLocked()) { dialog(getString(R.string.kv3_mode_tools), getString(R.string.plate_locked)); return; }
         boolean editable = previewReady && mesh != null && !loadingMesh && mesh.vertices.length > 0; // Move/Rotate/Scale check transformSupported() themselves
@@ -1539,7 +1595,7 @@ public class MainActivity extends Activity {
             ((TextView) t.getChildAt(1)).setTextColor(on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : com.keplerslicer.app.glass.KeplerUi.WHITE);
         }
         if (stlView != null) { stlView.setMoveMode(toolsMode && index == 0 && previewReady, viewportMoveCallback); stlView.setRotateGizmo(toolsMode && index == 1 && previewReady, viewportMoveCallback); }
-        refreshToolFields();
+        refreshToolFields(); markTabletTools();
     }
     /** Values shown in the X/Y/Z fields for the active tool, from the stored model transform. */
     private double[] toolValues(ModelTransform t) {
@@ -1744,8 +1800,10 @@ public class MainActivity extends Activity {
         boolean editable=previewReady&&mesh!=null&&mesh.vertices.length>0&&transformSupported();boolean toolsOpen=previewReady&&mesh!=null&&mesh.vertices.length>0;if(viewportTransform!=null){viewportTransform.setEnabled(toolsOpen);viewportTransform.setAlpha(toolsOpen?1:.38f);} // Cut/Text/Assembly also work on 3MF modelsif(viewportMove!=null){viewportMove.setEnabled(editable);viewportMove.setAlpha(editable?1:.38f);}if(view!=null)view.setMoveMode(editable&&moveMode&&toolsMode&&activeTool==0,viewportMoveCallback);
         if(viewportMode!=null)viewportMode.setText(plateCaption());}
     private void maybeOpenRequestedLayers(){if(!pendingLayerPreview||!visibleWorkspace||isDestroyed()||isFinishing())return;if(loadingMesh)return;if(mesh==null||mesh.vertices.length==0){pendingLayerPreview=false;dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_open_and_slice));return;}if(!previewReady||loadedBed==null)return;pendingLayerPreview=false;openLayerPreview();}
+    private int layerPreviewWaits;
     private void openLayerPreview(){
-        if(layersMode)return;if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_open_wait));return;}
+        if(layersMode)return;if(tabletMode&&(stlView==null||loadingMesh||!previewReady||loadedBed==null)&&mesh!=null&&layerPreviewWaits++<40){if(stlView!=null)stlView.postDelayed(this::openLayerPreview,250);return;}layerPreviewWaits=0; // tablet: wait for the plate instead of an alert
+if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_open_wait));return;}
         if(loadedBed==null){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_wait_bed));return;}
         cancelLayerWork();final int request=layerRequest;final StlView view=stlView;layersMode=true;setToolsMode(false);updatePreviewTabs();view.setMoveMode(false,null);view.setRotateGizmo(false);
         if(viewportTransform!=null){viewportTransform.setEnabled(false);viewportTransform.setAlpha(.38f);}if(viewportMove!=null){viewportMove.setEnabled(false);viewportMove.setAlpha(.38f);}if(viewportMode!=null)viewportMode.setText(getString(R.string.l10n_ws_reading_layers));
@@ -1816,7 +1874,40 @@ public class MainActivity extends Activity {
                 .setNegativeButton(R.string.l10n_cancel, null).setPositiveButton(getString(R.string.kv3_choose_material), (d, w) -> openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT)).show();
             return;
         }
+        if (tabletMode) { if (!SliceActivity.start(getApplicationContext(), -1)) showSliceProgress(SliceActivity.status(), true, false); return; }
         startActivity(new Intent(this, SliceActivity.class));
+    }
+
+    // ---- Tablet: slicing on the plate, as desktop OrcaSlicer (progress over the canvas, then Preview) ----
+    private LinearLayout sliceStrip; private TextView sliceStripText; private View sliceStripSpinner, sliceStripClose;
+    private final SliceActivity.Progress sliceProgress = (text, working, success) -> { if (!isDestroyed()) showSliceProgress(text, working, success); };
+    private void showSliceProgress(String text, boolean working, boolean success) {
+        if (!tabletMode || tabletViewport == null) return;
+        if (sliceStrip == null || sliceStrip.getParent() != tabletViewport) {
+            LinearLayout strip = horizontal(); strip.setGravity(Gravity.CENTER_VERTICAL); strip.setPadding(dp(16), dp(10), dp(8), dp(10));
+            strip.setBackground(com.keplerslicer.app.glass.Desktop.surface(this, 14)); strip.setElevation(dp(6));
+            android.widget.ProgressBar spin = new android.widget.ProgressBar(this); spin.setIndeterminate(true); spin.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(com.keplerslicer.app.glass.KeplerUi.MINT));
+            strip.addView(spin, new LinearLayout.LayoutParams(dp(24), dp(24)));
+            TextView t = kui.line("", 14, 600, com.keplerslicer.app.glass.KeplerUi.WHITE); t.setMaxLines(3); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1); tp.leftMargin = dp(12); tp.rightMargin = dp(8); strip.addView(t, tp);
+            FrameLayout close = kui.glassButton(R.drawable.kv3_plus, 36, 18, getString(R.string.glass_dismiss), () -> { if (sliceStrip != null) sliceStrip.setVisibility(View.GONE); });
+            close.getChildAt(0).setRotation(45); strip.addView(close, new LinearLayout.LayoutParams(dp(36), dp(36)));
+            FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(dp(520), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL); sp.bottomMargin = dp(24);
+            tabletViewport.addView(strip, sp);
+            sliceStrip = strip; sliceStripText = t; sliceStripSpinner = spin; sliceStripClose = close;
+        }
+        sliceStrip.setVisibility(View.VISIBLE); sliceStrip.bringToFront();
+        String shown = text == null ? "" : text.trim();
+        if (!working && success) shown = getString(R.string.kv3_slice_done_short);
+        else if (working) { int nl = shown.indexOf(10); if (nl > 0) shown = shown.substring(0, nl); } // first line only
+        sliceStripText.setText(EngineText.clean(shown));
+        sliceStripSpinner.setVisibility(working ? View.VISIBLE : View.GONE);
+        sliceStripClose.setVisibility(working ? View.GONE : View.VISIBLE);
+        if (!working && success) {
+            sliceStrip.postDelayed(() -> { if (sliceStrip != null && !SliceActivity.isSlicing()) sliceStrip.setVisibility(View.GONE); }, 2500);
+            if (layersMode) showPreparation();
+            openTabletSection("preview"); // the result opens in Preview, as on desktop
+        }
     }
 
     private void editModelTransform() {

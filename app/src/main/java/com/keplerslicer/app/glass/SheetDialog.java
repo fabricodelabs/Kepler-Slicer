@@ -34,12 +34,15 @@ public class SheetDialog extends android.app.Dialog {
     private final View scrim;
     private View sheet;
     private boolean closing;
+    /** Tablet mode: a centred, opaque desktop dialog that fades in, instead of a bottom sheet. */
+    private final boolean desktop;
 
     public SheetDialog(Context context) {
         super(context, R.style.KeplerSheetDialog);
         root = new Root(context);
+        desktop = Desktop.is(context);
         scrim = new View(context);
-        scrim.setBackgroundColor(SCRIM);
+        scrim.setBackgroundColor(desktop ? 0x59000000 : SCRIM);
         scrim.setAlpha(0f);
         scrim.setOnClickListener(v -> { if (outsideCancels) cancel(); });
         scrim.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -62,6 +65,7 @@ public class SheetDialog extends android.app.Dialog {
         if (view.getParent() instanceof ViewGroup) ((ViewGroup) view.getParent()).removeView(view);
         // Swallow taps on the sheet so they never reach the scrim behind it.
         view.setClickable(true);
+        if (desktop) { view.setBackground(Desktop.surface(getContext(), 14)); view.setClipToOutline(true); }
         root.addView(view, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
         super.setContentView(root);
     }
@@ -91,6 +95,12 @@ public class SheetDialog extends android.app.Dialog {
 
     private void enter() {
         if (sheet == null) return;
+        if (desktop) {
+            sheet.setVisibility(View.VISIBLE);
+            if (!animate()) { scrim.setAlpha(1f); return; }
+            sheet.setAlpha(0f); sheet.animate().alpha(1f).setDuration(120).start(); scrim.animate().alpha(1f).setDuration(120).start();
+            return;
+        }
         int h = Math.max(sheet.getHeight(), 1);
         sheet.setTranslationY(h);
         sheet.setVisibility(View.VISIBLE);
@@ -106,6 +116,11 @@ public class SheetDialog extends android.app.Dialog {
         closing = true;
         Interpolator out = AnimationUtils.loadInterpolator(getContext(), R.interpolator.kv_ios_out);
         hideKeyboard();
+        if (desktop) {
+            sheet.animate().alpha(0f).setDuration(90).withEndAction(() -> { closing = false; dismissNow(); }).start();
+            scrim.animate().alpha(0f).setDuration(90).start();
+            return;
+        }
         sheet.animate().translationY(sheet.getHeight() + root.getPaddingBottom()).setDuration(240).setInterpolator(out)
                 .withEndAction(() -> { closing = false; dismissNow(); }).start();
         scrim.animate().alpha(0f).setDuration(220).start();
@@ -178,6 +193,7 @@ public class SheetDialog extends android.app.Dialog {
         private void applyBottom(int ime) {
             boolean keyboard = ime > bars.bottom;
             int bottom = keyboard ? ime : 0, extra = keyboard ? 0 : bars.bottom;
+            if (desktop) { bottom = Math.max(ime, bars.bottom); extra = 0; } // a centred window keeps clear of the bars
             if (getPaddingLeft() != bars.left || getPaddingTop() != bars.top || getPaddingRight() != bars.right || getPaddingBottom() != bottom)
                 setPadding(bars.left, bars.top, bars.right, bottom);
             View card = backgroundHolder();
@@ -195,7 +211,7 @@ public class SheetDialog extends android.app.Dialog {
             int innerH = Math.max(1, height - getPaddingTop() - getPaddingBottom());
             float d = getResources().getDisplayMetrics().density;
             // Wide screens and landscape: a centred sheet instead of a stretched strip.
-            int sheetW = Math.min(innerW, Math.round(640 * d));
+            int sheetW = Math.min(innerW, Math.round((desktop ? 520 : 640) * d));
             int max = Math.max(1, Math.round(innerH * fraction));
             for (int i = 0; i < getChildCount(); i++) {
                 View child = getChildAt(i);
@@ -217,6 +233,7 @@ public class SheetDialog extends android.app.Dialog {
                 int cw = child.getMeasuredWidth(), ch = child.getMeasuredHeight();
                 int left = getPaddingLeft() + (width - getPaddingLeft() - getPaddingRight() - cw) / 2;
                 int bottom = height - getPaddingBottom();
+                if (desktop) bottom = getPaddingTop() + (height - getPaddingTop() - getPaddingBottom() + ch) / 2;
                 child.layout(left, bottom - ch, left + cw, bottom);
             }
         }

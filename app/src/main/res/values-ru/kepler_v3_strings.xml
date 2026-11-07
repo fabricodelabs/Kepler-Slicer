@@ -777,4 +777,5 @@
     <string name="plate_single">В проекте один стол.</string>
     <string name="plate_delete_confirm">Удалить стол %1$d вместе с его моделями? Остальные столы сдвинутся на его место.</string>
     <string name="tablet_more_tools">Другие инструменты</string>
+    <string name="kv3_slice_done_short">Нарезка завершена</string>
 </resources>

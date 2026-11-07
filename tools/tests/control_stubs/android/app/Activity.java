@@ -6,4 +6,5 @@ public class Activity extends android.content.Context {
     public boolean isDestroyed(){return destroyed;}
     public boolean hasWindowFocus(){return focus;}
     public void startActivity(android.content.Intent intent){started.add(intent);}
+    public android.content.Context getApplicationContext(){return this;}
 }

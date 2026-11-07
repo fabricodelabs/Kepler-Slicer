@@ -260,11 +260,28 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
 - Emulator note: Android 16 ignores orientation locks on large displays; for landscape tests run
   `adb shell wm set-ignore-orientation-request false`. After `adb reboot` the emulator lost graphics twice; cold boot helps.
 
-## 2026-11-07 (late): WIP on branch feature/plate-settings-bambu (commit 5a90bfb, not merged)
+## 2026-11-08: plate settings, owner videos 1–3, open-bamboo-networking, tablet = desktop
 
-- Plate settings sheet: engine exposes curr_bed_type, first/other_layers_sequence_choice and filament orders as
-  "int_list" (category Plate) in process_settings.cpp; app parses "1,2,3". NOT yet built or tested: run
-  engine/build-native.ps1, check the sheet on the Pixel_Tablet AVD, add the 2 strings to kepler_messages.json
-  ("Укажите номера филаментов…", "Авто"; the wrap.py helper failed), then merge.
-- Next task from the owner: replace the in-house Bambu plugin (BambuLan/BambuCloud) with
-  https://github.com/ClusterM/open-bamboo-networking (check license, Android build). Not started.
+- Plate settings (bed type, filament order) and the video 1–3 fixes: commit 5d8f193, merged. Details in
+  docs/TABLET_UI_UX_AUDIT.md (Round 3).
+- Bambu Lab now goes through open-bamboo-networking (AGPL-3.0, commit 95d42f8 of ClusterM/open-bamboo-networking)
+  built for Android: engine/obn/build-obn.ps1 (patches upstream CMake for Android curl/OpenSSL and the compiled-in
+  cloud CA bundle) + engine/obn/kepler_obn_jni.cpp (JNI bridge, LAN connect on its own thread, message queue per
+  printer, cloud connect/subscribe/send) -> engine/jniLibs/arm64-v8a/libbambu_networking.so.
+  Java: engine BambuNetworking (natives), core BambuLan (endpoint checks + payloads over a Transport interface),
+  app BambuObnTransport (extracts resources/cert from upstream_resources.zip to files/bambu_networking/cert).
+  The Java MQTT/FTPS client, TlsEngineChannel and TOFU pins are gone; OBN checks printer certificates against
+  printer.cer and the serial. Host test BambuLanTest uses a recording transport. Tested only the error path on the
+  emulator (no real printer): "printer did not answer (-17)" after 12 s.
+  Rebuild: W=../../work; pwsh -File engine/obn/build-obn.ps1 -Source $W/open-bamboo-networking
+  -Prefix $W/boost-android-arm64 -Uthash $W/uthash -Cmake $W/android-tools/cmake/data/bin/cmake.exe
+  -Ninja $W/android-tools/bin/ninja.exe -Ndk $W/android-ndk/android-ndk-r30 -Build $W/obn-build-arm64 -PublishToApp
+- Owner rule (2026-11-08): tablet mode = desktop OrcaSlicer LITERALLY, no mobile element. Done in Round 4
+  (docs/TABLET_UI_UX_AUDIT.md): no tool grid (floating gizmo panel on the plate), "More tools" drop-down,
+  glass/Desktop.java makes SheetDialog/GlassBottomSheet/GlassDialog compact opaque centred windows in tablet mode,
+  slicing on the plate (SliceActivity.start + Progress, no slice screen; auto-slice too), Preview opens itself,
+  panel without duplicate Print/Export/slider, object tool bar hidden in Preview.
+- Engine fix: slice_jni marks Bambu printers (print.is_BBL_printer) like desktop; GcodeAnalysis reads Bambu
+  "; CHANGE_LAYER" / "; FEATURE:" markers; slice time read from the G-code header.
+- Still mobile in tablet mode (next): DeviceActivity (printer screen), SettingsActivity full editor, profile
+  pickers, NetworkActivity, export screen. Mouse/stylus and other tablet sizes not tested.

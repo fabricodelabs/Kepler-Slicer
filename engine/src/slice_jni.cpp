@@ -165,6 +165,10 @@ std::string slice_model(const std::string &model_file, const std::string &output
         if(Slic3r::Print::check_multi_filaments_compatibility(types->values,temperatures->values,lows->values,highs->values)==Slic3r::InvalidTemperatureRange)
             throw std::runtime_error("A filament nozzle temperature is outside its permitted range");
     }
+    // Desktop marks Bambu Lab printers from the preset vendor (BackgroundSlicingProcess); the headless engine has
+    // no preset bundle, so the machine model decides. Validation and G-code differ for BBL printers.
+    if (const auto *model_name = config.opt<Slic3r::ConfigOptionString>("printer_model"))
+        print.is_BBL_printer() = model_name->value.rfind("Bambu Lab", 0) == 0;
     print.set_check_multi_filaments_compatibility(!allow_mixed_temperatures);
     print.set_status_silent();
     for (Slic3r::ModelObject *object : model.objects) {
