@@ -137,6 +137,7 @@ final class ProcessSettingsPanel {
     private int dp(float n){return (int)(activity.getResources().getDisplayMetrics().density*n+.5f);}
     private TextView text(String s,int size,int color,boolean bold){TextView t=new TextView(activity);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setTypeface(android.graphics.Typeface.create("sans-serif",bold?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL));return t;}
     private TextView button(String label,boolean primary){TextView t=text(label,14,primary?ui.bg:ui.ink,true);t.setGravity(Gravity.CENTER);t.setBackground(ui.shape(primary?ui.ink:ui.surface,100));return t;}
-    private String tr(String s){String t=translations.optString(s,s);return t.isEmpty()?s:t;}
+    // Engine labels are English; the Russian table applies only to a Russian interface.
+    private String tr(String s){if(!"ru".equals(java.util.Locale.getDefault().getLanguage()))return s;String t=translations.optString(s,s);return t.isEmpty()?s:t;}
     private static JSONObject translations(android.content.Context c){try(InputStream in=c.getAssets().open("kepler_ui_ru.json")){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] b=new byte[8192];int n,total=0;while((n=in.read(b))!=-1){total+=n;if(total>4*1024*1024)return new JSONObject();out.write(b,0,n);}return new JSONObject(new String(out.toByteArray(),StandardCharsets.UTF_8));}catch(Exception ignored){return new JSONObject();}}
 }

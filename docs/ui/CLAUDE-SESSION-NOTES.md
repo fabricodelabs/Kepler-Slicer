@@ -244,3 +244,11 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
   Rodion with no agent names.
 - Paused: Google Play promo screenshots and trailer. Tools in promo/ (ignored by git): Models.java generates a
   twisted vase and a gear; a.sh has adb helpers.
+
+## 2026-11-07: tablet workspace (branch feature/tablet-workspace)
+
+- Optional desktop-OrcaSlicer-like interface, Preferences → Interface → Display mode (default Mobile). Docs and
+  screenshots: docs/TABLET_WORKSPACE.md. Pieces: core TabletLayout (+JUnit), InterfaceMode, TabletSidebar, tablet
+  methods in MainActivity (top bar, canvas toolbar, Prepare column with the embedded ProcessSettingsPanel).
+- Also fixed: STL greyed out in the picker (MIME), Save hidden under the floating tab bar, main-thread G-code check.
+- Open: object tree, undo/redo, right-click menu, more device sizes (see the doc's limitations).

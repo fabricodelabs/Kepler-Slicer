@@ -74,7 +74,7 @@ final class GeneralPreferences {
     }
     static String downloadFolderLabel(Context c){Uri uri=initialDocumentUri(c);if(uri==null)return c.getString(R.string.general_folder_system);try{return DocumentsContract.getTreeDocumentId(uri);}catch(Exception e){return c.getString(R.string.general_folder_selected);}}
     static Intent associationPickerIntent(String format){
-        String[] mime=format.equals("stl")?new String[]{"model/stl","application/sla","application/octet-stream"}:format.equals("obj")?new String[]{"model/obj","text/plain","application/octet-stream"}:new String[]{"model/3mf","application/vnd.ms-3mfdocument","application/octet-stream"};
+        String[] mime=format.equals("stl")?new String[]{"model/stl","application/sla","application/vnd.ms-pki.stl","application/octet-stream"}:format.equals("obj")?new String[]{"model/obj","text/plain","application/octet-stream"}:new String[]{"model/3mf","application/vnd.ms-3mfdocument","application/octet-stream"};
         return new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").putExtra(Intent.EXTRA_MIME_TYPES,mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
     }
     static void openAssociatedUri(Activity a,Intent result)throws IOException {openAssociatedUri(a,result,"");}

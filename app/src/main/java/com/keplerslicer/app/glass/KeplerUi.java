@@ -334,6 +334,8 @@ public final class KeplerUi {
     /** Mode toolbar (node 3:59): glass r28 p5 gap4; 44dp r22 items; white active item; 28x1 divider before Tools. */
     public static final class ModeToolbar {
         public final LinearLayout view; public final FrameLayout[] items; final int[] icons; final KeplerUi ui;
+        /** Told about every mode change (0 prepare, 1 preview, 2 tools), also when the toolbar is hidden. */
+        public java.util.function.IntConsumer onSelect;
         ModeToolbar(KeplerUi ui, LinearLayout view, FrameLayout[] items, int[] icons) { this.ui = ui; this.view = view; this.items = items; this.icons = icons; }
         public void select(int index) {
             for (int i = 0; i < items.length; i++) {
@@ -341,6 +343,7 @@ public final class KeplerUi {
                 ((ImageView) f.getChildAt(0)).setImageDrawable(ui.icon(icons[i], on ? ON_ACTIVE : WHITE));
                 ui.pressable(f, on ? ui.shape(WHITE, 0, 22) : null, 22);
             }
+            if (onSelect != null) onSelect.accept(index);
         }
     }
     public ModeToolbar modeToolbar(String[] descriptions, Runnable[] actions) {

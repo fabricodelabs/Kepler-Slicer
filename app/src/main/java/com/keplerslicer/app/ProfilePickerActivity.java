@@ -135,7 +135,7 @@ public class ProfilePickerActivity extends Activity {
 
         fixed.addView(screen.takeTopBar(), 0); if (setup) fixed.addView(setupBanner(filament), 1); LinearLayout wrap = ui.column(); wrap.addView(fixed, new LinearLayout.LayoutParams(-1, -2));
         ListView list = new ListView(this); list.setDivider(null); list.setClipToPadding(false); list.setSelector(new android.graphics.drawable.ColorDrawable(0));
-        list.addHeaderView(top, null, false); list.setItemsCanFocus(true); list.setPadding(ui.dp(20), 0, ui.dp(28), ui.dp(16)); FrameLayout listFrame = new FrameLayout(this); listFrame.addView(list, new FrameLayout.LayoutParams(-1, -1)); listView = list;
+        list.addHeaderView(top, null, false); list.setItemsCanFocus(true); list.setPadding(ui.dp(20), 0, ui.dp(28), ui.dp(16)); screen.clearNav(list); FrameLayout listFrame = new FrameLayout(this); listFrame.addView(list, new FrameLayout.LayoutParams(-1, -1)); listView = list;
         index = ui.column(); index.setGravity(Gravity.CENTER); FrameLayout.LayoutParams ip = new FrameLayout.LayoutParams(ui.dp(24), -2, Gravity.END | Gravity.CENTER_VERTICAL); ip.rightMargin = ui.dp(2); listFrame.addView(index, ip);
         wrap.addView(listFrame, new LinearLayout.LayoutParams(-1, 0, 1));
         screen.body.addView(wrap, new FrameLayout.LayoutParams(-1, -1));

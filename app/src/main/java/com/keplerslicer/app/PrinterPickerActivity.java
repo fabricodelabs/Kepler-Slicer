@@ -138,7 +138,9 @@ public class PrinterPickerActivity extends Activity {
         screen = new KeplerScreen(this, title, this::handleBack, library || chosenModel != null ? null : plus, 1); if (!SetupFlow.complete(this) && screen.nav != null) screen.nav.setVisibility(View.GONE); ui = screen.ui;
         root = screen.column; content = screen.content;
         if (models == null) { TextView state = ui.text(error == null ? getString(R.string.l10n_pp_loading) : getString(R.string.l10n_pp_load_failed) + error, 14, 500, com.keplerslicer.app.glass.KeplerUi.SECONDARY); content.addView(state); return; }
-        if ((!library || chosenModel != null) && !SetupFlow.complete(this)) content.addView(setupBanner(), 0);
+        if ((!library || chosenModel != null) && !SetupFlow.complete(this)) content.addView(setupBanner(), content.indexOfChild(screen.topBar) + 1);
+        // The library search keyboard must not stay open over the model details.
+        if (chosenModel != null) ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
         if (chosenModel != null) renderDetails(); else if (library) renderList(); else renderPrinters();
     }
 
@@ -242,7 +244,7 @@ public class PrinterPickerActivity extends Activity {
         if (!SetupFlow.complete(this)) fixed.addView(setupBanner(), 1);
         TextView counter = ui.caption(""); counter.setPadding(ui.dp(4), ui.dp(16), ui.dp(4), ui.dp(8)); top.addView(counter);
         LinearLayout wrap = ui.column(); wrap.addView(fixed, new LinearLayout.LayoutParams(-1, -2));
-        ListView list = new ListView(this); list.addHeaderView(top, null, false); list.setItemsCanFocus(true); list.setDivider(null); list.setClipToPadding(false); list.setSelector(new android.graphics.drawable.ColorDrawable(0)); list.setPadding(ui.dp(20), 0, ui.dp(20), ui.dp(16)); wrap.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
+        ListView list = new ListView(this); list.addHeaderView(top, null, false); list.setItemsCanFocus(true); list.setDivider(null); list.setClipToPadding(false); list.setSelector(new android.graphics.drawable.ColorDrawable(0)); list.setPadding(ui.dp(20), 0, ui.dp(20), ui.dp(16)); screen.clearNav(list); wrap.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
         screen.body.addView(wrap, new FrameLayout.LayoutParams(-1, -1));
         BaseAdapter adapter = new BaseAdapter() {
             public int getCount() { return visible.size(); } public Object getItem(int pos) { return visible.get(pos); } public long getItemId(int pos) { return pos; }

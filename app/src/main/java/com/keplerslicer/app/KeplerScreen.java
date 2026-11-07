@@ -59,8 +59,22 @@ final class KeplerScreen {
                 com.keplerslicer.app.glass.KeplerUi.tab(activity, intent, true);
             });
             KeplerUi.floatNavigation(root, column, nav, ui.dp(16), ui.dp(24));
+            // Scrolling content ends above the floating tab bar (the last button used to sit under it on short screens).
+            View.OnLayoutChangeListener clear = (v, l, t, r, b, ol, ot, orr, ob) -> applyNavClearance();
+            nav.addOnLayoutChangeListener(clear); body.addOnLayoutChangeListener(clear);
         } else nav = null;
         activity.setContentView(root);
+    }
+
+    private final java.util.List<View> navClear = new java.util.ArrayList<>();
+    /** Gives a scrolling view (a ListView of a list screen) the same bottom clearance as the content. */
+    void clearNav(View scrolling) { navClear.add(scrolling); applyNavClearance(); }
+    private void applyNavClearance() {
+        if (nav == null || nav.getHeight() == 0 || body.getHeight() == 0) return;
+        int[] n = new int[2], bd = new int[2]; nav.getLocationInWindow(n); body.getLocationInWindow(bd);
+        int covered = Math.max(0, bd[1] + body.getHeight() - n[1]) + ui.dp(16);
+        if (floating == null && content.getPaddingBottom() != covered) content.setPadding(content.getPaddingLeft(), content.getPaddingTop(), content.getPaddingRight(), covered);
+        for (View s : navClear) if (s.getPaddingBottom() != covered) s.setPadding(s.getPaddingLeft(), s.getPaddingTop(), s.getPaddingRight(), covered);
     }
 
     /** Floating primary action (Import "Choose file", node 4:311): 52dp, 16dp above the navigation. */
