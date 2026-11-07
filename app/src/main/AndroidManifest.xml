@@ -13,6 +13,9 @@
         android:theme="@style/AppTheme"
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true">
+        <!-- Android 16 ignores orientation locks on large screens for targetSdk 36; the interface mode needs them
+             (tablet: landscape, mobile: portrait). Opt-out available for API 36. -->
+        <property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY" android:value="true" />
         <activity android:name=".NetworkActivity" android:exported="false" />
         <activity android:name=".DeviceActivity" android:exported="false" />
         <provider android:name=".ShareProvider" android:authorities="${applicationId}.share" android:exported="false" android:grantUriPermissions="true" />

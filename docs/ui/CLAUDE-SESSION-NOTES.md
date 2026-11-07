@@ -252,3 +252,10 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
   methods in MainActivity (top bar, canvas toolbar, Prepare column with the embedded ProcessSettingsPanel).
 - Also fixed: STL greyed out in the picker (MIME), Save hidden under the floating tab bar, main-thread G-code check.
 - Open: object tree, undo/redo, right-click menu, more device sizes (see the doc's limitations).
+
+## 2026-11-07: tablet UI/UX audit (fix/tablet-ui-ux-audit, merged)
+
+- Report: docs/TABLET_UI_UX_AUDIT.md. Fixed: lost settings draft on rebuild, crash when switching display mode
+  (SheetDialog dismiss on a recreated activity), panel restore to the previous state, tool bar overflow.
+- Emulator note: Android 16 ignores orientation locks on large displays; for landscape tests run
+  `adb shell wm set-ignore-orientation-request false`. After `adb reboot` the emulator lost graphics twice; cold boot helps.

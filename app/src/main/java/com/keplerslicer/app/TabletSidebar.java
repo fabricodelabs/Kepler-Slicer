@@ -44,6 +44,7 @@ final class TabletSidebar extends LinearLayout {
     private TabletLayout.State state;
     private String section;
     private int panelDp;
+    private TabletLayout.State lastShown = TabletLayout.State.EXPANDED;
 
     TabletSidebar(Context context, KeplerUi ui, Host host) {
         super(context);
@@ -67,6 +68,7 @@ final class TabletSidebar extends LinearLayout {
         View expand = iconButton(R.drawable.kv3_back, context.getString(R.string.tablet_expand), () -> setState(TabletLayout.State.EXPANDED));
         expand.setRotation(180);
         rail.addView(expand, railParams());
+        rail.addView(iconButton(R.drawable.kv3_fullscreen, context.getString(R.string.tablet_hide), () -> setState(TabletLayout.State.HIDDEN)), railParams());
         addView(rail, new LayoutParams(ui.dp(TabletLayout.RAIL_DP), -1));
 
         panel = ui.column(); panel.setBackgroundColor(0xFF323741); panel.setClipChildren(true);
@@ -175,10 +177,14 @@ final class TabletSidebar extends LinearLayout {
         }
     }
 
+    /** Brings a hidden panel back the way it was before hiding (expanded or collapsed). */
+    void restore() { setState(state == TabletLayout.State.HIDDEN ? lastShown : state); }
+
     void toggleCollapsed() { setState(state == TabletLayout.State.EXPANDED ? TabletLayout.State.COLLAPSED : TabletLayout.State.EXPANDED); }
 
     void setState(TabletLayout.State next) {
         if (next == state) return;
+        if (state != TabletLayout.State.HIDDEN) lastShown = state;
         state = next; InterfaceMode.state(getContext(), next);
         apply(true);
         host.sidebarChanged();

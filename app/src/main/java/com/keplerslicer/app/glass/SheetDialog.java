@@ -102,13 +102,27 @@ public class SheetDialog extends android.app.Dialog {
 
     @Override public void dismiss() {
         if (closing) return;
-        if (sheet == null || !isShowing() || !sheet.isAttachedToWindow() || !animate()) { super.dismiss(); return; }
+        if (sheet == null || !isShowing() || !sheet.isAttachedToWindow() || !animate() || ownerGone()) { dismissNow(); return; }
         closing = true;
         Interpolator out = AnimationUtils.loadInterpolator(getContext(), R.interpolator.kv_ios_out);
         hideKeyboard();
         sheet.animate().translationY(sheet.getHeight() + root.getPaddingBottom()).setDuration(240).setInterpolator(out)
-                .withEndAction(() -> { closing = false; if (isShowing()) super.dismiss(); }).start();
+                .withEndAction(() -> { closing = false; dismissNow(); }).start();
         scrim.animate().alpha(0f).setDuration(220).start();
+    }
+
+    /** The activity may be recreated (rotation, interface mode) while the sheet slides out: its window is gone then. */
+    private boolean ownerGone() {
+        android.content.Context c = getContext();
+        while (c instanceof android.content.ContextWrapper && !(c instanceof android.app.Activity)) c = ((android.content.ContextWrapper) c).getBaseContext();
+        return c instanceof android.app.Activity && (((android.app.Activity) c).isFinishing() || ((android.app.Activity) c).isDestroyed());
+    }
+
+    private void dismissNow() {
+        if (!isShowing()) return;
+        Window w = getWindow();
+        if (w == null || !w.getDecorView().isAttachedToWindow()) return;
+        try { super.dismiss(); } catch (IllegalArgumentException detached) { /* window already removed with its activity */ }
     }
 
     private void hideKeyboard() {

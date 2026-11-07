@@ -73,7 +73,7 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         MdUi.prepare(this); super.onCreate(state);
-        if (state != null) {selected = state.getInt("tab", 0);pendingLayerPreview=state.getBoolean("pending_layer_preview",false);}
+        if (state != null) {selected = state.getInt("tab", 0);pendingLayerPreview=state.getBoolean("pending_layer_preview",false);tabletDraft=state.getBundle("tablet_settings_draft");}
         render();
         if (state != null && state.getString("pending_model_uri") != null) loadModelUri(Uri.parse(state.getString("pending_model_uri")));
         else if(GeneralPreferences.modelUri(getIntent())==null)restoreModel();
@@ -96,6 +96,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle out) {
         out.putBoolean("pending_layer_preview",pendingLayerPreview);out.putInt("tab", selected);
+        Bundle draft = tabletSettings != null ? tabletSettings.saveDraft() : tabletDraft; if (draft != null) out.putBundle("tablet_settings_draft", draft);
         if (pendingUri != null) out.putString("pending_model_uri", pendingUri.toString());
         super.onSaveInstanceState(out);
     }
@@ -124,7 +125,7 @@ public class MainActivity extends Activity {
         maybeOpenRequestedLayers();
         openSetupIfNeeded();
     }
-    @Override protected void onDestroy() { if(pendingPrepared!=null){pendingPrepared.discard();pendingPrepared=null;}cancelLayerWork(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
+    @Override protected void onDestroy() { if (tabletSettings != null) { tabletSettings.dispose(); tabletSettings = null; } if(pendingPrepared!=null){pendingPrepared.discard();pendingPrepared=null;}cancelLayerWork(); bedGeneration++; bedHandler.removeCallbacksAndMessages(null); bedWorker.shutdownNow(); super.onDestroy(); }
 
     private void chooseStl() {
         startActivityForResult(new Intent(this, ImportActivity.class), REQUEST_IMPORT);
@@ -389,6 +390,7 @@ public class MainActivity extends Activity {
     private View restoreButton, tabletPrepareExtras, tabletObjects, tabletDevice, tabletHead;
     private final java.util.Map<String, TextView> tabletTabs = new java.util.HashMap<>();
     private ProcessSettingsPanel tabletSettings;
+    private Bundle tabletDraft;
     private final TabletSidebar.Host tabletHost = new TabletSidebar.Host() {
         @Override public void openSection(String section) { openTabletSection(section); }
         @Override public void openSettings() { com.keplerslicer.app.glass.KeplerUi.tab(MainActivity.this, new Intent(MainActivity.this, SettingsActivity.class), false); }
@@ -424,7 +426,7 @@ public class MainActivity extends Activity {
         if (tabletDevice != null) tabletDevice.setVisibility("device".equals(section) ? View.VISIBLE : View.GONE);
         if (panelHost != null) panelHost.setVisibility("tools".equals(section) || "preview".equals(section) ? View.VISIBLE : View.GONE);
         for (java.util.Map.Entry<String, TextView> e : tabletTabs.entrySet()) {
-            boolean on = e.getKey().equals(section);
+            boolean on = e.getKey().equals("tools".equals(section) ? "prepare" : section); // tools belong to Prepare, as in OrcaSlicer
             e.getValue().setTextColor(on ? com.keplerslicer.app.glass.KeplerUi.ON_ACTIVE : com.keplerslicer.app.glass.KeplerUi.WHITE);
             e.getValue().setBackground(on ? kui.shape(com.keplerslicer.app.glass.KeplerUi.MINT, 0, 12) : null);
             e.getValue().setSelected(on);
@@ -498,7 +500,7 @@ public class MainActivity extends Activity {
         if (addButton != null) addButton.setVisibility(View.GONE); // "+" lives in the canvas toolbar
         final com.keplerslicer.app.glass.KeplerUi ui = kui;
         LinearLayout bar = horizontal(); bar.setGravity(Gravity.CENTER_VERTICAL); bar.setPadding(dp(6), dp(4), dp(6), dp(4)); bar.setBackground(ui.shape(0xE62B2F36, 0x33FFFFFF, 16));
-        View toggle = ui.glassButton(R.drawable.kv3_sliders, 44, 22, getString(R.string.tablet_collapse), () -> { if (sidebar != null) { if (sidebar.state() == TabletLayout.State.HIDDEN) sidebar.setState(TabletLayout.State.EXPANDED); else sidebar.toggleCollapsed(); } });
+        View toggle = ui.glassButton(R.drawable.kv3_sliders, 44, 22, getString(R.string.tablet_collapse), () -> { if (sidebar != null) { if (sidebar.state() == TabletLayout.State.HIDDEN) sidebar.restore(); else sidebar.toggleCollapsed(); } });
         bar.addView(toggle, new LinearLayout.LayoutParams(dp(44), dp(44)));
         View add = ui.glassButton(R.drawable.kv3_plus, 44, 22, getString(R.string.tablet_import), this::chooseStl);
         LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(44), dp(44)); ap.leftMargin = dp(4); bar.addView(add, ap);
@@ -514,10 +516,13 @@ public class MainActivity extends Activity {
             });
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(dp(44), dp(44)); if (i > 0) p.leftMargin = dp(4); bar.addView(b, p);
         }
-        android.widget.HorizontalScrollView holder = new android.widget.HorizontalScrollView(this); holder.setHorizontalScrollBarEnabled(false); holder.addView(bar);
-        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL); hp.topMargin = dp(12); hp.leftMargin = dp(120); hp.rightMargin = dp(12);
+        // Full-width scroller between the plate chip and the right edge; the bar is centred inside it and scrolls when
+        // it does not fit (a centred wrap-content child with unequal margins used to run past the right edge).
+        android.widget.HorizontalScrollView holder = new android.widget.HorizontalScrollView(this); holder.setHorizontalScrollBarEnabled(false); holder.setFillViewport(true);
+        FrameLayout centre = new FrameLayout(this); centre.addView(bar, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER_HORIZONTAL)); holder.addView(centre);
+        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP); hp.topMargin = dp(12); hp.leftMargin = dp(120); hp.rightMargin = dp(12);
         viewport.addView(holder, hp);
-        View b = ui.glassButton(R.drawable.kv3_chevron_right, 48, 24, getString(R.string.tablet_show), () -> { if (sidebar != null) sidebar.setState(TabletLayout.State.EXPANDED); });
+        View b = ui.glassButton(R.drawable.kv3_chevron_right, 48, 24, getString(R.string.tablet_show), () -> { if (sidebar != null) sidebar.restore(); });
         FrameLayout.LayoutParams rp = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.START | Gravity.CENTER_VERTICAL); rp.leftMargin = dp(8);
         viewport.addView(b, rp); restoreButton = b;
     }
@@ -573,11 +578,13 @@ public class MainActivity extends Activity {
                 tabletIcon(R.drawable.kv3_assembly, getString(R.string.tablet_object_details), this::openModelDetails),
                 tabletIcon(R.drawable.kv3_sliders, getString(R.string.kv3_process), () -> com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, SettingsActivity.class).putExtra("kepler_kind", "process"), false)));
         settings.addView(tabletSelector(process == null ? getString(R.string.kv3_choose_process) : process.name, () -> openPrintProfile(PrintProfileCatalog.PROCESS, PICK_PROCESS)));
-        if (tabletSettings != null) tabletSettings.dispose();
+        // The workspace is rebuilt on every return to it: carry unsaved edits of the embedded editor into the new one.
+        if (tabletSettings != null) { tabletDraft = tabletSettings.saveDraft(); tabletSettings.dispose(); }
         tabletSettings = null;
         if (PrinterProfileCatalog.loadSelection(this) != null && process != null && modelProjectMode <= 0) {
             tabletSettings = new ProcessSettingsPanel(this, () -> ControlPreferences.scheduleAutoSlice(this));
             View editor = tabletSettings.view(); editor.setBackgroundColor(0);
+            if (tabletDraft != null) { tabletSettings.restoreDraft(tabletDraft); tabletDraft = null; }
             LinearLayout.LayoutParams ep = tabletPrepareScrolls ? new LinearLayout.LayoutParams(-1, dp(Math.max(320, heightDp - 140))) : new LinearLayout.LayoutParams(-1, 0, 1); ep.setMargins(dp(4), 0, dp(4), 0);
             fill.addView(editor, ep);
         } else if (!tabletPrepareScrolls) fill.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1));
@@ -619,8 +626,8 @@ public class MainActivity extends Activity {
         if (keyCode == android.view.KeyEvent.KEYCODE_O) { chooseStl(); return true; }
         if (keyCode == android.view.KeyEvent.KEYCODE_ENTER && workspaceSlice != null && workspaceSlice.isEnabled()) { openSlice(); return true; }
         if (sidebar != null) {
-            if (keyCode == android.view.KeyEvent.KEYCODE_B) { if (sidebar.state() == TabletLayout.State.HIDDEN) sidebar.setState(TabletLayout.State.EXPANDED); else sidebar.toggleCollapsed(); return true; }
-            if (keyCode == android.view.KeyEvent.KEYCODE_BACKSLASH) { sidebar.setState(sidebar.state() == TabletLayout.State.HIDDEN ? TabletLayout.State.EXPANDED : TabletLayout.State.HIDDEN); return true; }
+            if (keyCode == android.view.KeyEvent.KEYCODE_B) { if (sidebar.state() == TabletLayout.State.HIDDEN) sidebar.restore(); else sidebar.toggleCollapsed(); return true; }
+            if (keyCode == android.view.KeyEvent.KEYCODE_BACKSLASH) { if (sidebar.state() == TabletLayout.State.HIDDEN) sidebar.restore(); else sidebar.setState(TabletLayout.State.HIDDEN); return true; }
             int index = keyCode - android.view.KeyEvent.KEYCODE_1;
             if (index >= 0 && index < TabletLayout.SECTIONS.length) { if (sidebar.state() == TabletLayout.State.HIDDEN) sidebar.setState(TabletLayout.State.EXPANDED); sidebar.select(TabletLayout.SECTIONS[index], true); return true; }
         }

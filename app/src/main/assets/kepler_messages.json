@@ -175,7 +175,7 @@
 "Значение меньше минимума: ": "Value is below the minimum:",
 "Значение отсутствует в списке допустимых значений": "The value is not among the allowed values",
 "Значение проверяется ядром при сохранении.": "The engine checks the value when you save.",
-"Изменено параметров: ": "Settings changed:",
+"Изменено параметров: ": "Settings changed: ",
 "Изображение ": "Image",
 "Импорт STL отменён.": "STL import cancelled.",
 "Имя файла слишком длинное.": "The file name is too long.",
