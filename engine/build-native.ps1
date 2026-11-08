@@ -38,6 +38,16 @@ New-Item -ItemType Directory -Force -Path $nativeStage | Out-Null
 $nativeLog = Join-Path $nativeStage 'build.log'
 $nativeBridgeFiles = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'src') -File | Where-Object { $_.Extension -in @('.cpp','.hpp','.inc') } | Sort-Object Name)
 $nativeSourceFingerprints = @($nativeBridgeFiles | ForEach-Object { [ordered]@{path=('engine/src/'+$_.Name);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash} })
+# Upstream deps_src carries expat 2.2.0 (known heap-overflow and use-after-free CVEs); 3MF XML comes from untrusted
+# files, so the engine is built with the maintained expat in engine/third_party/expat (audit SEC-03).
+$nativeExpat = Join-Path $nativeSourceRoot 'deps_src/expat'
+if (-not (Test-Path -LiteralPath (Join-Path $nativeExpat 'xcs.c'))) {
+    Get-ChildItem -LiteralPath $nativeExpat -File | Remove-Item -Force
+    Copy-Item -Path (Join-Path $PSScriptRoot 'third_party/expat/*') -Destination $nativeExpat -Force
+}
+foreach ($f in Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'third_party/expat') -File) {
+    if ((Get-FileHash -LiteralPath $f.FullName).Hash -ne (Get-FileHash -LiteralPath (Join-Path $nativeExpat $f.Name)).Hash) { Copy-Item -LiteralPath $f.FullName -Destination $nativeExpat -Force }
+}
 & $nativeCmake -S $nativeSourceRoot -B $nativeBuildRoot '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON' 2>&1 | Tee-Object -FilePath $nativeLog
 if ($LASTEXITCODE -ne 0) { throw 'Native CMake regeneration failed' }
 & $nativeCmake --build $nativeBuildRoot --target kepler_slicer_experimental --parallel $Parallel 2>&1 | Tee-Object -FilePath $nativeLog -Append

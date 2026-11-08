@@ -5,6 +5,7 @@
 // queued here per printer and read by Java with a timeout, so no Java code runs on the plugin's threads.
 
 #include <jni.h>
+#include "../src/jni_text.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -135,7 +136,7 @@ Java_com_keplerslicer_engine_BambuNetworking_nativeNextMessage(JNIEnv* env, jcla
     bool ready = g_signal.wait_for(guard, std::chrono::milliseconds(timeout_ms), [&] { auto it = g_messages.find(dev); return it != g_messages.end() && !it->second.empty(); });
     if (!ready) return nullptr;
     std::string msg = std::move(g_messages[dev].front()); g_messages[dev].pop_front();
-    return env->NewStringUTF(msg.c_str());
+    return kepler::jni_string(env, msg.c_str());
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -201,5 +202,5 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_keplerslicer_engine_BambuNetworking_nativeLastError(JNIEnv* env, jclass, jstring serial) {
     std::lock_guard<std::mutex> g(g_lock);
     auto it = g_connect_msg.find(utf8(env, serial));
-    return env->NewStringUTF(it == g_connect_msg.end() ? "" : it->second.c_str());
+    return kepler::jni_string(env, it == g_connect_msg.end() ? "" : it->second.c_str());
 }

@@ -1,4 +1,5 @@
 #include <jni.h>
+#include "jni_text.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -268,11 +269,11 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_sliceStl(
             throw std::runtime_error("Invalid print configuration: " + config_errors.begin()->first + ": " + config_errors.begin()->second);
 
         const std::string result = slice_model(model_file, output_file, config);
-        return env->NewStringUTF(result.c_str());
+        return kepler::jni_string(env, result.c_str());
     } catch (const std::exception &error) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), error.what());
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), error.what());
     } catch (...) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown slicing error");
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown slicing error");
     }
     return nullptr;
 }
@@ -299,11 +300,11 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_resolveSystemProfiles(
         Slic3r::set_data_dir(data);
         const auto output = (job / "resolved.ini").string();
         kepler::write_system_profile_ini(selection, output);
-        return env->NewStringUTF(output.c_str());
+        return kepler::jni_string(env, output.c_str());
     } catch (const std::exception &error) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), error.what());
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), error.what());
     } catch (...) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown profile error");
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown profile error");
     }
     return nullptr;
 }
@@ -337,11 +338,11 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_sliceSystemProfiles(
         Slic3r::set_data_dir(data);
         const Slic3r::DynamicPrintConfig config = kepler::resolve_system_profile_config(selection);
         const std::string result = slice_model(model_file, (job / "result.gcode").string(), config);
-        return env->NewStringUTF(result.c_str());
+        return kepler::jni_string(env, result.c_str());
     } catch (const std::exception &error) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), error.what());
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), error.what());
     } catch (...) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown slicing error");
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown slicing error");
     }
     return nullptr;
 }
@@ -375,11 +376,11 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_sliceSystemProfilesTransformed(
         Slic3r::set_data_dir(data);
         const Slic3r::DynamicPrintConfig config = kepler::resolve_system_profile_config(selection);
         const std::string result = slice_model(model_file, (job / "result.gcode").string(), config, &transform);
-        return env->NewStringUTF(result.c_str());
+        return kepler::jni_string(env, result.c_str());
     } catch (const std::exception &error) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), error.what());
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), error.what());
     } catch (...) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown slicing error");
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown slicing error");
     }
     return nullptr;
 }
@@ -413,7 +414,7 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_listSystemCompatibility(
         jsize index = 0;
         for (const auto &profile : profiles) {
             for (const auto *value : {&profile.vendor, &profile.name, &profile.status}) {
-                jstring item = env->NewStringUTF(value->c_str());
+                jstring item = kepler::jni_string(env, value->c_str());
                 if (!item) return nullptr;
                 env->SetObjectArrayElement(output, index++, item);
                 env->DeleteLocalRef(item);
@@ -422,9 +423,9 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_listSystemCompatibility(
         }
         return output;
     } catch (const std::exception &error) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), error.what());
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), error.what());
     } catch (...) {
-        if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown compatibility error");
+        if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown compatibility error");
     }
     return nullptr;
 }
@@ -489,8 +490,8 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_processSettingsMetadata(
         jbyteArray bytes = env->NewByteArray(static_cast<jsize>(json.size()));
         if (bytes) env->SetByteArrayRegion(bytes, 0, static_cast<jsize>(json.size()), reinterpret_cast<const jbyte *>(json.data()));
         return bytes;
-    } catch (const std::exception &e) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), e.what()); }
-      catch (...) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown process settings error"); }
+    } catch (const std::exception &e) { if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), e.what()); }
+      catch (...) { if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown process settings error"); }
     return nullptr;
 }
 
@@ -504,8 +505,8 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_validateProcessSettings(
         const auto selection = profile_selection(env, pv, qv, fv, pn, qn, fn, data);
         std::lock_guard<std::mutex> guard(engine_mutex); prepare_settings_context(resources, data);
         (void)kepler::resolve_system_profile_config_with_overrides(selection, settings);
-    } catch (const std::exception &e) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), e.what()); }
-      catch (...) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown process settings error"); }
+    } catch (const std::exception &e) { if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), e.what()); }
+      catch (...) { if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown process settings error"); }
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -526,9 +527,9 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_sliceModelWithSettings(
         const auto job = create_job_directory(job_name, data);
         const auto config = kepler::resolve_system_profile_config_with_overrides(selection, settings);
         const auto result = slice_model(model, (job / "result.gcode").string(), config, &transform,plate_index);
-        return env->NewStringUTF(result.c_str());
-    } catch (const std::exception &e) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), e.what()); }
-      catch (...) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown slicing error"); }
+        return kepler::jni_string(env, result.c_str());
+    } catch (const std::exception &e) { if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), e.what()); }
+      catch (...) { if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown slicing error"); }
     return nullptr;
 }
 
@@ -553,8 +554,8 @@ Java_com_keplerslicer_engine_NativeModelIO_inspect(JNIEnv *env,jclass,jstring pa
         std::memcpy(bytes.data()+4,result.metadata_json.data(),n);
         for(size_t i=0;i<f;i++){std::uint32_t bits;std::memcpy(&bits,&result.preview_xyz[i],4);for(int j=0;j<4;j++)bytes[4+n+i*4+j]=static_cast<jbyte>((bits>>(8*j))&255);}
         jbyteArray out=env->NewByteArray(static_cast<jsize>(bytes.size()));if(out)env->SetByteArrayRegion(out,0,static_cast<jsize>(bytes.size()),bytes.data());return out;
-    } catch(const std::exception &e) {if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...) {if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown model inspection error");}
+    } catch(const std::exception &e) {if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...) {if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown model inspection error");}
     return nullptr;
 }
 
@@ -571,8 +572,8 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_printerBuildVolume(
         jdoubleArray result = env->NewDoubleArray(static_cast<jsize>(values.size()));
         if (result) env->SetDoubleArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
         return result;
-    } catch (const std::exception &e) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), e.what()); }
-      catch (...) { if (!env->ExceptionCheck()) env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "Unknown printer bed error"); }
+    } catch (const std::exception &e) { if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), e.what()); }
+      catch (...) { if (!env->ExceptionCheck()) kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"), "Unknown printer bed error"); }
     return nullptr;
 }
 
@@ -586,8 +587,8 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_projectSettingsSnapshot(JNIEnv *
         std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
         const auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
         return json_bytes(env,kepler::project_settings_snapshot_json(path,plate,config,edits));
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown project snapshot error");}
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown project snapshot error");}
     return nullptr;
 }
 
@@ -599,8 +600,8 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_resolvedSettingsSnapshot(JNIEnv 
         const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
         std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
         return json_bytes(env,kepler::typed_config_snapshot_json(kepler::resolve_system_profile_config_with_overrides(selection,settings)));
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown resolved snapshot error");}
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown resolved snapshot error");}
     return nullptr;
 }
 
@@ -613,9 +614,9 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_prepareStep(JNIEnv *env,jclass,j
         const auto job=create_job_directory(job_name,data),output=job/"model.3mf";
         const auto metadata=kepler::convert_step_to_3mf(source,output.string(),linear,angular,split);
         std::ofstream meta(job/"step-import.json",std::ios::binary);meta<<metadata;meta.close();if(!meta)throw std::runtime_error("Cannot save STEP tessellation provenance");
-        return env->NewStringUTF(output.string().c_str());
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown STEP import error");}
+        return kepler::jni_string(env, output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown STEP import error");}
     return nullptr;
 }
 
@@ -641,9 +642,9 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_sliceProjectWithSettings(JNIEnv 
             else if(edits!="{}")throw std::invalid_argument("Geometry import cannot apply project material edits");
             result=slice_model(path,(job/"result.gcode").string(),candidate.config,&transform,candidate.selected_plate,&candidate.model,allow_mixed);
         } else {if(edits!="{}")throw std::invalid_argument("No configured project for material edits");result=slice_model(path,(job/"result.gcode").string(),config,&transform,plate,nullptr,allow_mixed);}
-        return env->NewStringUTF(result.c_str());
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown project slicing error");}
+        return kepler::jni_string(env, result.c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown project slicing error");}
     return nullptr;
 }
 
@@ -673,8 +674,8 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_projectMaterialSettings(JNIEnv *
         if(!colours||!matrix)throw std::runtime_error("Project has no editable filament/flush vectors");
         result["edits"]={{"colours",colours->values},{"flush_volumes",matrix->values}};
         return json_bytes(env,result.dump());
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown project materials error");}
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown project materials error");}
     return nullptr;
 }
 
@@ -705,9 +706,9 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_cloneModelWithPreferences(JNIEnv
         const auto job=create_job_directory(job_name,data),output=job/"model.3mf";
         if(!Slic3r::store_3mf(output.string().c_str(),&candidate,nullptr,false)||!std::filesystem::is_regular_file(output))throw std::runtime_error("Cannot export cloned model");
         std::ofstream meta(job/"placements.json",std::ios::binary);meta<<kepler::model_placements_json(candidate);meta.close();if(!meta)throw std::runtime_error("Cannot save placement provenance");
-        return env->NewStringUTF(output.string().c_str());
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown clone/arrange error");}
+        return kepler::jni_string(env, output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown clone/arrange error");}
     return nullptr;
 }
 
@@ -752,7 +753,7 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_editModel(JNIEnv *env,jclass,
         auto transform=read_transform(env,params);const auto selection=profile_selection(env,pv,qv,fv,pn,qn,fn,data);
         std::lock_guard<std::mutex> guard(engine_mutex);prepare_settings_context(resources,data);
         auto config=kepler::resolve_system_profile_config_with_overrides(selection,settings);
-        if(op==7||op==8){const auto job=create_job_directory(job_name,data);return env->NewStringUTF(kepler::edit_project_plates(path,op,plate,config,(job/"project.3mf").string()).c_str());}
+        if(op==7||op==8){const auto job=create_job_directory(job_name,data);return kepler::jni_string(env, kepler::edit_project_plates(path,op,plate,config,(job/"project.3mf").string()).c_str());}
         Slic3r::Model source=load_editable_model(path,transform,config,plate);
         Slic3r::Model edited;
         if(op==1){const int keep=static_cast<int>(b);edited=kepler::cut_model_at_z(source,config,a,(keep&1)!=0,(keep&2)!=0);}
@@ -772,9 +773,9 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_editModel(JNIEnv *env,jclass,
         else throw std::invalid_argument("Unknown model edit");
         const auto job=create_job_directory(job_name,data),output=job/"model.3mf";
         if(!Slic3r::store_3mf(output.string().c_str(),&edited,nullptr,false)||!std::filesystem::is_regular_file(output))throw std::runtime_error("Cannot export the edited model");
-        return env->NewStringUTF(output.string().c_str());
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown model edit error");}
+        return kepler::jni_string(env, output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown model edit error");}
     return nullptr;
 }
 
@@ -791,9 +792,9 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_exportProject3mf(JNIEnv *env,jcl
         Slic3r::Model model=load_editable_model(path,transform,config);
         const auto job=create_job_directory(job_name,data),output=job/"project.3mf";
         kepler::store_project_3mf(model,config,output.string());
-        return env->NewStringUTF(output.string().c_str());
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown project export error");}
+        return kepler::jni_string(env, output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown project export error");}
     return nullptr;
 }
 
@@ -837,8 +838,8 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_materialLayout(JNIEnv *env,jclas
             objects.push_back({{"name",object->name},{"slot",stored_slot(object->config)},{"parts",parts}});
         }
         return json_bytes(env,nlohmann::json{{"format","kepler-material-layout-v1"},{"objects",objects}}.dump());
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown material layout error");}
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown material layout error");}
     return nullptr;
 }
 
@@ -929,16 +930,16 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_assignMaterials(JNIEnv *env,jcla
         }
         const auto job=create_job_directory(job_name,data),output=job/"project.3mf";
         kepler::store_project_3mf(model,config,output.string());
-        return env->NewStringUTF(output.string().c_str());
-    } catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-      catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown material assignment error");}
+        return kepler::jni_string(env, output.string().c_str());
+    } catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+      catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown material assignment error");}
     return nullptr;
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_keplerslicer_engine_ExperimentalSlicer_setNativeLogLevel(JNIEnv *env,jclass,jstring level) {
-    try {const auto requested=standard_utf8(env,level);std::lock_guard<std::mutex> guard(engine_mutex);return env->NewStringUTF(kepler::set_native_log_level(requested).c_str());}
-    catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}return nullptr;
+    try {const auto requested=standard_utf8(env,level);std::lock_guard<std::mutex> guard(engine_mutex);return kepler::jni_string(env, kepler::set_native_log_level(requested).c_str());}
+    catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}return nullptr;
 }
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_keplerslicer_engine_ExperimentalSlicer_runNativePreferencesSelfTest(JNIEnv *env,jclass,jstring resources_path,jstring data_path) {
@@ -954,6 +955,6 @@ Java_com_keplerslicer_engine_ExperimentalSlicer_runNativePreferencesSelfTest(JNI
         result["passed"]=true;
         return json_bytes(env,result.dump());
     }
-    catch(const std::exception &e){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),e.what());}
-    catch(...){if(!env->ExceptionCheck())env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),"Unknown native self-test error");}return nullptr;
+    catch(const std::exception &e){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),e.what());}
+    catch(...){if(!env->ExceptionCheck())kepler::jni_throw_new(env, env->FindClass("java/lang/IllegalStateException"),"Unknown native self-test error");}return nullptr;
 }
