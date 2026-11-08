@@ -46,8 +46,14 @@ final class BambuObnTransport implements BambuLan.Transport {
         try { BambuNetworking.init(log.getAbsolutePath(), config.getAbsolutePath(), cert.getAbsolutePath(), "slicer_base64.cer"); }
         catch (UnsatisfiedLinkError | IllegalStateException e) { throw new IOException(L.t("Подключение к Bambu Lab недоступно на этом устройстве."), e); }
         started = true;
+        forgetSession(config);
         android.util.Log.i("KeplerBambu", "open-bamboo-networking started");
     }
+    /**
+     * The plugin persists the account session (access token) as plain JSON in its config folder; Kepler keeps the
+     * token encrypted (NetworkSecrets) and hands it over per connection, so the copy on disk is removed (audit SEC-04).
+     */
+    private static void forgetSession(File config) { for (String name : new String[]{"obn.auth.json", "obn.auth.json.tmp"}) { File f = new File(config, name); if (f.exists() && !f.delete()) android.util.Log.w("KeplerBambu", "could not remove " + name); } }
     private static void copy(InputStream in, OutputStream out) throws IOException { byte[] b = new byte[16384]; for (int n; (n = in.read(b)) > 0; ) out.write(b, 0, n); }
 
     @Override public void open(BambuLan.Session s, NetworkHttp.Cancellation cancel) throws IOException {
@@ -60,6 +66,7 @@ final class BambuObnTransport implements BambuLan.Transport {
                 info.put("data", data);
             } catch (JSONException e) { throw new IOException(e); }
             int rc = BambuNetworking.nativeCloudConnect(info.toString(), BambuCloud.china(s.region) ? "CN" : "US", BambuLan.TIMEOUT_MS);
+            forgetSession(new File(new File(app.getFilesDir(), "bambu_networking"), "config"));
             if (rc != 0) throw new IOException(rc == -17 ? L.t("Bambu: облако не ответило. Проверьте интернет.") : L.t("Bambu: облако отклонило токен, войдите заново.") + " (" + rc + ")");
             rc = BambuNetworking.nativeCloudWatch(s.serial);
             if (rc != 0) throw new IOException(L.t("Bambu: облако отклонило токен, войдите заново.") + " (" + rc + ")");
