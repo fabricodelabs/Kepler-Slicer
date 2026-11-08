@@ -310,3 +310,5 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
   launcher start; MainActivity attaches BrandSplash (Canvas over the decor, 1.15 s, tap to skip, off when animations
   are disabled or "Show splash screen" is off). values-v27 AppTheme is now dark (it was light: white starting window).
 - Recordings and storyboard: branding/splash/. Details and how to change things: branding/README.md.
+
+- Release v1.1.0 (versionCode 221, commit 39b3e87, signed with the upload key) published 2026-11-08 with notes in English and Russian; APK SHA-256 2377705a…b89c.
