@@ -1,7 +1,8 @@
 <#
 Builds open-bamboo-networking (https://github.com/ClusterM/open-bamboo-networking, AGPL-3.0) for Android arm64 as
 libbambu_networking.so and publishes it next to the engine library. The upstream build supports desktop systems
-only; for Android the curl dependency is taken from the prebuilt engine prefix instead of pkg-config.
+only; for Android curl and OpenSSL come from -Prefix, built by engine/obn/build-obn-deps.sh (OpenSSL 3.5.9,
+curl 8.23.0; audit SEC-08) instead of pkg-config.
 
   pwsh -File engine/obn/build-obn.ps1 -Source <open-bamboo-networking checkout> -Prefix <android prefix with
        openssl and curl> -Uthash <uthash checkout> -Cmake <cmake.exe> -Ninja <ninja.exe> -Ndk <android-ndk-r30>
@@ -55,7 +56,7 @@ if ($text -notmatch '__ANDROID__\)\n    cloud_ca = ') {
     "-DCMAKE_TOOLCHAIN_FILE=$Ndk/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 `
     -DANDROID_STL=c++_static -DCMAKE_BUILD_TYPE=Release `
     "-DOBN_ANDROID_PREFIX=$Prefix" "-DOPENSSL_ROOT_DIR=$Prefix" -DOPENSSL_USE_STATIC_LIBS=TRUE `
-    "-DCMAKE_FIND_ROOT_PATH=$Prefix" "-DCMAKE_C_FLAGS=-I$Uthash/src -DSSL_get1_peer_certificate=SSL_get_peer_certificate" "-DCMAKE_CXX_FLAGS=-I$Uthash/src -DSSL_get1_peer_certificate=SSL_get_peer_certificate" `
+    "-DCMAKE_FIND_ROOT_PATH=$Prefix" "-DCMAKE_C_FLAGS=-I$Uthash/src" "-DCMAKE_CXX_FLAGS=-I$Uthash/src" `
     "-DOBN_KEPLER_JNI=$(Join-Path $PSScriptRoot 'kepler_obn_jni.cpp')" `
     -DOBN_CLIENT_TYPE=orca_slicer "-DOBN_VERSION=02.08.04.99" -DOBN_INSTALL_CONF=OFF -DOBN_ENABLE_TESTS=OFF
 if ($LASTEXITCODE -ne 0) { throw 'open-bamboo-networking configure failed' }
