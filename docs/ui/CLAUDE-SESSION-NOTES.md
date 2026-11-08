@@ -312,3 +312,19 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
 - Recordings and storyboard: branding/splash/. Details and how to change things: branding/README.md.
 
 - Release v1.1.0 (versionCode 221, commit 39b3e87, signed with the upload key) published 2026-11-08 with notes in English and Russian; APK SHA-256 2377705a…b89c.
+
+## 2026-11-08: 1.1.1, marketing kit, Google Play closed test
+- Releases: v1.1.1 on GitHub (tag at 65c610b): slicing on the plate on phones (no slice screen), print-time fix
+  (Flashforge `file_start_gcode` template in the config dump was read as the time; `PrintTime.summaryTime`).
+- Google Play: engine resources and profiles moved to the install-time asset pack `:engine_assets` (base ≈54 MB
+  compressed); debug builds read them from the pack folder; GitHub APK = universal APK from the bundle
+  (`./gradlew bundleRelease :app:packageReleaseUniversalApk`, see docs/GOOGLE-PLAY.md). First-run fix: the workspace
+  re-renders when printer/filament/process changed (it could be recreated in the background during setup).
+- Play Console (account Fabricode Labs, app id 4974934552646213817, package com.keplerslicer.app): all App content
+  declarations, IARC rating (Everyone), category Tools, contact fabricodelabs@gmail.com, EN + RU store listings
+  (icon, feature graphic, 8 phone, 4+4 tablet screenshots). Closed testing (Alpha): 178 countries, email list
+  "Kepler closed beta" (5 testers; production needs 12 testers for 14 days), release 1.1.1 (227) sent for review
+  2026-11-08. Next upload: versionCode must be > 227. The AAB is uploaded by the owner (browser tool limit 10 MB).
+- Marketing kit lives only locally in `marketing/` (owner: not in git): `sh marketing/automation/build.sh`,
+  `python marketing/automation/qa.py`; phone captures from the owner's phone over adb
+  (`ADB_SERIAL=... sh marketing/automation/capture_phone.sh ru|en`), tablet from the Pixel_Tablet emulator.
