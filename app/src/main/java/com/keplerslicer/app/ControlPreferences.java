@@ -87,10 +87,8 @@ final class ControlPreferences {
                         PrintProfileCatalog.loadSelection(owner,PrintProfileCatalog.FILAMENT)==null){pending=null;dirtyRequest=false;return;}
             } catch(IOException error){pending=null;dirtyRequest=false;return;}
             pending=null;dirtyRequest=false;
-            // Tablet workspace: slices on the plate, as desktop OrcaSlicer, without the slice screen.
-            if(owner instanceof MainActivity&&InterfaceMode.tablet(owner)){SliceActivity.start(owner.getApplicationContext(),request);return;}
-            owner.startActivity(new Intent(owner,SliceActivity.class).putExtra(SliceActivity.EXTRA_AUTO_SLICE,true)
-                    .putExtra(SliceActivity.EXTRA_AUTO_SLICE_REQUEST,request));
+            // Slices on the plate in both interfaces (no slice screen); the workspace shows progress and the preview.
+            SliceActivity.start(owner.getApplicationContext(),request);
         }};
         MAIN.postDelayed(pending,Math.max(0,dueTime-android.os.SystemClock.uptimeMillis()));
     }

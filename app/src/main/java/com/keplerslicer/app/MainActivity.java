@@ -111,7 +111,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         visibleWorkspace = true;
-        if (tabletMode) { SliceActivity.progress = sliceProgress; if (SliceActivity.isSlicing()) showSliceProgress(SliceActivity.status(), true, false); }
+        SliceActivity.progress = sliceProgress; if (SliceActivity.isSlicing()) showSliceProgress(SliceActivity.status(), true, false);
         if (navBar != null) navBar.setSelectedItem(0, false);
         String storedFile=getSharedPreferences("current_model",0).getString("file","");
         if(!loadingMesh&&!storedFile.isEmpty()&&!storedFile.equals(meshFileName)){restoreModel();}
@@ -854,7 +854,7 @@ public class MainActivity extends Activity {
             root.addView(wideBody, new LinearLayout.LayoutParams(-1,0,1));
         } else root.addView(head.view, hp);
 
-        FrameLayout viewport = new com.keplerslicer.app.glass.TouchTarget.Host(this);
+        FrameLayout viewport = new com.keplerslicer.app.glass.TouchTarget.Host(this); workspaceViewport = viewport;
         // Returning to the workspace rebuilds the 3D view: keep the camera where the user left it (same model only).
         if (stlView != null && java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = stlView.camera();
         else if (!java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = null;
@@ -1804,7 +1804,7 @@ public class MainActivity extends Activity {
     private void maybeOpenRequestedLayers(){if(!pendingLayerPreview||!visibleWorkspace||isDestroyed()||isFinishing())return;if(loadingMesh)return;if(mesh==null||mesh.vertices.length==0){pendingLayerPreview=false;dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_open_and_slice));return;}if(!previewReady||loadedBed==null)return;pendingLayerPreview=false;openLayerPreview();}
     private int layerPreviewWaits;
     private void openLayerPreview(){
-        if(layersMode)return;if(tabletMode&&(stlView==null||loadingMesh||!previewReady||loadedBed==null)&&mesh!=null&&layerPreviewWaits++<40){if(stlView!=null)stlView.postDelayed(this::openLayerPreview,250);return;}layerPreviewWaits=0; // tablet: wait for the plate instead of an alert
+        if(layersMode)return;if((stlView==null||loadingMesh||!previewReady||loadedBed==null)&&mesh!=null&&layerPreviewWaits++<40){if(stlView!=null)stlView.postDelayed(this::openLayerPreview,250);return;}layerPreviewWaits=0; // tablet: wait for the plate instead of an alert
 if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_open_wait));return;}
         if(loadedBed==null){dialog(getString(R.string.l10n_ws_layer_preview),getString(R.string.l10n_ws_wait_bed));return;}
         cancelLayerWork();final int request=layerRequest;final StlView view=stlView;layersMode=true;setToolsMode(false);updatePreviewTabs();view.setMoveMode(false,null);view.setRotateGizmo(false);
@@ -1876,16 +1876,18 @@ if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog(getString(R.str
                 .setNegativeButton(R.string.l10n_cancel, null).setPositiveButton(getString(R.string.kv3_choose_material), (d, w) -> openPrintProfile(PrintProfileCatalog.FILAMENT, PICK_FILAMENT)).show();
             return;
         }
-        if (tabletMode) { if (!SliceActivity.start(getApplicationContext(), -1)) showSliceProgress(SliceActivity.status(), true, false); return; }
-        startActivity(new Intent(this, SliceActivity.class));
+        // Slicing runs on the plate in both interfaces: progress over the canvas, then the layer preview opens.
+        if (!SliceActivity.start(getApplicationContext(), -1)) showSliceProgress(SliceActivity.status(), true, false);
     }
 
     // ---- Tablet: slicing on the plate, as desktop OrcaSlicer (progress over the canvas, then Preview) ----
+    private FrameLayout workspaceViewport;
     private LinearLayout sliceStrip; private TextView sliceStripText; private View sliceStripSpinner, sliceStripClose;
     private final SliceActivity.Progress sliceProgress = (text, working, success) -> { if (!isDestroyed()) showSliceProgress(text, working, success); };
     private void showSliceProgress(String text, boolean working, boolean success) {
-        if (!tabletMode || tabletViewport == null) return;
-        if (sliceStrip == null || sliceStrip.getParent() != tabletViewport) {
+        final FrameLayout host = tabletMode ? tabletViewport : workspaceViewport;
+        if (host == null) return;
+        if (sliceStrip == null || sliceStrip.getParent() != host) {
             LinearLayout strip = horizontal(); strip.setGravity(Gravity.CENTER_VERTICAL); strip.setPadding(dp(16), dp(10), dp(8), dp(10));
             strip.setBackground(com.keplerslicer.app.glass.Desktop.surface(this, 14)); strip.setElevation(dp(6));
             android.widget.ProgressBar spin = new android.widget.ProgressBar(this); spin.setIndeterminate(true); spin.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(com.keplerslicer.app.glass.KeplerUi.MINT));
@@ -1894,8 +1896,10 @@ if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog(getString(R.str
             LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1); tp.leftMargin = dp(12); tp.rightMargin = dp(8); strip.addView(t, tp);
             FrameLayout close = kui.glassButton(R.drawable.kv3_plus, 36, 18, getString(R.string.glass_dismiss), () -> { if (sliceStrip != null) sliceStrip.setVisibility(View.GONE); });
             close.getChildAt(0).setRotation(45); strip.addView(close, new LinearLayout.LayoutParams(dp(36), dp(36)));
-            FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(dp(520), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL); sp.bottomMargin = dp(24);
-            tabletViewport.addView(strip, sp);
+            FrameLayout.LayoutParams sp;
+            if (tabletMode) { sp = new FrameLayout.LayoutParams(dp(520), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL); sp.bottomMargin = dp(24); }
+            else { sp = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP); sp.setMargins(dp(16), dp(68), dp(16), 0); } // phone: under the plate chip, clear of the bottom panel
+            host.addView(strip, sp);
             sliceStrip = strip; sliceStripText = t; sliceStripSpinner = spin; sliceStripClose = close;
         }
         sliceStrip.setVisibility(View.VISIBLE); sliceStrip.bringToFront();
@@ -1908,7 +1912,8 @@ if(stlView==null||mesh==null||loadingMesh||!previewReady){dialog(getString(R.str
         if (!working && success) {
             sliceStrip.postDelayed(() -> { if (sliceStrip != null && !SliceActivity.isSlicing()) sliceStrip.setVisibility(View.GONE); }, 2500);
             if (layersMode) showPreparation();
-            openTabletSection("preview"); // the result opens in Preview, as on desktop
+            if (tabletMode) openTabletSection("preview"); // the result opens in Preview, as on desktop
+            else openLayerPreview();
         }
     }
 

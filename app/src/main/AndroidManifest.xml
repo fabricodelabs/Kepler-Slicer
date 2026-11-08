@@ -25,7 +25,6 @@
         <activity android:name=".ModelDetailsActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
         <activity android:name=".PrinterPickerActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
         <activity android:name=".ProfilePickerActivity" android:exported="false" />
-        <activity android:name=".SliceActivity" android:exported="false" />
         <activity android:name=".GcodePreviewActivity" android:exported="false" />
         <activity android:name=".GcodeExportActivity" android:exported="false" />
         <activity android:name=".ProcessSettingsActivity" android:exported="false" android:enableOnBackInvokedCallback="true" />
