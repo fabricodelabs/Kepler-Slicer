@@ -115,11 +115,14 @@ public class MainActivity extends Activity {
         if (navBar != null) navBar.setSelectedItem(0, false);
         String storedFile=getSharedPreferences("current_model",0).getString("file","");
         if(!loadingMesh&&!storedFile.isEmpty()&&!storedFile.equals(meshFileName)){restoreModel();}
-        if (refreshAfterResume) { if (loadedBed != null) { staleBed = loadedBed; staleBedKey = bedKey; } loadedBed = null; bedPending = false; ++bedGeneration; }
-        if (refreshAfterResume && (activeTransformEditor == null || !activeTransformEditor.isShowing())) render();
+        // The workspace can be recreated in the background while setup screens are on top; it then misses the flag
+        // set in onPause, so a changed printer, filament or process also forces a fresh render.
+        boolean refresh = refreshAfterResume || !java.util.Objects.equals(renderedSelection, selectionKey());
+        if (refresh) { if (loadedBed != null) { staleBed = loadedBed; staleBedKey = bedKey; } loadedBed = null; bedPending = false; ++bedGeneration; }
+        if (refresh && (activeTransformEditor == null || !activeTransformEditor.isShowing())) render();
         else {
             MdUi.prepare(this);
-            if (refreshAfterResume && stlView != null && bedHint != null)
+            if (refresh && stlView != null && bedHint != null)
                 loadSelectedBed(PrinterProfileCatalog.loadSelection(this), stlView, bedHint);
         }
         refreshAfterResume = false;
@@ -335,8 +338,16 @@ public class MainActivity extends Activity {
     private int activeTool;
     private boolean toolsMode;
 
+    /** Printer, filament and process the workspace was last drawn with. */
+    private String renderedSelection;
+    private String selectionKey() {
+        PrinterProfileCatalog.Profile p = PrinterProfileCatalog.loadSelection(this);
+        PrintProfileCatalog.Profile f = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.FILAMENT), r = PrintProfileCatalog.loadSelection(this, PrintProfileCatalog.PROCESS);
+        return (p == null ? "" : p.vendor + "/" + p.path + "/" + p.name + "/" + p.variant) + "|" + (f == null ? "" : f.name) + "|" + (r == null ? "" : r.name);
+    }
+
     private void render() {
-        refreshAfterResume = false; cancelLayerWork(); layersMode=false; layerAnalysis=null;
+        refreshAfterResume = false; renderedSelection = selectionKey(); cancelLayerWork(); layersMode=false; layerAnalysis=null;
         if (stlView != null) { if (java.util.Objects.equals(cameraModel, meshFileName)) savedCamera = stlView.camera(); stlView.onPause(); stlView = null; }
         updatePalette(); selected = 0; toolsMode = false;
         android.content.res.Configuration config = getResources().getConfiguration();

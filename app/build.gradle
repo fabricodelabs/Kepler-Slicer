@@ -54,6 +54,14 @@ android {
         }
     }
 
+    // Engine resources and profiles live in the install-time asset pack :engine_assets (see its build.gradle).
+    // Release ships as an app bundle (Play) or a universal APK made from it (tools/build_release.ps1);
+    // debug builds read the same files straight from the pack's folder.
+    assetPacks = [':engine_assets']
+    sourceSets {
+        debug { assets.srcDirs += ['../engine_assets/src/main/assets'] }
+    }
+
     bundle {
         // One ABI only; the language split would drop the in-app language switch (Russian/English).
         language { enableSplit = false }

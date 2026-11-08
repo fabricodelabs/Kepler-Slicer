@@ -9,6 +9,21 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 
 Output: `app/build/outputs/bundle/release/app-release.aab`, signed with the upload key.
 
+The bundle has two modules: the app (`base`) and the install-time asset pack `engine_assets` (upstream engine
+resources and the printer/filament/process profiles, ~130 MB). Play installs the pack together with the app and the
+app reads it through the normal `AssetManager`. `assembleRelease` alone builds an APK **without** these files; the
+APK for GitHub Releases is the universal APK made from the bundle:
+
+```bash
+./gradlew --offline bundleRelease :app:packageReleaseUniversalApk
+# app/build/outputs/apk_from_bundle/release/app-release-universal.apk
+```
+
+Debug builds (`assembleDebug`) read the same files from `engine_assets/src/main/assets`, so development is unchanged.
+To install a release exactly as Play splits it: `./gradlew :app:makeApkFromBundleForRelease`, unzip
+`app/build/intermediates/apks_from_bundle/release/makeApkFromBundleForRelease/bundle.apks` and
+`adb install-multiple splits/base-master.apk splits/base-arm64_v8a.apk asset-slices/engine_assets-master.apk`.
+
 - applicationId `com.keplerslicer.app` — never change it after the first release.
 - Raise `versionCode` (and `versionName`) in `app/build.gradle` for every upload.
 - Upload key: `C:\Users\tails\.kepler-signing\kepler-upload.jks` plus `keystore.properties` (passwords) in the same
@@ -23,12 +38,13 @@ Output: `app/build/outputs/bundle/release/app-release.aab`, signed with the uplo
 | --- | --- |
 | Target API (35+ for new apps) | targetSdk 36 |
 | 16 KB page size for native code | `libkepler_slicer_experimental.so` LOAD segments aligned 0x4000 |
-| Download size ≤ 200 MB (base module, compressed) | ≈180 MB (assets: upstream resources 100 MB, profiles 31 MB; engine 66 MB) |
+| Download size ≤ 200 MB (base module, compressed) | base ≈54 MB compressed (engine 66 MB raw); asset pack `engine_assets` ≈131 MB (install-time limit 1 GB) |
 | 64-bit native code | arm64-v8a only (32-bit devices are excluded) |
 | Adaptive launcher icon | `drawable-v26/ic_launcher.xml` |
 | Privacy policy URL | [PRIVACY.md](PRIVACY.md) — publish it (for example the GitHub page of this file) and enter the URL in Play Console |
 
-If the size grows past 200 MB, move `upstream_resources.zip` and `kepler_profiles.zip` into an install-time asset pack.
+`upstream_resources.zip` and `kepler_profiles.zip` live in the install-time asset pack `engine_assets`; anything large
+added later belongs there too.
 
 ## Data safety form (Play Console)
 

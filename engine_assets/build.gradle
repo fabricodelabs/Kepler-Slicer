@@ -1,0 +1,11 @@
+// Install-time asset pack: the upstream engine resources and the printer/filament/process profiles (~130 MB).
+// Google Play installs it together with the app and its files are read through the normal AssetManager, so the
+// app code is the same as with assets in the base module; this keeps the base module under Play's 200 MB limit.
+apply plugin: 'com.android.asset-pack'
+
+assetPack {
+    packName = 'engine_assets'
+    dynamicDelivery {
+        deliveryType = 'install-time'
+    }
+}

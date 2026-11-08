@@ -10,7 +10,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ZIP = ROOT / 'app/src/main/assets/kepler_profiles.zip'
+ZIP = ROOT / 'engine_assets/src/main/assets/kepler_profiles.zip'
 OUT = ROOT / 'app/src/main/assets/kepler_print_profile_catalog.json'
 REV = '6d2869c430284714f0a22570c38d3b359965a802'
 
