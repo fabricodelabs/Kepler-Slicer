@@ -86,7 +86,9 @@ final class GeneralPreferences {
         a.startActivity(new Intent(a,LaunchActivity.class).setAction(Intent.ACTION_VIEW).setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));}
     static Uri modelUri(Intent intent){if(intent==null)return null;Uri uri=intent.getData();if(uri==null&&Intent.ACTION_SEND.equals(intent.getAction())){try{Object stream=intent.getParcelableExtra(Intent.EXTRA_STREAM);if(stream instanceof Uri)uri=(Uri)stream;}catch(RuntimeException ignored){}}
         if(uri==null&&intent.getClipData()!=null&&intent.getClipData().getItemCount()>0)uri=intent.getClipData().getItemAt(0).getUri();
-        return uri!=null&&("content".equals(uri.getScheme())||"file".equals(uri.getScheme()))?uri:null;}
+        // content:// only. A file:// path from another app would be opened with Kepler's own rights and could name
+        // its private files (confused deputy, audit SEC-01); document providers always hand out content:// URIs.
+        return uri!=null&&"content".equals(uri.getScheme())?uri:null;}
 
     static int backupInterval(Context c){Object raw=prefs(c).getAll().get("backup_interval");int seconds=10;try{seconds=raw==null?10:Integer.parseInt(String.valueOf(raw));}catch(NumberFormatException ignored){}return Math.max(5,Math.min(86400,seconds));}
     static String backupStatus(Context c){String error=prefs(c).getString("general_backup_error","");if(error!=null&&!error.isEmpty())return c.getString(R.string.general_backup_error,error);long time=prefs(c).getLong("general_backup_time",0);return time==0?c.getString(R.string.general_backup_none):c.getString(R.string.general_backup_status,android.text.format.DateFormat.getMediumDateFormat(c).format(new java.util.Date(time)),android.text.format.DateFormat.getTimeFormat(c).format(new java.util.Date(time)));}
