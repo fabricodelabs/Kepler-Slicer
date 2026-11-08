@@ -1,6 +1,8 @@
 <resources>
-    <style name="AppTheme" parent="AppThemeBase">
-        <item name="android:windowLightNavigationBar">true</item>
+    <!-- The manifest theme also styles the starting window and the system splash: dark, like every screen
+         (activities switch to AppThemeDark in MdUi.prepare), so no white frame appears at launch. -->
+    <style name="AppTheme" parent="AppThemeDarkBase">
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
     <style name="AppThemeDark" parent="AppThemeDarkBase">
         <item name="android:windowLightNavigationBar">false</item>

@@ -300,3 +300,13 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
   tools/native_tests/tls_check.c against a local test server (audit/TEST_RESULTS.md).
 - No animated splash exists in the code (LaunchActivity is a static text view); see audit/SPLASH_SCREEN_AUDIT.md.
 - Native tests: sh tools/native_tests/run.sh ../../work/android-ndk/android-ndk-r30 <adb> (x86_64 emulator, UBSan).
+
+## 2026-11-08: brand, launcher icon, animated splash (branch feature/branding-splash)
+
+- Mark "Sliced K" (K in five print layers + extrusion, mint on graphite). Single source: core BrandGeometry;
+  tools/branding/BrandKit.java (run: pwsh tools/branding/build.ps1) generates branding/ (SVG logos, concepts, icons,
+  Play 512, previews) and the Android resources (adaptive + monochrome + legacy mipmaps, splash_blueprint.xml).
+- Launch: system splash = graphite + blueprint K (styles.xml); LaunchActivity draws nothing and flags the first
+  launcher start; MainActivity attaches BrandSplash (Canvas over the decor, 1.15 s, tap to skip, off when animations
+  are disabled or "Show splash screen" is off). values-v27 AppTheme is now dark (it was light: white starting window).
+- Recordings and storyboard: branding/splash/. Details and how to change things: branding/README.md.

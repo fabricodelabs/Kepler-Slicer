@@ -78,6 +78,7 @@ public class MainActivity extends Activity {
         if (state != null && state.getString("pending_model_uri") != null) loadModelUri(Uri.parse(state.getString("pending_model_uri")));
         else if(GeneralPreferences.modelUri(getIntent())==null)restoreModel();
         dispatchNavigationIntent(getIntent());
+        if (state == null && BrandSplash.wanted(this)) BrandSplash.attach(this); // cold start from the launcher
     }
 
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); dispatchNavigationIntent(intent); }

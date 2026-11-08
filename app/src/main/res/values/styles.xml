@@ -59,6 +59,10 @@
         <item name="android:windowBackground">#383D46</item>
         <item name="android:windowAnimationStyle">@style/KeplerActivityAnim</item>
         <item name="android:dialogTheme">@style/KeplerDialogTheme</item>
+        <!-- Android 12+ system splash: brand graphite with the mark as a thin blueprint; BrandSplash continues it. -->
+        <item name="android:windowSplashScreenBackground">#1C1F25</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blueprint</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
     </style>
     <style name="AppThemeDark" parent="AppThemeDarkBase" />
     <style name="KeplerAlertDark" parent="android:style/Theme.Material.Dialog.Alert">
