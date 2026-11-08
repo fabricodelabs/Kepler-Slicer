@@ -19,7 +19,7 @@ This audit does not show that the application is free of vulnerabilities; it cov
 | SEC-03 | High | Engine built with expat 2.2.0 (known memory-corruption CVEs) parsing untrusted 3MF XML | Fixed |
 | SEC-02 | High | 3MF decompression bomb reaches the native ZIP reader without limits | Fixed |
 | SEC-01 | Medium | Exported launcher accepts `file://` model links (confused deputy over private files) | Fixed |
-| SEC-08 | Medium | Bambu plugin linked with OpenSSL 1.1.1w (EOL) and curl 7.75.0 | Not fixed — needs approval |
+| SEC-08 | Medium | Bambu plugin linked with OpenSSL 1.1.1w (EOL) and curl 7.75.0 | Fixed (OpenSSL 3.5.9, curl 8.23.0) |
 | SEC-04 | Medium | Bambu cloud token written in plain text by the network plugin | Fixed |
 | SEC-07 | Medium | Untrusted text passed to `NewStringUTF`/`ThrowNew` (process abort on emoji/malformed bytes) | Fixed |
 | SEC-05 | Low | App data included in Android 12+ device-to-device transfer | Fixed |
@@ -96,13 +96,17 @@ CVSS 3.1 estimates assume the attacker controls a file the user opens (AV:L/UI:R
   `*.bambulab.com` with chain and host verification. Most listed curl CVEs need features not used here (SOCKS5,
   cookies, HSTS, MQTT in curl). Exploitation needs a malicious server/MITM with a valid certificate or a hostile LAN
   device answering TLS. Risk: medium, mainly lack of future fixes.
-- **Attempted fix**: OpenSSL 3.5.9 (LTS) and curl 8.23.0 were downloaded and verified (GitHub digests and GPG
-  signatures of OpenSSL and Daniel Stenberg OK). Running their build scripts was blocked by the session's safety
-  policy for code from external sources, so the libraries were not rebuilt.
-- **Next step**: allow the build, then `Configure linux-aarch64 no-shared … CC="clang --target=aarch64-linux-android26"`,
-  curl via CMake with OpenSSL, and `build-obn.ps1 -Prefix <new prefix>` (OBN already targets the OpenSSL 3 API; the
-  `SSL_get1_peer_certificate` shim in `build-obn.ps1` can then be removed).
-- **Status**: not fixed — requires the owner's approval.
+- **Fix** (after the owner's approval): OpenSSL 3.5.9 (LTS, supported to 2030) and curl 8.23.0, verified (SHA-256 equal
+  to the GitHub release digests; GPG "Good signature from OpenSSL" and "from Daniel Stenberg"), built static for
+  arm64/API 26 by `engine/obn/build-obn-deps.sh` (OpenSSL: no-shared, no-legacy, no-engine, no-module, no-comp;
+  curl: OpenSSL + platform zlib, no SSH/IDN/PSL/HTTP2/LDAP). `build-obn.ps1 -Prefix work/obn-deps-arm64` rebuilt the
+  plugin; the OpenSSL 1.1 shim was removed. Git for Windows' Perl lacks three core modules; minimal stand-ins are in
+  `engine/obn/perl-shim` (build-time only).
+- **Re-check**: the plugin contains `OpenSSL 3.5.9` and `curl-8.23.0`, no 7.75/1.1.1 strings; all 11 JNI exports;
+  NEEDED only libz/libm/libdl/libc. `tools/native_tests/tls_check.c` (same static libs) on the emulator against a
+  local TLS server: trusted CA → HTTP 200, other CA → CURLE_PEER_FAILED_VERIFICATION, wrong host name → refused.
+  App: plugin loads, LAN error path unchanged. Not tested: LAN TLS to a real Bambu printer, cloud broker.
+- **Status**: fixed (branch `fix/obn-openssl3-curl8`).
 
 ### SEC-04 — Medium — Bambu cloud token in plain text
 - **Component**: `BambuObnTransport` / open-bamboo-networking `Agent::set_config_dir` (`agent.cpp:2268`, `obn.auth.json`).

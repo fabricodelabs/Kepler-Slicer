@@ -28,8 +28,8 @@ No other Java/Kotlin libraries; no dependency is fetched at runtime.
 | Component | Version | Status |
 |---|---|---|
 | open-bamboo-networking | commit 95d42f8 (AGPL-3.0) | reviewed where Kepler feeds data (auth store, logs) — SEC-04 fixed |
-| OpenSSL | **1.1.1w (EOL 2023-09)** | Not fixed (SEC-08). Post-EOL CVEs: CVE-2023-5678, CVE-2024-0727, CVE-2024-5535, CVE-2024-9143, CVE-2024-13176 |
-| curl | **7.75.0** | Not fixed (SEC-08). OSV (Alpine 3.13 tracking): CVE-2021-22876, 22890, 22898, 22901, 22922, 22923, 22924, 22925, 22945, 22946, 22947, CVE-2022-22576, 27774, 27775, 27776, 27781, 27782, 32205, 32206, 32207, 32208, 35252; later e.g. CVE-2023-38545, CVE-2023-46218, CVE-2024-2398, CVE-2024-7264 |
+| OpenSSL | **1.1.1w → 3.5.9 (LTS)** | Fixed (SEC-08). Old version's Post-EOL CVEs: CVE-2023-5678, CVE-2024-0727, CVE-2024-5535, CVE-2024-9143, CVE-2024-13176 |
+| curl | **7.75.0 → 8.23.0** | Fixed (SEC-08). Old version's OSV (Alpine 3.13 tracking): CVE-2021-22876, 22890, 22898, 22901, 22922, 22923, 22924, 22925, 22945, 22946, 22947, CVE-2022-22576, 27774, 27775, 27776, 27781, 27782, 32205, 32206, 32207, 32208, 35252; later e.g. CVE-2023-38545, CVE-2023-46218, CVE-2024-2398, CVE-2024-7264 |
 | mosquitto (client lib) | vendored by OBN 2.1.2 | client-side only; broker CVEs not applicable |
 | cJSON | 1.7.18 (vendored by OBN) | current; CVE-2024-31755 fixed in 1.7.18 |
 | uthash | header-only | — |
@@ -40,11 +40,10 @@ cookies, HSTS, curl's MQTT and FTP modules (most listed CVEs) are not used. Open
 (LAN) and the cloud broker. Exploitation needs a hostile server/MITM with a trusted certificate or a hostile device
 on the LAN completing a TLS handshake. Severity medium; the main problem is the absence of future fixes.
 
-### Remediation prepared
-OpenSSL 3.5.9 (LTS to 2030) and curl 8.23.0 were downloaded to `work/obn-deps-download` and verified
-(SHA-256 equals the GitHub release digest; GPG: "Good signature from OpenSSL", "Good signature from Daniel
-Stenberg"). Building them was blocked by the session's safety policy for executing code from external sources and
-needs the owner's approval.
+### Remediation
+OpenSSL 3.5.9 (LTS to 2030) and curl 8.23.0 (SHA-256 equal to the GitHub release digests; GPG: "Good signature from
+OpenSSL", "Good signature from Daniel Stenberg") are built by `engine/obn/build-obn-deps.sh` into
+`work/obn-deps-arm64`; the plugin was rebuilt against them (owner approved the build on 2026-11-08).
 
 ## Bundled third-party sources added by this audit
 - `engine/third_party/expat` — expat 2.10.0, MIT (`COPYING` kept), release tarball SHA-256

@@ -21,6 +21,7 @@ none), on-device fuzzing of the native 3MF/STEP readers.
 |---|---|
 | `:core:test` (JUnit) | 19 tests, 0 failures — includes new `ArchiveGuardTest` (5) and `GcodeAnalysisTest` (1) |
 | `tools/run_host_tests.ps1` (all host suites: Bambu transport, printer control, presets, settings, model restore, backups, STEP, online policy, …) | all passed after adding `ArchiveGuard` to the model-restore sources and making its 3MF inputs real ZIP files |
+| `tools/native_tests/tls_check.c` (arm64, static OpenSSL 3.5.9 + curl 8.23.0) | local TLS server on the host (Python `ssl`, test CA and certificates made with `openssl req`), reached as `10.0.2.2`: trusted CA → 200; other CA → error 60; certificate for another name → error 60 — passed |
 | `tools/native_tests` (UBSan) | `jni_safe_utf8`: 8 cases + 200 000 random inputs; expat 2.10.0: well-formed XML, malformed XML, billion laughs (`XML_ERROR_AMPLIFICATION_LIMIT_BREACH`) — all passed |
 
 ## Regression on the emulator (after all fixes)

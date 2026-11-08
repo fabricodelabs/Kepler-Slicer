@@ -25,8 +25,8 @@ engine/ (Android library)
 │    jni_text.hpp (Modified UTF-8 at the boundary)
 ├─ jniLibs/arm64-v8a/libkepler_slicer_experimental.so (63 MB: libslic3r, OCCT 8.0, TBB, Boost 1.84, expat 2.10.0,
 │    libpng 1.6.59, libjpeg-turbo 3.2.0)
-├─ jniLibs/arm64-v8a/libbambu_networking.so (5 MB: open-bamboo-networking + JNI bridge, OpenSSL 1.1.1w,
-│    curl 7.75.0, mosquitto, cJSON)
+├─ jniLibs/arm64-v8a/libbambu_networking.so (9 MB: open-bamboo-networking + JNI bridge, OpenSSL 3.5.9,
+│    curl 8.23.0, mosquitto, cJSON; dependencies built by obn/build-obn-deps.sh)
 ├─ third_party/expat (vendored, built into the engine)
 └─ obn/ (build script + JNI bridge for the Bambu plugin)
 ```

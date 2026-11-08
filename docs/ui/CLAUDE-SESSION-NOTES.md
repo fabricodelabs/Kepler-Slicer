@@ -294,7 +294,9 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
   deps_src/expat, which is 2.2.0); SEC-04 plugin's obn.auth.json deleted; SEC-05 data_extraction_rules.xml;
   SEC-07 engine/src/jni_text.hpp for every NewStringUTF/ThrowNew (engine + OBN bridge); lint WrongConstant;
   desktop dialogs wrap content.
-- Open: SEC-08 libbambu_networking still links OpenSSL 1.1.1w and curl 7.75.0. Verified sources of OpenSSL 3.5.9 and
-  curl 8.23.0 are in work/obn-deps-download; building them was blocked by the safety policy (needs owner approval).
+- SEC-08 fixed after owner approval: libbambu_networking now on OpenSSL 3.5.9 + curl 8.23.0. Rebuild deps:
+  sh engine/obn/build-obn-deps.sh <download dir with tarballs> <work dir> <ndk> <prefix> <cmake.exe> <ninja.exe>
+  (prefix used: work/obn-deps-arm64), then build-obn.ps1 -Prefix work/obn-deps-arm64. TLS check:
+  tools/native_tests/tls_check.c against a local test server (audit/TEST_RESULTS.md).
 - No animated splash exists in the code (LaunchActivity is a static text view); see audit/SPLASH_SCREEN_AUDIT.md.
 - Native tests: sh tools/native_tests/run.sh ../../work/android-ndk/android-ndk-r30 <adb> (x86_64 emulator, UBSan).
