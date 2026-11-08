@@ -328,3 +328,7 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
 - Marketing kit lives only locally in `marketing/` (owner: not in git): `sh marketing/automation/build.sh`,
   `python marketing/automation/qa.py`; phone captures from the owner's phone over adb
   (`ADB_SERIAL=... sh marketing/automation/capture_phone.sh ru|en`), tablet from the Pixel_Tablet emulator.
+- 2026-11-09: 1.1.2 (230): Device screen checks the connection at once after choosing a printer and keeps
+  errors readable between polls (tester: Bambu P1S LAN "does not pick up the connection"; real P1S not
+  verified). GitHub v1.1.2 (universal APK) and Play closed test (sent for review). Next Play versionCode > 230.
+  GitHub and Play builds are signed with different keys (Play App Signing): they cannot update each other.
