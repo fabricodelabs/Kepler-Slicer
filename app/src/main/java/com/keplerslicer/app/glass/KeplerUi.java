@@ -115,7 +115,7 @@ public final class KeplerUi {
             // The tab bar stays put during in-screen navigation, so it is left out of the picture.
             GlassNavigation nav = findNav(old); int vis = nav == null ? 0 : nav.getVisibility();
             if (nav != null) nav.setVisibility(View.INVISIBLE);
-            try { old.draw(c); } finally { if (nav != null) nav.setVisibility(vis); }
+            try { old.draw(c); } finally { if (nav != null) nav.setVisibility(vis == View.GONE ? View.GONE : vis == View.INVISIBLE ? View.INVISIBLE : View.VISIBLE); }
             return bmp;
         } catch (RuntimeException | OutOfMemoryError e) { return null; }
     }

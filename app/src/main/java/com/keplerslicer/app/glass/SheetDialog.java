@@ -218,7 +218,7 @@ public class SheetDialog extends android.app.Dialog {
                 if (child == scrim) {
                     child.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
                 } else {
-                    int hs = preferred > 0 ? MeasureSpec.makeMeasureSpec(Math.min(preferred, max), MeasureSpec.EXACTLY)
+                    int hs = preferred > 0 && !desktop ? MeasureSpec.makeMeasureSpec(Math.min(preferred, max), MeasureSpec.EXACTLY) // desktop windows wrap their content
                             : MeasureSpec.makeMeasureSpec(max, MeasureSpec.AT_MOST);
                     child.measure(MeasureSpec.makeMeasureSpec(sheetW, MeasureSpec.EXACTLY), hs);
                 }
