@@ -305,7 +305,14 @@
 "). Проверьте код доступа и карту памяти принтера.": "). Check the access code and the printer's storage card.",
 "Bambu: облако отклонило токен, войдите заново.": "Bambu: the cloud rejected the sign-in, sign in again.",
 "Bambu: выберите принтер аккаунта (кнопка входа в облако).": "Bambu: choose a printer of the account (cloud sign-in button).",
-"Отправка файла через облако Bambu не поддерживается. Добавьте этот принтер как Bambu Lab (LAN).": "Sending files through the Bambu cloud is not supported. Add this printer as Bambu Lab (LAN)."
+"Отправка файла через облако Bambu не поддерживается. Добавьте этот принтер как Bambu Lab (LAN).": "Sending files through the Bambu cloud is not supported. Add this printer as Bambu Lab (LAN).",
+"В архиве 3MF слишком много файлов.": "The 3MF archive contains too many files.",
+"Архив 3MF содержит недопустимый путь.": "The 3MF archive contains an invalid path.",
+"Импорт отменён.": "Import cancelled.",
+"Архив 3MF распаковывается в слишком большой объём.": "The 3MF archive unpacks to too much data.",
+"Архив 3MF похож на ZIP-бомбу и не будет открыт.": "The 3MF archive looks like a ZIP bomb and will not be opened.",
+"Архив 3MF повреждён.": "The 3MF archive is damaged.",
+"Файл модели слишком большой.": "The model file is too large."
 },
 "ru": {
 "Choose a bundled printer and nozzle first": "Сначала выберите принтер и сопло из библиотеки",

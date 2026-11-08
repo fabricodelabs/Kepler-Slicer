@@ -11,7 +11,10 @@ public final class ModelRestoreTest {
     static void check(boolean yes,String message){assertions++;if(!yes)throw new AssertionError(message);}
     interface Action{void run()throws Exception;}
     static void rejects(Action action,String message)throws Exception{try{action.run();throw new AssertionError(message);}catch(IOException expected){assertions++;}}
-    static File input(File root,String name,int marker)throws Exception{File file=new File(root,name);byte[] data=new byte[65537];Arrays.fill(data,(byte)marker);Files.write(file.toPath(),data);return file;}
+    static File input(File root,String name,int marker)throws Exception{File file=new File(root,name);byte[] data=new byte[65537];Arrays.fill(data,(byte)marker);
+        // 3MF inputs are real ZIP containers: imports check the archive before the native reader (audit SEC-02).
+        if(name.endsWith(".3mf")){try(java.util.zip.ZipOutputStream z=new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(file))){z.putNextEntry(new java.util.zip.ZipEntry("3D/3dmodel.model"));z.write(data);z.closeEntry();}return file;}
+        Files.write(file.toPath(),data);return file;}
     public static void main(String[] args)throws Exception{
         File root=new File(args[0]);root.mkdirs();Context c=new Context(new File(root,"active"),new File(root,"assets"));
         Context settingsEmpty=new Context(new File(root,"settings-empty"),new File(root,"assets"));

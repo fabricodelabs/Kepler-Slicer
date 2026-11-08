@@ -23,6 +23,7 @@ New-Item -ItemType Directory -Path $restoreClasses -Force | Out-Null
 $restoreSources=@('CurrentModelStore.java','ProjectMaterialValidation.java','ModelTransform.java') | ForEach-Object {Join-Path $generalJava $_}
 $restoreSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\stubs') -Recurse -Filter '*.java' | Where-Object {$_.FullName -notmatch '[\\/]net[\\/]Uri.java$'} | ForEach-Object FullName
 $restoreSources+=Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'tests\model_restore_stubs') -Recurse -Filter '*.java' | ForEach-Object FullName
+$restoreSources+=Join-Path (Split-Path -Parent $PSScriptRoot) 'core/src/main/java/com/keplerslicer/app/ArchiveGuard.java'
 $restoreSources+=Join-Path $PSScriptRoot 'tests\ModelRestoreTest.java'
 $restoreSources+=(Join-Path (Split-Path -Parent $PSScriptRoot) 'core\src\main\java\com\keplerslicer\app\L.java')
 # Sources moved into the core/engine modules are found at their new place.

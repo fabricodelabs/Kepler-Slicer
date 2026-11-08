@@ -38,6 +38,7 @@ final class CurrentModelStore {
     }
 
     /** Validate the exact bytes saved for native processing before changing the current model. */
+    static final long MAX_IMPORT_BYTES = 2L * 1024 * 1024 * 1024;
     static CurrentModelStore prepare(Context context, Uri uri, String name) throws IOException {
         return prepare(context,uri,name,null);
     }
@@ -50,13 +51,16 @@ final class CurrentModelStore {
             try (InputStream in = context.getContentResolver().openInputStream(uri);
                  FileOutputStream out = new FileOutputStream(staged)) {
                 if (in == null) throw new IOException(L.t("Не удалось открыть файл."));
-                byte[] bytes = new byte[65536]; int n;
+                byte[] bytes = new byte[65536]; int n; long copied = 0;
                 while ((n = in.read(bytes)) != -1) {
                     if (Thread.currentThread().isInterrupted()) throw new IOException(L.t("Импорт STL отменён."));
+                    // A provider can stream without end; models larger than this cannot be previewed anyway (audit SEC-06).
+                    if ((copied += n) > MAX_IMPORT_BYTES) throw new IOException(L.t("Файл модели слишком большой."));
                     out.write(bytes, 0, n);
                 }
                 out.getFD().sync();
             }
+            if(extension.equals(".3mf"))ArchiveGuard.check(staged); // before the native ZIP reader (audit SEC-02)
             StlMesh mesh; org.json.JSONObject metadata=null;
             try { if(extension.equals(".stl")) { try(InputStream in=new FileInputStream(staged)) { mesh=StlMesh.read(in,staged.length()); } }
                   else { ImportedModelPreview preview;
