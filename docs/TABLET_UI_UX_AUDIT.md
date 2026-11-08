@@ -167,3 +167,18 @@ Screenshots: tablet-audit/tablet-move-panel.jpg, tablet-slice-on-plate.jpg, tabl
 tablet-dialog-desktop.jpg. Tests: core GcodeAnalysisTest (Bambu markers), host suites, control_stubs for inline
 auto-slice. Not covered: DeviceActivity, full settings editor, pickers and export screens are still the mobile
 screens; mouse/stylus input; other tablet sizes.
+
+## Round 5: remaining screens as desktop windows and the Device workspace (2026-11-08)
+
+| Screen | Before (mobile) | Now (tablet mode) |
+|---|---|---|
+| Printer / filament / process editor, profile pickers, connections, export, Preferences, model details, slice | full-screen phone screens with a back chevron and push animation | DesktopWindow: dialog window over the workspace (centred, dimmed, rounded opaque surface), × close, no animation; pickers in a narrower window |
+| Device | phone column: camera, job, temperatures, AMS, controls stacked | Device workspace: same tab bar as Prepare/Preview, camera and job on the left, temperatures, AMS and controls on the right; tab opens it directly |
+| Settings hub button in the top bar and the sidebar rail | duplicated the Prepare sidebar | removed; the hub stays only for 3MF project settings (window with ×) |
+| Closing the printer editor | went back to the settings hub | closes the window |
+
+Files: DesktopWindow.java (applied from KeplerApplication lifecycle callbacks), glass/Desktop.windowed,
+KeplerUi.glassButton (back → × in windows), KeplerScreen (windowed tab roots get ×), DeviceActivity.desktopWorkspace,
+SettingsActivity. Screenshots: tablet-audit/tablet-device-workspace.jpg, tablet-preferences-window.jpg,
+tablet-printer-editor-window.jpg, tablet-printer-picker-window.jpg, tablet-export-window.jpg.
+Not covered: mouse/stylus, other tablet sizes, live camera and real printer telemetry.

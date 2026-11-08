@@ -44,6 +44,7 @@ final class KeplerScreen {
             return in;
         });
         // Without a back action the screen is a top-level tab (Export 6:588): 24/800 title on the left.
+        if (back == null && com.keplerslicer.app.glass.Desktop.windowed(activity)) back = activity::finish; // tablet window: always closable
         LinearLayout bar = back == null ? (trailing == null ? ui.titleBar(title) : ui.titleBar(title, trailing)) : ui.subHeader(title, activity.getString(R.string.kv3_back), back, trailing);
         topBar = bar; // scrolls away with the content instead of being pinned (owner request)
         body = new FrameLayout(activity); column.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));

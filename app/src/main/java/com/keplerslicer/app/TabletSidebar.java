@@ -64,7 +64,6 @@ final class TabletSidebar extends LinearLayout {
             railItems[i] = item; rail.addView(item, railParams());
         }
         rail.addView(new View(context), new LayoutParams(1, 0, 1));
-        rail.addView(railItem(R.drawable.kv3_sliders, context.getString(R.string.tablet_settings), host::openSettings), railParams());
         rail.addView(railItem(R.drawable.kv3_cog, context.getString(R.string.tablet_preferences), host::openPreferences), railParams());
         View expand = iconButton(R.drawable.kv3_back, context.getString(R.string.tablet_expand), () -> setState(TabletLayout.State.EXPANDED));
         expand.setRotation(180);

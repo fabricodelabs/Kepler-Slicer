@@ -12,6 +12,8 @@ public final class KeplerApplication extends android.app.Application {
         // The interface mode fixes the orientation of every screen: tablet landscape only, mobile portrait only.
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             public void onActivityCreated(android.app.Activity a, android.os.Bundle s) { InterfaceMode.applyOrientation(a); }
+            public void onActivityPreCreated(android.app.Activity a, android.os.Bundle s) { DesktopWindow.apply(a); } // tablet: desktop dialog windows
+            public void onActivityPostCreated(android.app.Activity a, android.os.Bundle s) { DesktopWindow.afterContent(a); }
             public void onActivityResumed(android.app.Activity a) { InterfaceMode.applyOrientation(a); }
             public void onActivityStarted(android.app.Activity a) {} public void onActivityPaused(android.app.Activity a) {} public void onActivityStopped(android.app.Activity a) {}
             public void onActivitySaveInstanceState(android.app.Activity a, android.os.Bundle s) {} public void onActivityDestroyed(android.app.Activity a) {}
@@ -20,6 +22,11 @@ public final class KeplerApplication extends android.app.Application {
         // swipe back scrubs the pop animation with the finger and shows the previous screen underneath.
         if (android.os.Build.VERSION.SDK_INT >= 34) registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override public void onActivityCreated(android.app.Activity a, android.os.Bundle b) {
+                if (InterfaceMode.tablet(a)) { // desktop: windows and workspaces appear at once
+                    a.overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_OPEN, 0, 0);
+                    a.overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0);
+                    return;
+                }
                 a.overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_OPEN, R.anim.kv_push_in, R.anim.kv_push_out);
                 a.overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_CLOSE, R.anim.kv_pop_in, R.anim.kv_pop_out);
             }

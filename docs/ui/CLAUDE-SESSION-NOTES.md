@@ -283,5 +283,6 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
   panel without duplicate Print/Export/slider, object tool bar hidden in Preview.
 - Engine fix: slice_jni marks Bambu printers (print.is_BBL_printer) like desktop; GcodeAnalysis reads Bambu
   "; CHANGE_LAYER" / "; FEATURE:" markers; slice time read from the G-code header.
-- Still mobile in tablet mode (next): DeviceActivity (printer screen), SettingsActivity full editor, profile
-  pickers, NetworkActivity, export screen. Mouse/stylus and other tablet sizes not tested.
+- Round 5 (same day): every secondary screen is a desktop window in tablet mode (DesktopWindow + glass/Desktop
+  .windowed list; add new screens there), Device is its own workspace with the shared tab bar, settings hub
+  button removed. Mouse/stylus and other tablet sizes not tested; no real printer for Device telemetry.

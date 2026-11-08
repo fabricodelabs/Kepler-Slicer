@@ -15,6 +15,18 @@ public final class Desktop {
         return "tablet".equals(c.getSharedPreferences("app_preferences", Context.MODE_PRIVATE).getString("interface_mode", "mobile"));
     }
 
+    /** Screens shown as dialog windows in tablet mode (desktop OrcaSlicer opens these as windows over the workspace). */
+    public static boolean windowed(Context c) {
+        if (!(c instanceof android.app.Activity) || !is(c)) return false;
+        switch (c.getClass().getSimpleName()) {
+            case "SettingsActivity": case "ProfilePickerActivity": case "PrinterPickerActivity": case "SettingsPresetPickerActivity":
+            case "SettingsTransferActivity": case "NetworkActivity": case "GcodeExportActivity": case "CloudPrintLoginActivity":
+            case "ModelDetailsActivity": case "ProcessSettingsActivity": case "PreferencesActivity": case "SliceActivity":
+                return true;
+            default: return false;
+        }
+    }
+
     /** Opaque window surface of desktop dialogs and menus. */
     public static GradientDrawable surface(Context c, float radiusDp) {
         float d = c.getResources().getDisplayMetrics().density;

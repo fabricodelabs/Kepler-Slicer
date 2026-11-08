@@ -108,6 +108,7 @@ public final class DeviceActivity extends Activity {
         list.addView(ui.listRow(0, getString(R.string.kv3_aux_fan), null, fanSwitch, () -> toggle(false))); list.addView(ui.hairline());
         list.addView(ui.listRow(0, getString(R.string.kv3_move_axes), null, ui.image(R.drawable.kv3_chevron_right, 20, white), this::moveAxes));
         content.addView(list, new LinearLayout.LayoutParams(-1, -2));
+        if (com.keplerslicer.app.glass.Desktop.is(this)) desktopWorkspace(head, wifi, camera, job);
 
         refreshStatus();
     }
@@ -175,6 +176,49 @@ public final class DeviceActivity extends Activity {
             runOnUiThread(() -> { if (cancellation == cancel) statusRunning = false; if (isDestroyed() || cancellation != cancel) return; status.setText(value); statusDot.setBackground(ui.shape(ok ? KeplerUi.MINT : 0x99FFFFFF, 0, 4)); activeType = ok ? type : null; jobState = ok ? phase(st) : Phase.UNKNOWN; if (json != null && type != null) applyTelemetry(type, json, st); updateControls(); });
         }, "device-status").start();
     }
+    /**
+     * Tablet: the Device workspace of desktop OrcaSlicer, in the same window frame as Prepare and Preview: the tab bar
+     * on top, camera and job on the left, temperatures, AMS and controls on the right.
+     */
+    private void desktopWorkspace(View head, View wifi, View camera, View job) {
+        LinearLayout content = screen.content;
+        java.util.List<View> right = new java.util.ArrayList<>();
+        for (int i = content.indexOfChild(job) + 1; i < content.getChildCount(); i++) right.add(content.getChildAt(i));
+        content.removeAllViews();
+        for (View v : new View[]{head, wifi}) if (v.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) v.getParent()).removeView(v);
+        LinearLayout page = ui.column(); page.setBackground(ui.backdrop());
+        LinearLayout bar = ui.row(); bar.setGravity(Gravity.CENTER_VERTICAL); bar.setBackgroundColor(0xFF262A31); bar.setPadding(ui.dp(8), 0, ui.dp(12), 0);
+        bar.addView(ui.glassButton(R.drawable.kv3_cog, 44, 22, getString(R.string.tablet_preferences), () -> KeplerUi.tab(this, new Intent(this, PreferencesActivity.class), false)), ui.lp(44, 44));
+        String[] names = {getString(R.string.tablet_prepare), getString(R.string.tablet_preview), getString(R.string.tablet_device)};
+        int[] icons = {R.drawable.kv3_cube, R.drawable.kv3_layers, R.drawable.kv3_printer};
+        Runnable[] go = {this::finish, () -> { startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("kepler_show_layers", true)); finish(); }, null};
+        for (int i = 0; i < 3; i++) {
+            boolean on = i == 2; final Runnable action = go[i];
+            TextView tab = ui.line(names[i], 15, 700, on ? KeplerUi.ON_ACTIVE : KeplerUi.WHITE); tab.setGravity(Gravity.CENTER);
+            tab.setCompoundDrawablesRelativeWithIntrinsicBounds(ui.icon(icons[i], on ? KeplerUi.ON_ACTIVE : KeplerUi.WHITE), null, null, null); tab.setCompoundDrawablePadding(ui.dp(8));
+            tab.setPadding(ui.dp(14), 0, ui.dp(14), 0); tab.setMinHeight(ui.dp(44)); tab.setSelected(on);
+            if (on) tab.setBackground(ui.shape(KeplerUi.MINT, 0, 12)); else { ui.pressable(tab, null, 12); tab.setOnClickListener(v -> action.run()); }
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, ui.dp(44)); tp.leftMargin = ui.dp(i == 0 ? 12 : 4); bar.addView(tab, tp);
+        }
+        bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        bar.addView(head, new LinearLayout.LayoutParams(-2, -2));
+        LinearLayout.LayoutParams wp = ui.lp(44, 44); wp.leftMargin = ui.dp(12); bar.addView(wifi, wp);
+        page.addView(bar, new LinearLayout.LayoutParams(-1, ui.dp(64)));
+        LinearLayout body = ui.row(); body.setGravity(Gravity.TOP); body.setPadding(ui.dp(16), ui.dp(16), ui.dp(16), ui.dp(16));
+        LinearLayout left = ui.column();
+        if (camera.getParent() != null) ((android.view.ViewGroup) camera.getParent()).removeView(camera);
+        if (job.getParent() != null) ((android.view.ViewGroup) job.getParent()).removeView(job);
+        left.addView(camera, new LinearLayout.LayoutParams(-1, 0, 1));
+        LinearLayout.LayoutParams jp = new LinearLayout.LayoutParams(-1, -2); jp.topMargin = ui.dp(12); left.addView(job, jp);
+        body.addView(left, new LinearLayout.LayoutParams(0, -1, 1.5f));
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this); scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout column = ui.column(); for (View v : right) column.addView(v); scroll.addView(column);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(0, -1, 1); rp.leftMargin = ui.dp(16); body.addView(scroll, rp);
+        page.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
+        page.setOnApplyWindowInsetsListener((v, in) -> { android.graphics.Insets s = in.getInsets(android.view.WindowInsets.Type.systemBars()); v.setPadding(s.left, s.top, s.right, s.bottom); return in; });
+        setContentView(page);
+    }
+
     private static String label(PrinterEndpoint.Type type) { String n = type.name().replace('_', ' '); return n.charAt(0) + n.substring(1).toLowerCase(java.util.Locale.ROOT); }
 
     /** OctoPrint /api/printer and PrusaLink /api/v1/status carry temperatures; PrusaLink and Moonraker carry job progress. */

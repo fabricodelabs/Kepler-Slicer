@@ -272,7 +272,10 @@ public final class KeplerUi {
     /** Circular glass button, e.g. the 44dp header Wi-Fi button (22dp icon) or the 56dp add button (26dp icon). */
     public FrameLayout glassButton(int iconRes, float sizeDp, float iconDp, String description, Runnable action) {
         FrameLayout f = new FrameLayout(context);
-        f.addView(image(iconRes, iconDp, WHITE), new FrameLayout.LayoutParams(dp(iconDp), dp(iconDp), Gravity.CENTER));
+        // A desktop window (tablet mode) closes with a cross instead of the phone back chevron.
+        boolean close = iconRes == R.drawable.kv3_back && Desktop.windowed(context);
+        View art = image(close ? R.drawable.kv3_plus : iconRes, iconDp, WHITE); if (close) art.setRotation(45);
+        f.addView(art, new FrameLayout.LayoutParams(dp(iconDp), dp(iconDp), Gravity.CENTER));
         pressable(f, glass(sizeDp / 2), sizeDp / 2); f.setContentDescription(description);
         if (action != null) { f.setOnClickListener(v -> action.run()); TouchTarget.ensure(f); } f.setMinimumWidth(dp(sizeDp)); f.setMinimumHeight(dp(sizeDp)); return f;
     }

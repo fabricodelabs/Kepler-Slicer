@@ -461,8 +461,8 @@ public class MainActivity extends Activity {
         final com.keplerslicer.app.glass.KeplerUi ui = kui;
         LinearLayout bar = horizontal(); bar.setGravity(Gravity.CENTER_VERTICAL); bar.setBackgroundColor(0xFF262A31); bar.setPadding(dp(8), 0, dp(12), 0);
         bar.addView(ui.glassButton(R.drawable.kv3_cog, 44, 22, getString(R.string.tablet_preferences), tabletHost::openPreferences), new LinearLayout.LayoutParams(dp(44), dp(44)));
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(dp(44), dp(44)); sp.leftMargin = dp(6);
-        bar.addView(ui.glassButton(R.drawable.kv3_sliders, 44, 22, getString(R.string.tablet_settings), tabletHost::openSettings), sp);
+        // No separate settings hub: process settings live in the Prepare sidebar, printer and filament editors open
+        // from their blocks, as on desktop.
         android.widget.HorizontalScrollView tabsScroll = new android.widget.HorizontalScrollView(this); tabsScroll.setHorizontalScrollBarEnabled(false);
         LinearLayout tabs = horizontal(); tabs.setGravity(Gravity.CENTER_VERTICAL); tabsScroll.addView(tabs);
         // Workspaces of desktop OrcaSlicer; Objects is a block of the Prepare sidebar, not a workspace.
@@ -476,7 +476,8 @@ public class MainActivity extends Activity {
             if (windowWidthDp() < 900) { tab.setContentDescription(tab.getText()); tab.setText(""); } // narrow window: icon-only tabs
             tab.setCompoundDrawablesRelativeWithIntrinsicBounds(ui.icon(icons[i], com.keplerslicer.app.glass.KeplerUi.WHITE), null, null, null); tab.setCompoundDrawablePadding(dp(8));
             tab.setPadding(dp(14), 0, dp(14), 0); tab.setMinHeight(dp(44)); tab.setMinWidth(dp(48));
-            tab.setOnClickListener(v -> { if (sidebar != null) { if (sidebar.state() == TabletLayout.State.HIDDEN) sidebar.setState(TabletLayout.State.EXPANDED); sidebar.select(section, true); } });
+            tab.setOnClickListener(v -> { if ("device".equals(section)) { com.keplerslicer.app.glass.KeplerUi.tab(this, new Intent(this, DeviceActivity.class), false); return; } // Device is its own workspace
+                if (sidebar != null) { if (sidebar.state() == TabletLayout.State.HIDDEN) sidebar.setState(TabletLayout.State.EXPANDED); sidebar.select(section, true); } });
             LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, dp(44)); tp.leftMargin = dp(i == 0 ? 12 : 4);
             tabs.addView(tab, tp); tabletTabs.put(section, tab);
         }
