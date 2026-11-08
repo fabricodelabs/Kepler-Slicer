@@ -31,7 +31,7 @@ Kepler Slicer — приложение для подготовки 3D-модел
 
 **Изменения.** Новая версия политики публикуется на этой странице с новой датой.
 
-**Контакты:** https://github.com/nitronov/Kepler-Slicer/issues
+**Контакты:** https://github.com/fabricodelabs/Kepler-Slicer/issues
 
 ## English
 
@@ -61,4 +61,4 @@ chosen with the system picker; the app does not request access to all storage.
 
 **Changes.** A new version of this policy is published on this page with a new date.
 
-**Contact:** https://github.com/nitronov/Kepler-Slicer/issues
+**Contact:** https://github.com/fabricodelabs/Kepler-Slicer/issues

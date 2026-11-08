@@ -1,6 +1,6 @@
 <div align="center">
 
-<img alt="Логотип Kepler Slicer" src="docs/images/logo.svg" width="120" height="120">
+<img alt="Иконка Kepler Slicer" src="docs/images/icon.png" width="120" height="120">
 
 # Kepler Slicer
 
@@ -9,7 +9,7 @@
 [![Платформа](https://img.shields.io/badge/platform-Android%2013%2B-3DDC84?logo=android&logoColor=white)](#требования)
 [![Движок](https://img.shields.io/badge/engine-OrcaSlicer-1B1C1B)](https://github.com/OrcaSlicer/OrcaSlicer)
 [![Лицензия](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE-ORCASLICER.txt)
-[![CI](https://img.shields.io/github/actions/workflow/status/nitronov/Kepler-Slicer/ci.yml?label=CI)](https://github.com/nitronov/Kepler-Slicer/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/fabricodelabs/Kepler-Slicer/ci.yml?label=CI)](https://github.com/fabricodelabs/Kepler-Slicer/actions/workflows/ci.yml)
 
 Слайсер для 3D-печати на Android-телефонах и планшетах на движке OrcaSlicer.<br>
 Подготовьте модель, нарежьте её прямо на устройстве и отправьте на принтер — без компьютера.
@@ -27,9 +27,15 @@
 
 <div align="center">
 
+<img src="docs/images/hero-ru.jpg" alt="Kepler Slicer на телефоне и планшете" width="820">
+
 | Стол | Инструменты | Просмотр слоёв | Параметры |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/images/screen-ws.png" width="180" alt="Стол"> | <img src="docs/images/screen-tools.png" width="180" alt="Инструменты"> | <img src="docs/images/screen-layers.png" width="180" alt="Просмотр слоёв"> | <img src="docs/images/screen-settings.png" width="180" alt="Параметры"> |
+| <img src="docs/images/phone-workspace-ru.png" width="190" alt="Стол"> | <img src="docs/images/phone-tools-ru.png" width="190" alt="Инструменты"> | <img src="docs/images/phone-layers-ru.png" width="190" alt="Просмотр слоёв"> | <img src="docs/images/phone-settings-ru.png" width="190" alt="Параметры"> |
+
+**Режим планшета** — компоновка настольного OrcaSlicer
+
+<img src="docs/images/tablet-ru.png" width="760" alt="Режим планшета: вкладки Подготовка, Предпросмотр и Устройство">
 
 </div>
 
@@ -45,8 +51,12 @@
   Все принтеры настольной версии (450+ моделей Bambu Lab, Prusa, Creality, Qidi, Elegoo, Anycubic, Voron и других) с группировкой по производителям; пластики сгруппированы по брендам.
 - **Все настройки слайсера**<br>
   Качество, прочность, скорость, поддержки, многоматериальная печать и прочие параметры с поиском, пользовательскими профилями и настройками для отдельных объектов.
+- **Нарезка прямо на столе**<br>
+  Без отдельного окна нарезки: прогресс показывается над столом, а по готовности сам открывается просмотр слоёв.
 - **Просмотр слоёв**<br>
   3D-просмотр траекторий по типу линий, скорости, потоку и высоте слоя со временем печати, расходом пластика и стоимостью.
+- **Режим планшета**<br>
+  На планшете — компоновка настольного OrcaSlicer: вкладки Подготовка / Предпросмотр / Устройство, боковая панель с редактором настроек, инструменты над столом; настройки, профили и экспорт открываются окнами (Общие → Основные → Режим отображения).
 - **Печать по сети**<br>
   Отправка, запуск и управление печатью на Bambu Lab (LAN и облако), OctoPrint, Klipper/Moonraker, PrusaLink, Duet, Repetier, Creality, Elegoo и других; принтеры Bambu Lab находятся в Wi-Fi автоматически. Подробнее — в [Network support](NETWORK_SUPPORT.md) (на английском).
 - **Стеклянный интерфейс**<br>
@@ -54,7 +64,7 @@
 
 # Скачать
 
-Сборки публикуются на странице [Releases](https://github.com/nitronov/Kepler-Slicer/releases).
+Сборки публикуются на странице [Releases](https://github.com/fabricodelabs/Kepler-Slicer/releases).
 Скачайте `.apk`, откройте его на телефоне и разрешите установку из этого источника.
 
 ## Требования

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img alt="Kepler Slicer logo" src="docs/images/logo.svg" width="120" height="120">
+<img alt="Kepler Slicer icon" src="docs/images/icon.png" width="120" height="120">
 
 # Kepler Slicer
 
@@ -9,7 +9,7 @@
 [![Platform](https://img.shields.io/badge/platform-Android%2013%2B-3DDC84?logo=android&logoColor=white)](#requirements)
 [![Engine](https://img.shields.io/badge/engine-OrcaSlicer-1B1C1B)](https://github.com/OrcaSlicer/OrcaSlicer)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE-ORCASLICER.txt)
-[![CI](https://img.shields.io/github/actions/workflow/status/nitronov/Kepler-Slicer/ci.yml?label=CI)](https://github.com/nitronov/Kepler-Slicer/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/fabricodelabs/Kepler-Slicer/ci.yml?label=CI)](https://github.com/fabricodelabs/Kepler-Slicer/actions/workflows/ci.yml)
 
 A 3D-printing slicer for Android phones and tablets, built on the OrcaSlicer engine.<br>
 Prepare a model, slice it on the device and send it to your printer — no computer needed.
@@ -27,9 +27,15 @@ Check the G-code preview before printing, and do not leave a printer unattended 
 
 <div align="center">
 
+<img src="docs/images/hero-en.jpg" alt="Kepler Slicer on a phone and a tablet" width="820">
+
 | Workspace | Tools | Layer preview | Settings |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/images/screen-ws.png" width="180" alt="Workspace"> | <img src="docs/images/screen-tools.png" width="180" alt="Tools"> | <img src="docs/images/screen-layers.png" width="180" alt="Layer preview"> | <img src="docs/images/screen-settings.png" width="180" alt="Settings"> |
+| <img src="docs/images/phone-workspace-en.png" width="190" alt="Workspace"> | <img src="docs/images/phone-tools-en.png" width="190" alt="Tools"> | <img src="docs/images/phone-layers-en.png" width="190" alt="Layer preview"> | <img src="docs/images/phone-settings-en.png" width="190" alt="Settings"> |
+
+**Tablet mode** — the desktop OrcaSlicer layout
+
+<img src="docs/images/tablet-en.png" width="760" alt="Tablet mode: Prepare, Preview and Device workspaces">
 
 </div>
 
@@ -45,8 +51,12 @@ Check the G-code preview before printing, and do not leave a printer unattended 
   Every printer of the desktop version (450+ models from Bambu Lab, Prusa, Creality, Qidi, Elegoo, Anycubic, Voron and more), grouped by maker; filaments grouped by brand.
 - **All slicer settings**<br>
   Quality, strength, speed, supports, multi-material and other settings with search, user presets and per-object overrides.
+- **Slicing right on the plate**<br>
+  No separate slicing screen: progress shows over the plate and the layer preview opens by itself when the result is ready.
 - **Layer preview**<br>
   3D preview of the toolpaths by line type, speed, flow and layer height, with print time, filament and cost.
+- **Tablet mode**<br>
+  On tablets the layout of desktop OrcaSlicer: Prepare / Preview / Device workspaces, a sidebar with the settings editor, object tools above the plate; settings, profiles and export open as windows (Preferences → General → Display mode).
 - **Printing over the network**<br>
   Upload, start and control prints on Bambu Lab (LAN and cloud), OctoPrint, Klipper/Moonraker, PrusaLink, Duet, Repetier, Creality, Elegoo and more; Bambu Lab printers are found on Wi-Fi automatically. See [Network support](NETWORK_SUPPORT.md).
 - **Glass interface**<br>
@@ -54,7 +64,7 @@ Check the G-code preview before printing, and do not leave a printer unattended 
 
 # Download
 
-Builds are published on the [Releases](https://github.com/nitronov/Kepler-Slicer/releases) page.
+Builds are published on the [Releases](https://github.com/fabricodelabs/Kepler-Slicer/releases) page.
 Download the `.apk`, open it on the phone and allow installation from this source.
 
 ## Requirements

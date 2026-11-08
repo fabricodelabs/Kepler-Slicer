@@ -9,7 +9,7 @@ All working copies are siblings under `outputs/`:
 | `OrcaMobile` | `master` | Integration copy; merge reviewed work, push master |
 | `Kepler-Codex` | `codex/core` | Retired, read-only history (fully merged at 91dcf06) |
 
-Remote: https://github.com/nitronov/Kepler-Slicer.git. The original baseline
+Remote: https://github.com/fabricodelabs/Kepler-Slicer.git. The original baseline
 backup remains under `outputs/Kepler-Team-Backup-20261103-193404`.
 
 ## Cycle
