@@ -286,3 +286,15 @@ Host suites need `-JsonJar C:\Users\tails\Documents\Codex\2026-10-28\https-githu
 - Round 5 (same day): every secondary screen is a desktop window in tablet mode (DesktopWindow + glass/Desktop
   .windowed list; add new screens there), Device is its own workspace with the shared tab bar, settings hub
   button removed. Mouse/stylus and other tablet sizes not tested; no real printer for Device telemetry.
+
+## 2026-11-08: full security audit (branch audit/full-security-review, reports in audit/)
+
+- Fixed: SEC-01 content:// only for model links; SEC-02 ArchiveGuard before the native 3MF reader + 2 GiB import cap;
+  SEC-03 engine built with expat 2.10.0 from engine/third_party/expat (build-native.ps1 copies it over upstream
+  deps_src/expat, which is 2.2.0); SEC-04 plugin's obn.auth.json deleted; SEC-05 data_extraction_rules.xml;
+  SEC-07 engine/src/jni_text.hpp for every NewStringUTF/ThrowNew (engine + OBN bridge); lint WrongConstant;
+  desktop dialogs wrap content.
+- Open: SEC-08 libbambu_networking still links OpenSSL 1.1.1w and curl 7.75.0. Verified sources of OpenSSL 3.5.9 and
+  curl 8.23.0 are in work/obn-deps-download; building them was blocked by the safety policy (needs owner approval).
+- No animated splash exists in the code (LaunchActivity is a static text view); see audit/SPLASH_SCREEN_AUDIT.md.
+- Native tests: sh tools/native_tests/run.sh ../../work/android-ndk/android-ndk-r30 <adb> (x86_64 emulator, UBSan).
