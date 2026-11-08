@@ -119,8 +119,10 @@ public final class DeviceActivity extends Activity {
     private android.widget.ImageView cameraImage; private View cameraCenter; private volatile Thread cameraThread; private volatile java.net.HttpURLConnection cameraConnection;
     @Override protected void onDestroy() { if (cancellation != null) cancellation.cancel(); stopCamera(); super.onDestroy(); }
     @Override protected void onPause() { stopCamera(); polling = false; refresher.removeCallbacksAndMessages(null); super.onPause(); }
-    @Override protected void onResume() { super.onResume(); polling = true; refresher.postDelayed(this::poll, 8000); }
-    private void poll() { if (!polling || isDestroyed()) return; if (!commandRunning && !statusRunning) refreshStatus(); refresher.postDelayed(this::poll, 8000); }
+    /** onCreate already asked for the status; every later return (e.g. after choosing a printer in Connections) asks again at once. */
+    private boolean resumedBefore;
+    @Override protected void onResume() { super.onResume(); polling = true; if (resumedBefore && !commandRunning) refreshStatus(); resumedBefore = true; refresher.postDelayed(this::poll, 8000); }
+    private void poll() { if (!polling || isDestroyed()) return; if (!commandRunning && !statusRunning) refreshStatus(false); refresher.postDelayed(this::poll, 8000); }
 
     /** Live view: MJPEG stream of the selected OctoPrint/Moonraker host (webcam/?action=stream), read-only. */
     private void toggleCamera() {
@@ -154,7 +156,12 @@ public final class DeviceActivity extends Activity {
     private void stopCamera() { Thread t = cameraThread; cameraThread = null; if (t != null) t.interrupt(); final java.net.HttpURLConnection open = cameraConnection; cameraConnection = null; if (open != null) new Thread(open::disconnect, "camera-close").start(); if (cameraImage != null) { cameraImage.setVisibility(View.GONE); cameraCenter.setVisibility(View.VISIBLE); } }
 
     /** Read-only status of the selected saved printer (no commands are sent). Offline/stealth modes are respected. */
-    private void refreshStatus() {
+    private void refreshStatus() { refreshStatus(true); }
+    /**
+     * @param announce show "Checking connection…" while waiting. Background polls keep the last answer on screen
+     *                 instead, so an error (a Bambu LAN attempt waits up to 12 s) stays readable between polls.
+     */
+    private void refreshStatus(boolean announce) {
         if (cancellation != null) cancellation.cancel(); // never two polls at once: the newer one wins
         final NetworkHttp.Cancellation cancel = new NetworkHttp.Cancellation(); cancellation = cancel;
         statusRunning = true;
@@ -164,7 +171,7 @@ public final class DeviceActivity extends Activity {
                 c = NetworkStore.load(this).selected();
                 if (c == null) text = getString(R.string.kv3_device_offline);
                 else {
-                    runOnUiThread(() -> { if (!isDestroyed()) status.setText(getString(R.string.kv3_device_checking)); });
+                    if (announce) runOnUiThread(() -> { if (!isDestroyed() && cancellation == cancel) status.setText(getString(R.string.kv3_device_checking)); });
                     NetworkPolicy.requireEndpoint(this, c.endpoint);
                     PrinterHostClient.Status s = new PrinterHostClient(NetworkStore.fresh(this, c, cancel)).status(cancel);
                     state = s.state; online = !"disconnected".equalsIgnoreCase(s.state);
