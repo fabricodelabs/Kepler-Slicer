@@ -211,10 +211,12 @@ public final class GcodeExportActivity extends Activity {
             String time = null, grams = null; int layers = 0;
             try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(file, "r")) {
                 long start = Math.max(0, in.length() - 96 * 1024); in.seek(start); byte[] buffer = new byte[(int) (in.length() - start)]; in.readFully(buffer);
-                for (String line : new String(buffer, java.nio.charset.StandardCharsets.UTF_8).split("\n")) {
+                byte[] head = new byte[(int) Math.min(4096, in.length())]; in.seek(0); in.readFully(head); // some printers keep the time in the header
+                for (String line : (new String(buffer, java.nio.charset.StandardCharsets.UTF_8) + "\n" + new String(head, java.nio.charset.StandardCharsets.UTF_8)).split("\n")) {
                     String l = line.trim().toLowerCase(java.util.Locale.ROOT); if (!l.startsWith(";")) continue;
                     String value = l.contains("=") ? l.substring(l.indexOf('=') + 1).trim() : l.contains(":") ? l.substring(l.lastIndexOf(':') + 1).trim() : "";
-                    if (time == null && l.contains("estimated printing time") && !value.isEmpty()) time = PrintTime.localize(this, value);
+                    String engineTime = time == null ? PrintTime.summaryTime(l) : null;
+                    if (engineTime != null) time = PrintTime.localize(this, engineTime);
                     else if (grams == null && l.contains("filament") && l.contains("[g]") && value.matches("[0-9.,]+.*")) grams = value.split("[ ,]")[0] + " " + getString(R.string.kv3_unit_g);
                     else if (layers == 0 && (l.contains("total layer number") || l.contains("total layers count")) && value.matches("[0-9]+.*")) layers = Integer.parseInt(value.replaceAll("[^0-9].*", ""));
                 }

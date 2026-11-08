@@ -1161,7 +1161,8 @@ public class MainActivity extends Activity {
                     String l = line.trim().toLowerCase(java.util.Locale.ROOT); if (!l.startsWith(";")) continue;
                     String value = l.contains("=") ? l.substring(l.indexOf('=') + 1).trim() : l.contains(":") ? l.substring(l.lastIndexOf(':') + 1).trim() : "";
                     if (value.isEmpty()) continue;
-                    if (time == null && (l.contains("estimated printing time") || l.contains("total estimated time"))) time = PrintTime.localize(this, value);
+                    String engineTime = time == null ? PrintTime.summaryTime(l) : null;
+                    if (engineTime != null) time = PrintTime.localize(this, engineTime);
                     else if (grams == null && l.contains("filament") && l.contains("[g]") && value.matches("[0-9.,]+.*")) grams = value.split("[ ,]")[0] + " " + getString(R.string.kv3_unit_g);
                     else if (cost == null && l.contains("filament cost") && value.matches("[0-9.,]+.*")) cost = value.split("[ ,]")[0];
                 }
